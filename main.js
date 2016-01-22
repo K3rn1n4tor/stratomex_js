@@ -1,17 +1,30 @@
 /**
  * Created by Samuel Gratzl on 15.12.2014.
+ * Extended by Michael Kern on 22.01.2016.
  */
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 define(function (require) {
   'use strict';
+
+  // -------------------------------------------------------------------------------------------------------------------
+  // requirements
+
   var $ = require('jquery');
   var data = require('../caleydo_core/data');
   var vis = require('../caleydo_core/vis');
   var C = require('../caleydo_core/main');
   var template = require('../clue/template');
   var cmode = require('../caleydo_provenance/mode');
+  var lineupModule = require('./lineup');
+  var stratomeModule = require('./StratomeX');
 
+  // -------------------------------------------------------------------------------------------------------------------
 
+  // selects the first element with given selector
   var helper = document.querySelector('#mainhelper');
+  // create clue template
   var elems = template.create(document.body, {
     app: 'StratomeX.js',
     application: '/stratomex_js',
@@ -24,11 +37,13 @@ define(function (require) {
     helper.remove();
   }
 
+  // -------------------------------------------------------------------------------------------------------------------
+
   elems.graph.then(function(graph) {
     var datavalues;
-    var stratomex = require('./StratomeX').create(document.getElementById('stratomex'), graph);
+    var stratomex = stratomeModule.create(document.getElementById('stratomex'), graph);
 
-    var lineup = require('./lineup').create(document.getElementById('tab_stratifications'), function (rowStrat) {
+    var lineup = lineupModule.create(document.getElementById('tab_stratifications'), function (rowStrat) {
       if (rowStrat.desc.type === 'stratification') {
         rowStrat.origin().then(function (d) {
           if (d.desc.type === 'matrix') {
@@ -49,7 +64,9 @@ define(function (require) {
       }
     });
 
-    var lineupData = require('./lineup').createData(document.getElementById('tab_data'), function (vector) {
+    // -------------------------------------------------------------------------------------------------------------------
+
+    var lineupData = lineupModule.createData(document.getElementById('tab_data'), function (vector) {
       stratomex.addDependentData(vector);
     });
 
@@ -123,6 +140,9 @@ define(function (require) {
       });
     }
 
+    // -----------------------------------------------------------------------------------------------------------------
+    // Create lineUp for stratification
+
     function createLineUp(r) {
       lineup.setData(r);
     }
@@ -137,6 +157,9 @@ define(function (require) {
       });
     }
 
+    // -----------------------------------------------------------------------------------------------------------------
+    // Create lineUp for data types
+
     function createDataLineUp(r) {
       lineupData.setData(r);
     }
@@ -150,6 +173,9 @@ define(function (require) {
         return false;
       });
     }
+
+    // -----------------------------------------------------------------------------------------------------------------
+    // Create filebrowser tabs for each data types
 
     var vectors = data.list().then(data.convertTableToVectors);
     vectors.then(filterTypes).then(splitAndConvert).then(createLineUp);
