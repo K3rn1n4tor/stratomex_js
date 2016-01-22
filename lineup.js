@@ -127,6 +127,10 @@ define(function (require, exports) {
     });
   };
 
+  /**
+   * creates new lineup with function called when pressing '+' sign
+   * @type {StratomeXLineUp}
+     */
   exports.StratomeXLineUp = StratomeXLineUp;
   exports.create = function (parent, onAdd) {
     return new StratomeXLineUp(parent, true, onAdd);

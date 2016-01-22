@@ -24,6 +24,9 @@ define(function (require) {
 
   // selects the first element with given selector
   var helper = document.querySelector('#mainhelper');
+
+  // -------------------------------------------------------------------------------------------------------------------
+
   // create clue template
   var elems = template.create(document.body, {
     app: 'StratomeX.js',
@@ -39,9 +42,14 @@ define(function (require) {
 
   // -------------------------------------------------------------------------------------------------------------------
 
+  /**
+   * choose what method will be called and what kind of column will be added
+   */
   elems.graph.then(function(graph) {
     var datavalues;
     var stratomex = stratomeModule.create(document.getElementById('stratomex'), graph);
+
+    // -----------------------------------------------------------------------------------------------------------------
 
     var lineup = lineupModule.create(document.getElementById('tab_stratifications'), function (rowStrat) {
       if (rowStrat.desc.type === 'stratification') {
@@ -64,11 +72,21 @@ define(function (require) {
       }
     });
 
-    // -------------------------------------------------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------------------------------------------
+    // methods called per data tab
 
     var lineupData = lineupModule.createData(document.getElementById('tab_data'), function (vector) {
       stratomex.addDependentData(vector);
     });
+
+    // -----------------------------------------------------------------------------------------------------------------
+    // methods called per Orly's data tab
+
+    var lineupOrlyData = lineupModule.createData(document.getElementById('tab_orlydata'), function (vector) {
+      stratomex.addDependentData(vector);
+    });
+
+    // -----------------------------------------------------------------------------------------------------------------
 
     var $left_data = $('#databrowser');
     if (cmode.getMode().exploration < 0.8) {
@@ -84,11 +102,18 @@ define(function (require) {
       if (lineupData.lineup) {
         lineupData.lineup.update();
       }
+
+      if (lineupOrlyData.lineup)
+      {
+        lineupOrlyData.lineup.update();
+      }
     }
 
     $('a[data-toggle="tab"]').on('shown.bs.tab', function () {
       updateLineUp();
     });
+
+    // -----------------------------------------------------------------------------------------------------------------
 
     function updateBounds() {
       var bounds = C.bounds(stratomex.parent);
@@ -111,6 +136,8 @@ define(function (require) {
     $(window).on('resize', updateBounds);
     updateBounds();
     //var notes = require('./notes').create(document.getElementById('notes'), graph);
+
+    // -----------------------------------------------------------------------------------------------------------------
 
     function splitAndConvert(arr) {
       var strat = arr.filter(function (d) {
@@ -149,6 +176,9 @@ define(function (require) {
 
     function filterTypes(arr) {
       return arr.filter(function (d) {
+        if (d.desc.fqname.startsWith('gene_cluster_viewer')) {
+          return false;
+        }
         var desc = d.desc;
         if (desc.type === 'matrix' || desc.type === 'vector') {
           return desc.value.type === 'categorical';
@@ -165,6 +195,9 @@ define(function (require) {
     }
 
     function filterDataTypes(arr) {
+      if (d.desc.fqname.startsWith('gene_cluster_viewer')) {
+        return false;
+      }
       return arr.filter(function (d) {
         var desc = d.desc;
         if (desc.type === 'matrix' || desc.type == 'vector') {
@@ -175,11 +208,19 @@ define(function (require) {
     }
 
     // -----------------------------------------------------------------------------------------------------------------
+    // Create lineUp for Orly's data types
+
+    function createOrlyDataLineUp(r) {
+      lineupData.setData(r);
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------
     // Create filebrowser tabs for each data types
 
     var vectors = data.list().then(data.convertTableToVectors);
     vectors.then(filterTypes).then(splitAndConvert).then(createLineUp);
     vectors.then(filterDataTypes).then(createDataLineUp);
+    vectors.then(filterOrlyDataTypes).then(createOrlyDataLineUp);
 
     elems.jumpToStored();
   });

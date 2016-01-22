@@ -39,6 +39,14 @@ function guessInitial(desc):any {
 export const manager = new idtypes.ObjectManager<Column>('_column', 'Column');
 
 
+/**
+ * creates a new column to display stratifications and their link to the data
+ * @param inputs
+ * @param parameter
+ * @param graph
+ * @param within
+ * @returns {Promise<TResult>|Promise<U>}
+ */
 function createColumn(inputs, parameter, graph, within) {
   var stratomex = inputs[0].value,
     partitioning = ranges.parse(parameter.partitioning),

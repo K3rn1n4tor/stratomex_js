@@ -91,6 +91,11 @@ class StratomeX extends views.AView {
       });
   }
 
+  /**
+   * adds a new column displaying data from the "data" section related to stratifications
+   * @param m
+   * @returns {boolean}
+     */
   addDependentData(m: datatypes.IDataType) {
     const base = columns.manager.selectedObjects()[0];
     //nothing selected
@@ -109,6 +114,12 @@ class StratomeX extends views.AView {
     return false;
   }
 
+  /**
+   * adds a new column displaying the stratifications of a cluster data
+   * @param rowStrat
+   * @param m
+   * @param colStrat
+     */
   addData(rowStrat: stratification.IStratification, m: datatypes.IDataType, colStrat?: stratification.IStratification) {
     var that = this;
     var mref = this.provGraph.findOrAddObject(m, m.desc.name, 'data');
