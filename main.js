@@ -5,6 +5,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+var debug = 0
+
 define(function (require) {
   'use strict';
 
@@ -83,7 +85,7 @@ define(function (require) {
     // methods called per Orly's data tab
 
     var lineupOrlyData = lineupModule.createData(document.getElementById('tab_orlydata'), function (vector) {
-      stratomex.addDependentData(vector);
+      stratomex.addDependentOrlyData(vector);
     });
 
     // -----------------------------------------------------------------------------------------------------------------
@@ -176,13 +178,18 @@ define(function (require) {
 
     function filterTypes(arr) {
       return arr.filter(function (d) {
-        if (d.desc.fqname.startsWith('gene_cluster_viewer')) {
+        var desc = d.desc;
+
+        if (desc.fqname.startsWith('gene_cluster_viewer')) {
           return false;
         }
-        var desc = d.desc;
+
         if (desc.type === 'matrix' || desc.type === 'vector') {
           return desc.value.type === 'categorical';
         }
+
+        if (desc.type === 'stratification' && debug == 0) { debug = d; }
+
         return desc.type === 'stratification' && desc.origin != null;
       });
     }
@@ -195,11 +202,13 @@ define(function (require) {
     }
 
     function filterDataTypes(arr) {
-      if (d.desc.fqname.startsWith('gene_cluster_viewer')) {
-        return false;
-      }
       return arr.filter(function (d) {
         var desc = d.desc;
+
+        if (desc.fqname.startsWith('gene_cluster_viewer')) {
+          return false;
+        }
+
         if (desc.type === 'matrix' || desc.type == 'vector') {
           return desc.value.type === 'real' || desc.value.type === 'int';
         }
@@ -211,7 +220,23 @@ define(function (require) {
     // Create lineUp for Orly's data types
 
     function createOrlyDataLineUp(r) {
-      lineupData.setData(r);
+      lineupOrlyData.setData(r);
+    }
+
+    function filterOrlyDataTypes(arr) {
+
+      return arr.filter(function(d)
+      {
+        var desc = d.desc;
+
+        if (desc.fqname.startsWith('gene_cluster_viewer')) {
+          return true;
+        }
+        else
+        {
+          return false;
+        }
+      });
     }
 
     // -----------------------------------------------------------------------------------------------------------------

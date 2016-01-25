@@ -114,6 +114,24 @@ class StratomeX extends views.AView {
     return false;
   }
 
+  addDependentOrlyData(m: datatypes.IDataType) {
+    const base = columns.manager.selectedObjects()[0];
+    //nothing selected
+    if (!base) {
+      return false;
+    }
+    //check if idtypes match otherwise makes no sense
+    if (base.data.idtypes[0] === m.idtypes[0]) {
+      let mref = this.provGraph.findOrAddObject(m, m.desc.name, 'orlydata');
+      var r = ranges.list(base.range.dim(0));
+      base.data.ids(r).then(m.fromIdRange.bind(m)).then((target) => {
+        this.provGraph.push(columns.createColumnCmd(this.ref, mref, target, toName(m.desc.name, base.range.dim(0).name)));
+      });
+      return true;
+    }
+    return false;
+  }
+
   /**
    * adds a new column displaying the stratifications of a cluster data
    * @param rowStrat
