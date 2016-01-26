@@ -138,10 +138,10 @@ define(function (require, exports) {
    * @type {StratomeXLineUp}
      */
   exports.StratomeXLineUp = StratomeXLineUp;
-  exports.create = function (parent, onAdd) {
-    return new StratomeXLineUp(parent, true, onAdd);
+  exports.create = function (parent, onAdd, onCluster) {
+    return new StratomeXLineUp(parent, true, onAdd, onCluster);
   };
-  exports.createData = function (parent, onAdd) {
-    return new StratomeXLineUp(parent, false, onAdd);
+  exports.createData = function (parent, onAdd, onCluster) {
+    return new StratomeXLineUp(parent, false, onAdd, onCluster);
   }
 });

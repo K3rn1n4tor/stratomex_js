@@ -22,6 +22,7 @@ define(function (require) {
   var lineupModule = require('./lineup');
   var stratomeModule = require('./StratomeX');
 
+
   // -------------------------------------------------------------------------------------------------------------------
 
   // selects the first element with given selector
@@ -55,8 +56,13 @@ define(function (require) {
 
     var lineup = lineupModule.create(document.getElementById('tab_stratifications'), function (rowStrat) {
       if (rowStrat.desc.type === 'stratification') {
+
+        // TODO! set original file of stratification and load it with origin method
         rowStrat.origin().then(function (d) {
-          if (d.desc.type === 'matrix') {
+          // create connection of matrix and this stratification
+          // TODO! important for our clustering
+          if (d.desc.type === 'matrix')
+          {
             if (rowStrat.idtypes[0] !== d.idtypes[0]) {
               d = d.t; //transpose
             }
@@ -64,6 +70,7 @@ define(function (require) {
           if (d.desc.type === 'table') {
             stratomex.addData(rowStrat, rowStrat);
           } else {
+            // TODO! and call addData to draw connection
             stratomex.addData(rowStrat, d, null);
           }
         });
@@ -84,9 +91,19 @@ define(function (require) {
     // -----------------------------------------------------------------------------------------------------------------
     // methods called per Orly's data tab
 
-    var lineupOrlyData = lineupModule.createData(document.getElementById('tab_orlydata'), function (vector) {
-      stratomex.addDependentOrlyData(vector);
-    }, function() {});
+    var lineupOrlyData = lineupModule.createData(document.getElementById('tab_orlydata'),
+      function (vector) {
+        stratomex.addDependentOrlyData(vector);
+      },
+      function(vector) {
+        var k = NaN;
+        while (isNaN(k))
+        {
+          k = parseInt(prompt('Define number of clusters:', '2'))
+        }
+
+        stratomex.clusterData(vector, 'kmeans', k);
+    });
 
     // -----------------------------------------------------------------------------------------------------------------
 
