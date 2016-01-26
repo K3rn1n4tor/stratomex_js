@@ -106,6 +106,11 @@ define(function (require, exports) {
                 name: 'add',
                 icon: '\uf067',
                 action: function(row) { that.onAdd(row._); }
+              },
+              {
+                name: 'add2',
+                icon: '\uf067',
+                action: function(row) { that.onAdd(row._); }
               }
             ]
           },

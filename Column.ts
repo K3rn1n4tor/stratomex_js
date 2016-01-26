@@ -53,6 +53,8 @@ function createColumn(inputs, parameter, graph, within) {
     index = parameter.hasOwnProperty('index') ? parameter.index : -1,
     name = parameter.name || inputs[1].name;
 
+  console.log(ranges.parse(parameter.partitioning));
+
   return inputs[1].v.then(function (data) {
     //console.log(new Date(), 'create column', data.desc.name, index);
     var c = new Column(stratomex, data, partitioning, inputs[1], {
@@ -428,7 +430,10 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     const r = (<ranges.CompositeRange1D>partitioning.dim(0));
     //console.log(this.range, r);
     const initialHeight = 500 / (r.groups || []).length;
+    console.log(initialHeight);
+    console.log(this.options.width);
 
+    console.log(data);
     this.grid = multiform.createGrid(data, partitioning, <Element>this.$clusters.node(), function (data, range, pos) {
       if (data.desc.type === 'stratification') {
         return (<any>data).group(pos[0]);
