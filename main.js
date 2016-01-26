@@ -72,21 +72,21 @@ define(function (require) {
           stratomex.addData(d, d);
         });
       }
-    });
+    }, function() {});
 
     // -----------------------------------------------------------------------------------------------------------------
     // methods called per data tab
 
     var lineupData = lineupModule.createData(document.getElementById('tab_data'), function (vector) {
       stratomex.addDependentData(vector);
-    });
+    }, function() {});
 
     // -----------------------------------------------------------------------------------------------------------------
     // methods called per Orly's data tab
 
     var lineupOrlyData = lineupModule.createData(document.getElementById('tab_orlydata'), function (vector) {
       stratomex.addDependentOrlyData(vector);
-    });
+    }, function() {});
 
     // -----------------------------------------------------------------------------------------------------------------
 

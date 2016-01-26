@@ -8,12 +8,13 @@ define(function (require, exports) {
   var tables = require('../caleydo_core/table_impl');
   var d3 = require('d3');
 
-  function StratomeXLineUp(parent, showGroups, onAdd) {
+  function StratomeXLineUp(parent, showGroups, onAdd, onCluster) {
     views.AView.call(this);
     this._data = [];
     this.parent = parent;
     this.showGroups = showGroups;
     this.onAdd = onAdd;
+    this.onCluster = onCluster;
   }
   C.extendClass(StratomeXLineUp, views.AView);
 
@@ -108,9 +109,9 @@ define(function (require, exports) {
                 action: function(row) { that.onAdd(row._); }
               },
               {
-                name: 'add2',
+                name: 'cluster',
                 icon: '\uf067',
-                action: function(row) { that.onAdd(row._); }
+                action: function(row) { that.onCluster(row._); }
               }
             ]
           },
@@ -122,7 +123,7 @@ define(function (require, exports) {
         dump: {
           layout: {
             primary: [
-              {type: 'actions', width: 20, label: ' '}, {
+              {type: 'actions', width: 40, label: 'Actions'}, {
               type: 'rank',
               width: 40
             }, col('Package', 150), col('Dataset', 220), col('Name', 220), col('Dimensions', 90), col('ID Type', that.showGroups ? 250 : 120), col(that.showGroups ? '# Groups' : 'Type', 80)]
