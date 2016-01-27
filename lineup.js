@@ -109,8 +109,13 @@ define(function (require, exports) {
                 action: function(row) { that.onAdd(row._); }
               },
               {
-                name: 'cluster',
-                icon: '\uf067',
+                name: 'kmeans',
+                icon: '\u26d5',
+                action: function(row) { that.onCluster(row._); }
+              },
+              {
+                name: 'hierarchical',
+                icon: '\u2653',
                 action: function(row) { that.onCluster(row._); }
               }
             ]
@@ -123,7 +128,8 @@ define(function (require, exports) {
         dump: {
           layout: {
             primary: [
-              {type: 'actions', width: 40, label: 'Actions'}, {
+              {type: 'actions', width: 60, label: 'Actions'},
+              {
               type: 'rank',
               width: 40
             }, col('Package', 150), col('Dataset', 220), col('Name', 220), col('Dimensions', 90), col('ID Type', that.showGroups ? 250 : 120), col(that.showGroups ? '# Groups' : 'Type', 80)]

@@ -122,7 +122,10 @@ function changeVis(inputs, parameter) {
   });
 }
 
-export function showInDetail(inputs, parameter, graph, within) {
+// ---------------------------------------------------------------------------------------------------------------------
+
+export function showInDetail(inputs, parameter, graph, within)
+{
   var column : Column = inputs[0].value,
     cluster = parameter.cluster,
     show = parameter.action === 'show';
@@ -147,6 +150,39 @@ export function createToggleDetailCmd(column, cluster, show) {
     action: show ? 'show' : 'hide'
   });
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export function showStats(inputs, parameter, graph, within)
+{
+  var column : Column = inputs[0].value,
+    cluster = parameter.cluster,
+    show = parameter.action === 'show';
+  var r: Promise<any>;
+  if (show) {
+    r = column.showStats(cluster, within);
+  } else {
+    r = column.hideStats(cluster, within);
+  }
+  return r.then(() => {
+    return {
+      inverse: createToggleStatsCmd(inputs[0], cluster, !show),
+      consumed: within
+    };
+  });
+}
+
+// TODO create stats cmd
+export function createToggleStatsCmd(column, cluster, show)
+{
+  var act = show ? 'Show' : 'Hide';
+  return prov.action(prov.meta(act + ' Details of '+column.toString()+' Cluster "' + cluster + '"', prov.cat.layout), 'showStratomeXInStats', showStats, [column], {
+    cluster: cluster,
+    action: show ? 'show' : 'hide'
+  });
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export function createChangeVis(column, to, from) {
   const visses = column.value.grid.visses;
@@ -205,6 +241,9 @@ export function createCmd(id:string) {
       return changeVis;
     case 'showStratomeXInDetail' :
       return showInDetail;
+    /** This is a new feature **/
+    case 'showStratomeXInStats' :
+      return showStats;
   }
   return null;
 }
@@ -401,15 +440,39 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     });
 
     function createWrapper(elem, data, cluster, pos) {
+      // TODO add icon for stats button
+      // select element of current multigrid
       const $elem = d3.select(elem);
+      // set to group classed
       $elem.classed('group', true).datum(data);
+      // create new toolbar
       var $toolbar = $elem.append('div').attr('class','gtoolbar');
+
+      // add new command with symbol fa-expand
       $toolbar.append('i').attr('class','fa fa-expand').on('click', () => {
-        var g = that.stratomex.provGraph;
-        var s = g.findObject(that);
-        g.push(createToggleDetailCmd(s, pos[0], true));
+        // first obtain the provenance graph
+        var graph = that.stratomex.provGraph;
+        // next find the current object / selection / cluster
+        var obj = graph.findObject(that);
+        // push new command to graph
+        graph.push(createToggleDetailCmd(obj, pos[0], true));
+        // stop propagation to disable further event triggering
         d3.event.stopPropagation();
       });
+
+      // try to create new command
+      $toolbar.append('i').attr('class','fa fa-arrows').on('click', () => {
+        // first obtain the provenance graph
+        var graph = that.stratomex.provGraph;
+        // next find the current object / selection / cluster
+        var obj = graph.findObject(that);
+        // push new command to graph
+        graph.push(createToggleStatsCmd(obj, pos[0], true));
+        // stop propagation to disable further event triggering
+        d3.event.stopPropagation();
+      });
+
+
       const toggleSelection = () => {
         var isSelected = $elem.classed('select-selected');
         if (isSelected) {
@@ -568,13 +631,22 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     });
   }
 
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * creates new window with larger multiform window
+   * @param cluster
+   * @param within
+   * @returns {Promise<void>}
+     */
   showInDetail(cluster, within = -1) {
     const data = cluster < 0 ? this.data : this.grid.getData(cluster);
 
     const $elem = this.$parent.append('div').classed('detail', true).style('opacity', 0);
     $elem.classed('group', true).datum(data);
     var $toolbar = $elem.append('div').attr('class','gtoolbar');
-    $elem.append('div').attr('class', 'title').text(cluster < 0 ? this.data.desc.name : (<ranges.CompositeRange1D>this.range.dim(0)).groups[cluster].name);
+    $elem.append('div').attr('class', 'title')
+      .text(cluster < 0 ? this.data.desc.name : (<ranges.CompositeRange1D>this.range.dim(0)).groups[cluster].name);
     const $body = $elem.append('div').attr('class', 'body');
     const multi = multiform.create(data, <Element>$body.node(),{
       initialVis: guessInitial(data.desc)
@@ -609,6 +681,21 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     this.$layoutHelper.style('width', this.options.width+'px');
     return this.stratomex.relayout(within);
   }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  // TODO! Implement new larger window
+  showStats(cluster, within = -1)
+  {
+
+  }
+
+  hideStats(cluster, within)
+  {
+
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   layouted(within = -1) {
     //sync the scaling
