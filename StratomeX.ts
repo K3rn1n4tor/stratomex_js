@@ -219,7 +219,7 @@ class StratomeX extends views.AView {
       for (var i = 0; i < k; ++i)
       {
         clusterRanges.push(ranges.parse(clusterLabels[i]));
-        groups.push(new ranges.Range1DGroup('Cluster ' + String(i) + ' (K-Means_' + String(k) + ')',
+        groups.push(new ranges.Range1DGroup('Group ' + String(i) + '(K-Means_' + String(k) + ')',
           'red', clusterRanges[i].dim(0)));
         groupsDesc.push({name: String(i), size: clusterLabels[i].length});
       }
@@ -283,7 +283,7 @@ class StratomeX extends views.AView {
           //that.provGraph.addObject(distVec, descVec.name, 'orlydata');
           that.addClusterDistances(descVec.name, distVec);
           //console.log(distVec[i]);
-
+          that.provGraph.get
 
         }
 

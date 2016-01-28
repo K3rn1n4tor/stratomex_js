@@ -760,18 +760,18 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
           scaleTo: [tempWidth, 50], bins: 10, starts: [1, 2]
         });
 
-        var offset = 0;
+        var nodePosition = $($elem.node()).position();
+        var nodeHeight = $($elem.node()).height();
+        console.log("node position: ", nodePosition);
+        console.log("node height: ", nodeHeight);
+        //parentHeight -= this.options.summaryHeight;
 
-        for (var i = 0; i < cluster; ++i)
-        {
-          offset += dataClusters.groups[i].size() + 32;
-        }
 
         this.stats = {
           $node: $elem,
           histo: histo,
           slider: slider,
-          cluster: offset
+          cluster: cluster//nodePosition.top - nodeHeight
         }
 
       }
@@ -818,13 +818,16 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     // Resize if detail is shown
 
     if (this.detail) {
+      var clusterGrid = $(this.$parent.node()).find('div.gridrow')[this.stats.cluster];
+      var clusterPosY = $(clusterGrid).position().top;
+
       size.x -= this.options.detailWidth;
-      this.$summary.style('width', size.x+'px');
+      this.$summary.style('width', size.x + 'px');
       this.detail.$node.style({
-        width: this.options.detailWidth+'px',
-        height: size.y+'px',
-        top: this.options.summaryHeight+'px',
-        left: (size.x + this.options.padding * 2)+'px'
+        width: this.options.detailWidth + 'px',
+        height: clusterPosY + 'px',
+        top: this.options.summaryHeight + 'px',
+        left: (size.x + this.options.padding * 2) + 'px'
       });
       this.detail.zoom.zoomTo(this.options.detailWidth- this.options.padding * 4, size.y - this.options.padding * 2 - 30);
     }
@@ -834,14 +837,17 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     if (this.stats)
     {
       var tempWidth = 200;
-      var newTop = this.options.summaryHeight + this.stats.cluster;
+
+      var clusterGrid = $(this.$parent.node()).find('div.gridrow')[this.stats.cluster];
+      var clusterPosY = $(clusterGrid).position().top;
+
       size.x -= tempWidth;
       var tempStatsHeight = 100 + 22;
       this.$summary.style('width', size.x + 'px');
       this.stats.$node.style({
         width: tempWidth + 'px',
         height: tempStatsHeight + 'px',
-        top: newTop + 'px',
+        top: clusterPosY + 'px',
         left: (size.x + this.options.padding * 2) + 'px'
       });
     }
