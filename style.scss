@@ -166,6 +166,21 @@ main {
       border: 2px solid gray;
       position: relative;
 
+      &.certain
+      {
+        border: 2px solid darkgreen !important;
+      }
+
+      &.uncertain
+      {
+        border: 2px solid #cc8800 !important;
+      }
+
+      &.outliers
+      {
+        border: 2px solid #760000 !important;
+      }
+
       &.selected {
         border-color: $select-data-color;
         div.title {
@@ -180,12 +195,12 @@ main {
         background-color: #d1d1d1;
 
         display: -webkit-flex;
-      display: flex;
+        display: flex;
 
-      -webkit-align-items: stretch;
-      -webkit-flex-flow: column;
-      align-items: stretch;
-      flex-flow: column;
+        -webkit-align-items: stretch;
+        -webkit-flex-flow: column;
+        align-items: stretch;
+        flex-flow: column;
         //text-align: center;
 
         * {
@@ -234,6 +249,12 @@ main {
     {
       position: absolute;
     }
+
+    div.divisions
+    {
+      position: absolute;
+    }
+
   }
 
   .selection-clearer {
