@@ -204,7 +204,7 @@ main {
         //text-align: center;
 
         * {
-          pointer-events: none;
+          //pointer-events: none;
         }
         > * {
           background-color: white;
@@ -247,6 +247,7 @@ main {
 
     div.stats
     {
+      //pointer-events: all !important;
       position: absolute;
     }
 

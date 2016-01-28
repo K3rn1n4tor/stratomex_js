@@ -756,6 +756,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
   {
     if (this.stats) { return Promise.resolve([]); }
 
+    var that = this;
+
     // obtain either full data (if cluster index < 0) or cluster data
     const data = cluster < 0 ? this.data : this.grid.getData(cluster);
 
@@ -812,8 +814,9 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         });
 
         var slider = geneSlider.create(distances, <Element>$body.node(), 2, {
-          scaleTo: [tempWidth, 50], bins: 10, starts: [1, 2]
+          scaleTo: [tempWidth, 50], bins: 10, starts: [1, 3]
         });
+
 
         var nodePosition = $($elem.node()).position();
         var nodeHeight = $($elem.node()).height();
@@ -827,7 +830,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
           histo: histo,
           slider: slider,
           cluster: cluster//nodePosition.top - nodeHeight
-        }
+        };
 
       }
     }
@@ -916,6 +919,32 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         subRanges.push(ranges.parse(Array.apply(null, Array(numUnlikely))
           .map(function(_, i) { return i + numLikely + numUncertain; })));
 
+        (<geneHisto.Histogram>histo).colorBars([
+                      {range: [0, sliderRange[0]], color: 'darkgreen'},
+                      {range: [sliderRange[0], sliderRange[1]], color: 'darkorange'},
+                      {range: [sliderRange[1], 10], color: 'darkred'}]);
+
+        var that = this;
+
+        function refreshDivs(cluster, within)
+        {
+          // first delete old division
+          that.divisions.$node.transition().duration(animationTime(within)).style('opacity',0).remove();
+          that.divisions = null;
+
+          var graph = that.stratomex.provGraph;
+          // next find the current object / selection / cluster
+          var obj = graph.findObject(that);
+          // push new command to graph
+          graph.push(createToggleDivsCmd(obj, cluster, true));
+        }
+
+        function onClickSlider(cluster, within)
+        {
+          return function(d) { return refreshDivs(cluster, within); }
+        }
+
+        d3.select((<geneSlider.DiscreteSlider>slider).node).on('mouseup', onClickSlider(cluster, within));
 
         var colors = ['darkgreen', 'darkorange', 'darkred'];
         var divGroups = ['certain', 'uncertain', 'outliers'];
