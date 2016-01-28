@@ -393,6 +393,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     $node: d3.Selection<any>;
     multi: multiform.IMultiForm;
     zoom: behaviors.ZoomBehavior;
+    cluster: number;
   };
 
   private stats:
@@ -684,7 +685,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     this.detail = {
       $node: $elem,
       multi: multi,
-      zoom: new behaviors.ZoomBehavior(<Element>$elem.node(), multi, multi.asMetaData)
+      zoom: new behaviors.ZoomBehavior(<Element>$elem.node(), multi, multi.asMetaData),
+      cluster: cluster
     };
     this.$parent.style('width', this.options.width + this.options.detailWidth+'px');
     this.$layoutHelper.style('width', this.options.width + this.options.detailWidth+'px');
@@ -818,15 +820,15 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     // Resize if detail is shown
 
     if (this.detail) {
-      var clusterGrid = $(this.$parent.node()).find('div.gridrow')[this.stats.cluster];
+      var clusterGrid = $(this.$parent.node()).find('div.gridrow')[this.detail.cluster];
       var clusterPosY = $(clusterGrid).position().top;
 
       size.x -= this.options.detailWidth;
       this.$summary.style('width', size.x + 'px');
       this.detail.$node.style({
         width: this.options.detailWidth + 'px',
-        height: clusterPosY + 'px',
-        top: this.options.summaryHeight + 'px',
+        height: size.y + 'px',
+        top: clusterPosY + 'px',
         left: (size.x + this.options.padding * 2) + 'px'
       });
       this.detail.zoom.zoomTo(this.options.detailWidth- this.options.padding * 4, size.y - this.options.padding * 2 - 30);
