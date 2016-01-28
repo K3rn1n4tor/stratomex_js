@@ -6,6 +6,8 @@ import views = require('../caleydo_core/layout_view');
 import datatypes = require('../caleydo_core/datatype');
 import stratification = require('../caleydo_core/stratification');
 import stratification_impl = require('../caleydo_core/stratification_impl');
+import vector = require('../caleydo_core/vector');
+import vector_impl = require('../caleydo_core/vector_impl');
 import C = require('../caleydo_core/main');
 import link_m = require('../caleydo_links/link');
 import ranges = require('../caleydo_core/range');
@@ -14,9 +16,6 @@ import ajax = require('../caleydo_core/ajax');
 
 import columns = require('./Column');
 import {getFirstByFQName} from "../caleydo_core/data";
-
-export var debug : any;
-export var debug2 : any;
 
 //type ColumnRef = prov.IObjectRef<columns.Column>;
 
@@ -47,6 +46,8 @@ class StratomeX extends views.AView {
   ref:prov.IObjectRef<StratomeX>;
 
   private interactive = true;
+  /** NEW gather all distances vectors */
+  private _clusterDistances: any[] = [];
 
   constructor(private parent:Element, private provGraph:prov.ProvenanceGraph) {
     super();
@@ -155,11 +156,11 @@ class StratomeX extends views.AView {
   clusterData(data: datatypes.IDataType, method: string, arg: string)
   {
     const dataFQ = data.desc.fqname;
-    console.log("Requesting dataset: ", dataFQ);
+    console.log("Requesting dataset:", dataFQ);
 
     (<any>data).data().then(() =>
     {
-      console.log("Starting clustering of data ", dataFQ);
+      console.log("Starting clustering of data:", dataFQ);
 
       if (method === 'kmeans') {
         const k = parseInt(arg);
@@ -213,11 +214,12 @@ class StratomeX extends views.AView {
       }
 
       clusterLabels = clusterLabels.sort(compareCluster);
+      clusterDists = clusterDists.sort(compareCluster);
 
       for (var i = 0; i < k; ++i)
       {
         clusterRanges.push(ranges.parse(clusterLabels[i]));
-        groups.push(new ranges.Range1DGroup('Cluster ' + String(i) + ' [' + String(k) + '-means]',
+        groups.push(new ranges.Range1DGroup('Cluster ' + String(i) + ' (K-Means_' + String(k) + ')',
           'red', clusterRanges[i].dim(0)));
         groupsDesc.push({name: String(i), size: clusterLabels[i].length});
       }
@@ -226,11 +228,12 @@ class StratomeX extends views.AView {
       var clusterRange = ranges.parse(<any>compositeRange);
 
       // create new stratification with description
-      var desc =
+
+      var descStrati =
       {
-        id: dataID + "KMeans" + String(k),
+        id: dataID + 'KMeans' + String(k),
         fqname: 'none',
-        name: dataName + " K-Means " + String(k),
+        name: dataName + '/K-Means_' + String(k),
         origin: dataFQ,
         size: (<any>data).dim[0],
         ngroups: k,
@@ -238,7 +241,6 @@ class StratomeX extends views.AView {
         groups: groupsDesc, // TODO: use this as desc
         idtype: 'patient', // TODO: figure out what idtypes are important for
         ws: 'random' // TODO: figure out what this parameter is
-
       };
 
       //debug = data;
@@ -246,36 +248,97 @@ class StratomeX extends views.AView {
 
       Promise.all([(<any>data).rows(), (<any>data).rowIds()]).then((args) =>
       {
+        // obtain the rows and rowIDs of the data
         var rows = args[0];
         var rowIds = args[1];
 
-        var strati = stratification_impl.wrap(<datatypes.IDataDescription>desc, rows, rowIds, compositeRange);
+        // create a new startification of the data
+        var strati : stratification.IStratification;
+
+        strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
         //console.log(strati);
         //console.log(that);
 
+        // create new data containg the distances of the genes to their clusters
+        //var distVec = <any>[];
+        for (var i = 0; i < k; ++i)
+        {
+          var distances = clusterDists[i];
+          var rangeDist = [Math.min.apply(null, distances), Math.max.apply(null, distances)];
+
+          var descVec =
+          {
+            id: dataID + 'KMeans' + String(k) + 'Distances' + String(i),
+            fqname: 'none',
+            name: dataName + '/K-Means_' + String(k) + '_Distances_' + String(i),
+            type: 'vector',
+            size: distances.length,
+            value: { type: 'real', range: rangeDist },
+            idtype: 'patient'
+          };
+
+          //console.log(descVec.name);
+
+          var distVec = vector_impl.wrap(descVec, rows, rowIds, distances);
+          //that.provGraph.addObject(distVec, descVec.name, 'orlydata');
+          that.addClusterDistances(descVec.name, distVec);
+          //console.log(distVec[i]);
+
+
+        }
+
+        //console.log(that._clusterDistances);
         that.addOrlyData(strati, data, null);
       });
-
-
-
     });
   }
 
-  addOrlyData(rowStrat: stratification.IStratification, m: datatypes.IDataType, colStrat?: stratification.IStratification)
+  /**
+   * NEW! gather all cluster distances by name
+   * @param name
+   * @param value
+     */
+  private addClusterDistances(name: string, value: vector.IVector)
+  {
+    var result = C.search(this._clusterDistances, (obj) => { return obj.name === name; });
+
+    if (result) { result.value = value; }
+    else
+    {
+      this._clusterDistances.push({ name: name, value: value });
+    }
+  }
+
+  /**
+   * NEW! find all cluster distances to be analyzed later
+   * @param name
+   * @returns {vector.IVector|any}
+     */
+  findClusterDistancesByName(name: string)
+  {
+    var result = C.search(this._clusterDistances, (obj) => { return obj.name === name; });
+    return result ? result.value : null;
+  }
+
+  addOrlyData(rowStrat: stratification.IStratification,
+              dataStrat: datatypes.IDataType,
+              colStrat?: stratification.IStratification)
   {
     var that = this;
-    var mref = this.provGraph.findOrAddObject(m, m.desc.name, 'orlydata');
-    if (rowStrat === m) {
+    var mref = this.provGraph.findOrAddObject(dataStrat, dataStrat.desc.name, 'orlydata');
+
+    if (rowStrat === dataStrat)
+    {
       //both are stratifications
       rowStrat.range().then((range) => {
-        that.provGraph.push(columns.createColumnCmd(that.ref, mref, range, toName(toMiddle(m.desc.fqname), rowStrat.desc.name)));
+        that.provGraph.push(columns.createColumnCmd(that.ref, mref, range, toName(toMiddle(dataStrat.desc.fqname), rowStrat.desc.name)));
       });
     } else {
       Promise.all<ranges.Range1D>([rowStrat.idRange(), colStrat ? colStrat.idRange() : ranges.Range1D.all()]).then((range_list:ranges.Range1D[]) => {
         const idRange = ranges.list(range_list);
-        return m.fromIdRange(idRange);
+        return dataStrat.fromIdRange(idRange);
       }).then((range) => {
-        that.provGraph.push(columns.createColumnCmd(that.ref, mref, range, toName(m.desc.name, rowStrat.desc.name)));
+        that.provGraph.push(columns.createColumnCmd(that.ref, mref, range, toName(dataStrat.desc.name, rowStrat.desc.name)));
       });
     }
   }

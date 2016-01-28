@@ -178,6 +178,14 @@ main {
 
         line-height: 0;
         background-color: #d1d1d1;
+
+        display: -webkit-flex;
+      display: flex;
+
+      -webkit-align-items: stretch;
+      -webkit-flex-flow: column;
+      align-items: stretch;
+      flex-flow: column;
         //text-align: center;
 
         * {
@@ -219,6 +227,11 @@ main {
     }
 
     div.detail {
+      position: absolute;
+    }
+
+    div.stats
+    {
       position: absolute;
     }
   }

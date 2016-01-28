@@ -14,6 +14,11 @@ import datatypes = require('../caleydo_core/datatype');
 import prov = require('../caleydo_provenance/main');
 import ranges = require('../caleydo_core/range');
 
+// my own libraries
+import vis = require('../caleydo_core/vis');
+import geneHisto = require('../gene_vis/histogram');
+import geneSlider = require('../gene_vis/slider');
+
 export function animationTime(within = -1) {
   return within < 0 ? 50 : within;
 }
@@ -176,7 +181,7 @@ export function showStats(inputs, parameter, graph, within)
 export function createToggleStatsCmd(column, cluster, show)
 {
   var act = show ? 'Show' : 'Hide';
-  return prov.action(prov.meta(act + ' Details of '+column.toString()+' Cluster "' + cluster + '"', prov.cat.layout), 'showStratomeXInStats', showStats, [column], {
+  return prov.action(prov.meta(act + ' Details of '+column.toString()+' Cluster "' + cluster + '"', prov.cat.layout), 'showStratomeXStats', showStats, [column], {
     cluster: cluster,
     action: show ? 'show' : 'hide'
   });
@@ -388,6 +393,14 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     $node: d3.Selection<any>;
     multi: multiform.IMultiForm;
     zoom: behaviors.ZoomBehavior;
+  };
+
+  private stats:
+  {
+    $node: d3.Selection<any>;
+    histo: vis.AVisInstance;
+    slider: vis.AVisInstance;
+    cluster: number;
   };
 
   private $layoutHelper: d3.Selection<any>;
@@ -640,18 +653,28 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
    * @returns {Promise<void>}
      */
   showInDetail(cluster, within = -1) {
+    // don't build detail view twice
+    if (this.detail)
+    {
+      return Promise.resolve([]);
+    }
+
     const data = cluster < 0 ? this.data : this.grid.getData(cluster);
 
     const $elem = this.$parent.append('div').classed('detail', true).style('opacity', 0);
     $elem.classed('group', true).datum(data);
+
     var $toolbar = $elem.append('div').attr('class','gtoolbar');
     $elem.append('div').attr('class', 'title')
       .text(cluster < 0 ? this.data.desc.name : (<ranges.CompositeRange1D>this.range.dim(0)).groups[cluster].name);
+
     const $body = $elem.append('div').attr('class', 'body');
+
     const multi = multiform.create(data, <Element>$body.node(),{
       initialVis: guessInitial(data.desc)
     });
     multiform.addIconVisChooser(<Element>$toolbar.node(), multi);
+
     $toolbar.append('i').attr('class','fa fa-close').on('click', () => {
       var g = this.stratomex.provGraph;
       var s = g.findObject(this);
@@ -687,17 +710,96 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
   // TODO! Implement new larger window
   showStats(cluster, within = -1)
   {
+    if (this.stats) { return Promise.resolve([]); }
 
+    // obtain either full data (if cluster index < 0) or cluster data
+    const data = cluster < 0 ? this.data : this.grid.getData(cluster);
+
+    const $elem = this.$parent.append('div').classed('stats', true).style('opacity', 0);
+    $elem.classed('group', true).datum(data);
+
+    var dataClusters = <ranges.CompositeRange1D>this.range.dim(0);
+    var clusterName = cluster < 0 ? this.data.desc.name : dataClusters.groups[cluster].name;
+
+
+    var $toolbar = $elem.append('div').attr('class', 'gtoolbar');
+    $elem.append('div').attr('class', 'title')
+      .text('Statistics of ' + clusterName);
+
+    const $body = $elem.append('div').attr('class', 'body');
+
+    $toolbar.append('i').attr('class','fa fa-close').on('click', () => {
+      var g = this.stratomex.provGraph;
+      var s = g.findObject(this);
+      g.push(createToggleStatsCmd(s, cluster, false));
+    });
+
+    // try to find vector data
+
+    if (cluster >= 0)
+    {
+      var r = clusterName.search('K-Means_');
+
+      if (r)
+      {
+        //var k = parseInt(clusterName[r + 8]);
+        var method = clusterName.slice(r, r + 9);
+
+        var distName = data.desc.name + '/' + method + "_Distances_" + String(cluster);
+        //console.log(data.desc.name);
+
+        var distances = this.stratomex.findClusterDistancesByName(distName);
+        var tempWidth = 196;
+
+        var histo = geneHisto.create(distances, <Element>$body.node(), {
+          bins: 10,
+          scaleTo: [tempWidth, 50]
+        });
+
+        var slider = geneSlider.create(distances, <Element>$body.node(), 2, {
+          scaleTo: [tempWidth, 50], bins: 10, starts: [1, 2]
+        });
+
+        var offset = 0;
+
+        for (var i = 0; i < cluster; ++i)
+        {
+          offset += dataClusters.groups[i].size() + 32;
+        }
+
+        this.stats = {
+          $node: $elem,
+          histo: histo,
+          slider: slider,
+          cluster: offset
+        }
+
+      }
+    }
+
+    var tempStatsWidth = 200;
+    this.$parent.style('width', this.options.width + tempStatsWidth + 'px');
+    this.$layoutHelper.style('width', this.options.width + tempStatsWidth + 'px');
+    $elem.transition().duration(animationTime(within)).style('opacity',1);
+
+    return this.stratomex.relayout(within);
   }
 
   hideStats(cluster, within)
   {
+    this.stats.$node.transition().duration(animationTime(within)).style('opacity',0).remove();
 
+    this.stats = null;
+    this.$parent.style('width', this.options.width+'px');
+    this.$layoutHelper.style('width', this.options.width+'px');
+
+    return this.stratomex.relayout(within);
   }
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  layouted(within = -1) {
+  layouted(within = -1)
+  {
     //sync the scaling
     let bounds = C.bounds(<Element>this.$layoutHelper.node());
     var size = {x: bounds.w, y: bounds.h-5}; //no idea why but needed avoiding an overflow
@@ -712,6 +814,9 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       height: (bounds.h-5) +'px' //no idea why but needed avoiding an overflow
     });
 
+    // -----------------------------------------------------------------------------------------------------------------
+    // Resize if detail is shown
+
     if (this.detail) {
       size.x -= this.options.detailWidth;
       this.$summary.style('width', size.x+'px');
@@ -722,6 +827,23 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         left: (size.x + this.options.padding * 2)+'px'
       });
       this.detail.zoom.zoomTo(this.options.detailWidth- this.options.padding * 4, size.y - this.options.padding * 2 - 30);
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------
+    // Resize if statistics are shown
+    if (this.stats)
+    {
+      var tempWidth = 200;
+      var newTop = this.options.summaryHeight + this.stats.cluster;
+      size.x -= tempWidth;
+      var tempStatsHeight = 100 + 22;
+      this.$summary.style('width', size.x + 'px');
+      this.stats.$node.style({
+        width: tempWidth + 'px',
+        height: tempStatsHeight + 'px',
+        top: newTop + 'px',
+        left: (size.x + this.options.padding * 2) + 'px'
+      });
     }
 
     this.summary.actLoader.then(() => {
