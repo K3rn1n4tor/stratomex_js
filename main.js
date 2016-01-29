@@ -5,8 +5,6 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-var debug = 0
-
 define(function (require) {
   'use strict';
 
@@ -79,23 +77,24 @@ define(function (require) {
           stratomex.addData(d, d);
         });
       }
-    }, function() {});
+    }, null);
 
     // -----------------------------------------------------------------------------------------------------------------
     // methods called per data tab
 
-    var lineupData = lineupModule.createData(document.getElementById('tab_data'), function (vector) {
-      stratomex.addDependentData(vector);
-    }, function() {});
+    var lineupData = lineupModule.createData(document.getElementById('tab_data'),
+      function (vector) { stratomex.addDependentData(vector);}, null);
 
     // -----------------------------------------------------------------------------------------------------------------
     // methods called per Orly's data tab
 
     var lineupOrlyData = lineupModule.createData(document.getElementById('tab_orlydata'),
-      function (vector) {
+      function (vector)
+      {
         stratomex.addDependentOrlyData(vector);
       },
-      function(vector) {
+      function(vector)
+      {
         var k = NaN;
         while (isNaN(k))
         {
@@ -204,8 +203,6 @@ define(function (require) {
         if (desc.type === 'matrix' || desc.type === 'vector') {
           return desc.value.type === 'categorical';
         }
-
-        if (desc.type === 'stratification' && debug == 0) { debug = d; }
 
         return desc.type === 'stratification' && desc.origin != null;
       });

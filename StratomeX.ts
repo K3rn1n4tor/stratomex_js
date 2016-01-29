@@ -155,28 +155,20 @@ class StratomeX extends views.AView {
      */
   clusterData(data: datatypes.IDataType, method: string, arg: string)
   {
-    const dataFQ = data.desc.fqname;
-    console.log("Requesting dataset:", dataFQ);
-
-    (<any>data).data().then(() =>
-    {
-      console.log("Starting clustering of data:", dataFQ);
-
-      if (method === 'kmeans') {
-        const k = parseInt(arg);
-        this.applyKMeans(data, k);
-      }
-      else if (method === 'hierarchical') {
-        const linkage = arg;
-        // TODO
-      }
-      else if (method === 'affinity') {
-        // TODO
-      }
-      else {
-        // TODO
-      }
-    });
+    if (method === 'kmeans') {
+      const k = parseInt(arg);
+      this.applyKMeans(data, k);
+    }
+    else if (method === 'hierarchical') {
+      const linkage = arg;
+      // TODO
+    }
+    else if (method === 'affinity') {
+      // TODO
+    }
+    else {
+      // TODO
+    }
   }
 
   /**
@@ -190,105 +182,117 @@ class StratomeX extends views.AView {
     const dataID = data.desc.id;
     const dataName = data.desc.name;
 
-    // TODO! figure out what the difference between APIData and APIJson is
-    var response = ajax.getAPIJSON('/gene_clustering/kmeans/' + String(k) + '/' + dataID, {});
-
-    var that = this;
-
-    response.then(function(result)
+    (<any>data).data().then((d: any) =>
     {
-      var clusterLabels = result.clusterLabels;
-      var clusterDists = result.clusterDistances;
 
-      //console.log('k-means result: ', result);
+      // TODO! figure out what the difference between APIData and APIJson is
+      var response = ajax.getAPIJSON('/gene_clustering/kmeans/' + String(k) + '/' + dataID, {});
 
-      // first from groups
-      var groups = <any>[];
-      var groupsDesc = <any>[];
-      var clusterRanges = <any>[];
+      var that = this;
 
-      // sort groups in ascending order
-      function compareCluster(a, b)
+      response.then(function (result)
       {
-        return (a.length < b.length) ? -1 : (a.length > b.length) ? 1 : 0;
-      }
+        var clusterLabels = result.clusterLabels;
+        var clusterDists = result.clusterDistances;
 
-      clusterLabels = clusterLabels.sort(compareCluster);
-      clusterDists = clusterDists.sort(compareCluster);
-
-      for (var i = 0; i < k; ++i)
-      {
-        clusterRanges.push(ranges.parse(clusterLabels[i]));
-        groups.push(new ranges.Range1DGroup('Group ' + String(i) + '(K-Means_' + String(k) + ')',
-          'red', clusterRanges[i].dim(0)));
-        groupsDesc.push({name: String(i), size: clusterLabels[i].length});
-      }
-
-      var compositeRange = ranges.composite(dataName + 'cluster', groups);
-      var clusterRange = ranges.parse(<any>compositeRange);
-
-      // create new stratification with description
-
-      var descStrati =
-      {
-        id: dataID + 'KMeans' + String(k),
-        fqname: 'none',
-        name: dataName + '/K-Means_' + String(k),
-        origin: dataFQ,
-        size: (<any>data).dim[0],
-        ngroups: k,
-        type: 'stratification',
-        groups: groupsDesc, // TODO: use this as desc
-        idtype: 'patient', // TODO: figure out what idtypes are important for
-        ws: 'random' // TODO: figure out what this parameter is
-      };
-
-      //debug = data;
-      //console.log('data: ', data, desc);
-
-      Promise.all([(<any>data).rows(), (<any>data).rowIds()]).then((args) =>
-      {
-        // obtain the rows and rowIDs of the data
-        var rows = args[0];
-        var rowIds = args[1];
-
-        // create a new startification of the data
-        var strati : stratification.IStratification;
-
-        strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
-        //console.log(strati);
-        //console.log(that);
-
-        // create new data containg the distances of the genes to their clusters
-        //var distVec = <any>[];
-        for (var i = 0; i < k; ++i)
+        // sort data
+        var newLabels: number[] = [];
+        for (var i = 0; i < clusterLabels.length; ++i)
         {
-          var distances = clusterDists[i];
-          var rangeDist = [Math.min.apply(null, distances), Math.max.apply(null, distances)];
-
-          var descVec =
-          {
-            id: dataID + 'KMeans' + String(k) + 'Distances' + String(i),
-            fqname: 'none',
-            name: dataName + '/K-Means_' + String(k) + '_Distances_' + String(i),
-            type: 'vector',
-            size: distances.length,
-            value: { type: 'real', range: rangeDist },
-            idtype: 'patient'
-          };
-
-          //console.log(descVec.name);
-
-          var distVec = vector_impl.wrap(descVec, rows, rowIds, distances);
-          //that.provGraph.addObject(distVec, descVec.name, 'orlydata');
-          that.addClusterDistances(descVec.name, distVec);
-          //console.log(distVec[i]);
-          that.provGraph.get
-
+          newLabels = newLabels.concat(clusterLabels[i]);
         }
 
-        //console.log(that._clusterDistances);
-        that.addOrlyData(strati, data, null);
+        // sort data
+        //var sortedData = (<any>data).view(ranges.parse(newLabels));
+
+        //console.log('k-means result: ', result);
+
+        // first from groups
+        var groups = <any>[];
+        var groupsDesc = <any>[];
+        var clusterRanges = <any>[];
+
+        // sort groups in ascending order
+        function compareCluster(a, b)
+        {
+          return (a.length < b.length) ? -1 : (a.length > b.length) ? 1 : 0;
+        }
+
+        clusterLabels = clusterLabels.sort(compareCluster);
+        clusterDists = clusterDists.sort(compareCluster);
+
+        for (var i = 0; i < k; ++i)
+        {
+          clusterRanges.push(ranges.parse(clusterLabels[i]));
+          groups.push(new ranges.Range1DGroup('Group ' + String(i) + '(K-Means_' + String(k) + ')',
+            'red', clusterRanges[i].dim(0)));
+          groupsDesc.push({name: String(i), size: clusterLabels[i].length});
+        }
+
+        var compositeRange = ranges.composite(dataName + 'cluster', groups);
+        var clusterRange = ranges.parse(<any>compositeRange);
+
+        // create new stratification with description
+
+        var descStrati =
+        {
+          id: dataID + 'KMeans' + String(k),
+          fqname: 'none',
+          name: dataName + '/K-Means_' + String(k),
+          origin: dataFQ,
+          size: (<any>data).dim[0],
+          ngroups: k,
+          type: 'stratification',
+          groups: groupsDesc, // TODO: use this as desc
+          idtype: 'patient', // TODO: figure out what idtypes are important for
+          ws: 'random' // TODO: figure out what this parameter is
+        };
+
+        //debug = data;
+        //console.log('data: ', data, desc);
+
+        Promise.all([(<any>data).rows(), (<any>data).rowIds()]).then((args) =>
+        {
+          // obtain the rows and rowIDs of the data
+          var rows = args[0];
+          var rowIds = args[1];
+
+          // create a new startification of the data
+          var strati:stratification.IStratification;
+
+          strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
+          //console.log(strati);
+          //console.log(that);
+
+          // create new data containg the distances of the genes to their clusters
+          //var distVec = <any>[];
+          for (var i = 0; i < k; ++i)
+          {
+            var distances = clusterDists[i];
+            var rangeDist = [Math.min.apply(null, distances), Math.max.apply(null, distances)];
+
+            var descVec =
+            {
+              id: dataID + 'KMeans' + String(k) + 'Distances' + String(i),
+              fqname: 'none',
+              name: dataName + '/K-Means_' + String(k) + '_Distances_' + String(i),
+              type: 'vector',
+              size: distances.length,
+              value: {type: 'real', range: rangeDist},
+              idtype: 'patient'
+            };
+
+            //console.log(descVec.name);
+
+            var distVec = vector_impl.wrap(descVec, rows, rowIds, distances);
+            //that.provGraph.addObject(distVec, descVec.name, 'orlydata');
+            that.addClusterDistances(descVec.name, distVec);
+            //console.log(distVec[i]);
+          }
+
+          //console.log(that._clusterDistances);
+          that.addOrlyData(strati, data, null);
+        });
       });
     });
   }
