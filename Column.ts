@@ -16,8 +16,7 @@ import ranges = require('../caleydo_core/range');
 import vis = require('../caleydo_core/vis');
 
 // my own libraries
-import geneHisto = require('../gene_vis/histogram');
-import geneSlider = require('../gene_vis/slider');
+import divider = require('../gene_vis/clusterdivider');
 
 export function animationTime(within = -1)
 {
@@ -914,27 +913,22 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         var distances = this.stratomex.findClusterDistancesByName(distName);
         var tempWidth = 196;
 
-        var histo = geneHisto.create(distances, <Element>$body.node(), {
+        var histo = divider.create(distances, data, <Element>$body.node(), {
           bins: 10,
-          scaleTo: [tempWidth, 50]
-        });
-
-        var slider = geneSlider.create(distances, <Element>$body.node(), 2, {
-          scaleTo: [tempWidth, 50], bins: 10, starts: [1, 3]
+          scaleTo: [tempWidth, 60],
+          barOffsetRatio: 0.10
         });
 
 
         var nodePosition = $($elem.node()).position();
         var nodeHeight = $($elem.node()).height();
-        console.log("node position: ", nodePosition);
-        console.log("node height: ", nodeHeight);
-        //parentHeight -= this.options.summaryHeight;
-
+        //console.log("node position: ", nodePosition);
+        //console.log("node height: ", nodeHeight);
 
         this.stats = {
           $node: $elem,
           histo: histo,
-          slider: slider,
+          slider: null,
           cluster: cluster//nodePosition.top - nodeHeight
         };
 
@@ -1213,7 +1207,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         size.x -= this.options.width;
       }
 
-      var tempStatsHeight = 100 + 22;
+      var tempStatsHeight = 60 + 22;
       this.$summary.style('width', size.x + 'px');
       this.stats.$node.style({
         width: tempWidth + 'px',
