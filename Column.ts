@@ -212,9 +212,10 @@ export function createToggleDetailCmd(column, cluster, show)
 
 export function showStats(inputs, parameter, graph, within)
 {
-  var column:Column = inputs[0].value,
-    cluster = parameter.cluster,
-    show = parameter.action === 'show';
+  var column:Column = inputs[0].value;
+  var cluster = parameter.cluster;
+  var show = parameter.action === 'show';
+
   var r:Promise<any>;
   if (show)
   {
@@ -242,7 +243,6 @@ export function createToggleStatsCmd(column, cluster, show)
       action: show ? 'show' : 'hide'
     });
 }
-
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -509,23 +509,23 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     name: null
   };
 
-  private $parent:d3.Selection<any>;
-  private $toolbar:d3.Selection<any>;
-  private $summary:d3.Selection<any>;
-  private $clusters:d3.Selection<any>;
+  private $parent : d3.Selection<any>;
+  private $toolbar : d3.Selection<any>;
+  private $summary : d3.Selection<any>;
+  private $clusters : d3.Selection<any>;
 
-  range:ranges.Range;
-  private summary:multiform.MultiForm;
-  private grid:multiform.MultiFormGrid;
+  range : ranges.Range;
+  private summary : multiform.MultiForm;
+  private grid : multiform.MultiFormGrid;
 
   private grid_zoom:behaviors.ZoomLogic;
   private summary_zoom:behaviors.ZoomLogic;
 
   private detail:{
-    $node: d3.Selection<any>;
-    multi: multiform.IMultiForm;
-    zoom: behaviors.ZoomBehavior;
-    cluster: number;
+    $node : d3.Selection<any>;
+    multi : multiform.IMultiForm;
+    zoom : behaviors.ZoomBehavior;
+    cluster : number;
   };
   /** NEW! statistics view for data */
   private stats:{
@@ -538,6 +538,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   changeHandler:any;
   optionHandler:any;
+
+  private tempAction : string = '';
 
   // -------------------------------------------------------------------------------------------------------------------
 
@@ -579,7 +581,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     this.$clusters = this.$parent.append('div').attr('class', 'clusters');
     this.range = partitioning;
-    //create the vis
+    //create summary visualization as a multiform to display all compatible visualization
     this.summary = multiform.create(data.desc.type !== 'stratification' ? data.view(partitioning) : data, <Element>this.$summary.node(), {
       initialVis: 'caleydo-vis-histogram',
       'caleydo-vis-histogram': {
@@ -596,7 +598,25 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       manager.select([this.id], idtypes.toSelectOperation(d3.event));
     });
 
-    function createWrapper(elem, data, cluster, pos)
+    console.log("Normal partitioning:", partitioning);
+    this.createMultiGrid(partitioning, data);
+    this.createToolBar();
+
+    this.id = manager.nextId(this);
+    manager.on('select', this.highlightMe);
+    manager.select([this.id]);
+
+    this.$parent.transition().duration(animationTime(within)).style('opacity', 1);
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  private multiGridWrapper(partitioning)
+  {
+    var that = this;
+    this.range = partitioning;
+
+    var createWrapper = function(elem, data, cluster, pos)
     {
       // select element of current multigrid
       const $elem = d3.select(elem);
@@ -647,18 +667,24 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         .text(cluster.dim(0).name).on('click', toggleSelection);
       $elem.append('div').attr('class', 'body').on('click', toggleSelection);
 
-      const ratio = cluster.dim(0).length / partitioning.dim(0).length;
+      const ratio = cluster.dim(0).length / that.range.dim(0).length;
       $elem.append('div').attr('class', 'footer').append('div').style('width', Math.round(ratio * 100) + '%');
       return $elem.select('div.body').node();
-    }
 
+    };
+
+    return createWrapper;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  private createMultiGrid(partitioning, data)
+  {
     const r = (<ranges.CompositeRange1D>partitioning.dim(0));
-    //console.log(this.range, r);
     const initialHeight = 500 / (r.groups || []).length;
-    //console.log(initialHeight);
-    //console.log(this.options.width);
 
-    //console.log(data);
+    d3.select(this.$clusters.node()).style('opacity', 0);
+
     this.grid = multiform.createGrid(data, partitioning, <Element>this.$clusters.node(), function (data, range, pos)
     {
       if (data.desc.type === 'stratification')
@@ -669,7 +695,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     }, {
       initialVis: guessInitial(data.desc),
       singleRowOptimization: false,
-      wrap: createWrapper,
+      wrap: this.multiGridWrapper(partitioning),
       all: {
         selectAble: false,
         total: groupTotalAggregator((<ranges.CompositeRange1D>partitioning.dim(0)).groups.length, (v) => v.largestBin),
@@ -677,13 +703,13 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         heightTo: initialHeight
       },
       'caleydo-vis-mosaic': {
-        width: that.options.width - this.options.padding * 2
+        width: this.options.width - this.options.padding * 2
       },
       'caleydo-vis-heatmap1d': {
-        width: that.options.width - this.options.padding * 2
+        width: this.options.width - this.options.padding * 2
       },
       'caleydo-vis-heatmap': {
-        scaleTo: [that.options.width - this.options.padding * 2, initialHeight],
+        scaleTo: [this.options.width - this.options.padding * 2, initialHeight],
         forceThumbnails: true
       },
       'caleydo-vis-kaplanmeier': {
@@ -693,17 +719,31 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     //zooming
     this.grid_zoom = new behaviors.ZoomLogic(this.grid, this.grid.asMetaData);
     this.summary_zoom = new behaviors.ZoomLogic(this.summary, this.summary.asMetaData);
-    this.grid.on('changed', function (event, to, from)
+
+    d3.select(this.$clusters.node()).transition().duration(animationTime(-1) * 2).style('opacity', 1);
+
+    var that = this;
+
+    that.grid.on('changed', function (event, to, from)
     {
       that.fire('changed', to, from);
     });
-    this.createToolBar();
+  }
 
-    this.id = manager.nextId(this);
-    manager.on('select', this.highlightMe);
-    manager.select([this.id]);
+  // -------------------------------------------------------------------------------------------------------------------
 
-    this.$parent.transition().duration(animationTime(within)).style('opacity', 1);
+  updateGrid(strati: stratification.IStratification)
+  {
+    d3.select(this.grid.node).transition().duration(animationTime(-1)).style('opacity', '0');
+    this.grid.destroy();
+
+    var that = this;
+
+    strati.range().then((range) =>
+    {
+      that.range = ranges.parse(range.toString());
+      that.createMultiGrid(that.range, that.data);
+    });
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -1011,7 +1051,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  showDivisions(cluster)
+  showDivisions(cluster, column : Column = null)
   {
     //const subData = (cluster < 0) ? this.data : this.grid.getData(cluster);
     const data = this.data;
@@ -1038,7 +1078,6 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         var k = parseInt(clusterName[r + 8]);
         var method = clusterName.slice(r, r + 9);
 
-
         var subRanges = (<clusterDivider.ClusterDivider>divider).getDivisionRanges();
         var rangeGroups = [];
         console.log(subRanges);
@@ -1049,15 +1088,13 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         {
           var groupSize = subRanges[i].length;
           stratiSize += groupSize;
+
           rangeGroups.push(ranges.parse(subRanges[i]));
           groups.push(new ranges.Range1DGroup('Group ' + String(cluster) + ' Div' + String(i),
             'grey', rangeGroups[i].dim(0)));
+
           groupsDesc.push({ name: 'Division ' + String(i), size: groupSize});
         }
-
-        console.log('Stratification Size:', stratiSize);
-        console.log('Original Data:', dataFQ);
-        console.log('Group Descs', groupsDesc);
 
         var compositeRange = ranges.composite(dataName + 'divisions', groups);
 
@@ -1085,7 +1122,14 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
           var strati : stratification.IStratification;
           strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
 
-          that.stratomex.addOrlyData(strati, data, null);
+          if (column === null)
+          {
+            that.stratomex.addOrlyData(strati, data, null);
+            that.tempAction = 'connectLastColumn';
+
+          } else {
+            column.updateGrid(strati);
+          }
         });
       }
     }
@@ -1149,6 +1193,28 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         top: clusterPosY + 12 + 'px',
         left: (size.x + this.options.padding * 2) + 'px'
       });
+
+      if (this.tempAction == 'connectLastColumn')
+      {
+        var that = this;
+
+        function refreshColumn(cluster, column : Column)
+        {
+          console.log('update division');
+          that.showDivisions(cluster, column);
+        }
+
+        function onClickSlider(cluster, column)
+        {
+          return function(d) { return refreshColumn(cluster, column); }
+        }
+
+        var newColumn = this.stratomex.getLastColumn();
+        d3.select((<clusterDivider.ClusterDivider>this.stats.divider).node)
+          .on('mouseup', onClickSlider(this.stats.cluster, newColumn));
+
+        this.tempAction = '';
+      }
     }
 
     this.summary.actLoader.then(() =>

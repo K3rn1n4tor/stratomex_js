@@ -419,6 +419,11 @@ class StratomeX extends views.AView {
     return Promise.resolve(-1);
   }
 
+  getLastColumn()
+  {
+    return this._columns.slice(-1)[0];
+  }
+
   swapColumn(columnA: columns.Column, columnB: columns.Column, within = -1) {
     const i = this.indexOf(columnA),
       j = this.indexOf(columnB);
