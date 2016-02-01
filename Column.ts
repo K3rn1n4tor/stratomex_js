@@ -18,7 +18,7 @@ import stratification_impl = require('../caleydo_core/stratification_impl');
 import vis = require('../caleydo_core/vis');
 
 // my own libraries
-import divider = require('../gene_vis/clusterdivider');
+import clusterDivider = require('../gene_vis/clusterdivider');
 
 export function animationTime(within = -1)
 {
@@ -881,7 +881,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       // first obtain the provenance graph
       var graph = this.stratomex.provGraph;
       // next find the current object / selection / cluster
-      var obj = graph.findObject(this);
+      //var obj = graph.findObject(this);
       // push new command to graph
       //graph.push(createToggleDivsCmd(obj, cluster, true));
       this.showDivisions(cluster, -1);
@@ -912,18 +912,20 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         var distName = data.desc.name + '/' + method + "_Distances_" + String(cluster);
         //console.log(data.desc.name);
 
-        var distances = this.stratomex.findClusterDistancesByName(distName);
+        var distanceData = this.stratomex.findClusterDistancesByName(distName);
+        var distances = distanceData.distances;
+        var labels = distanceData.labels;
         var tempWidth = 196;
 
-        var divider = divider.create(distances, data, <Element>$body.node(), {
+        var divider = clusterDivider.create(distances, labels, data, <Element>$body.node(), {
           bins: 10,
           scaleTo: [tempWidth, 60],
           barOffsetRatio: 0.10
         });
 
 
-        var nodePosition = $($elem.node()).position();
-        var nodeHeight = $($elem.node()).height();
+        //var nodePosition = $($elem.node()).position();
+        //var nodeHeight = $($elem.node()).height();
         //console.log("node position: ", nodePosition);
         //console.log("node height: ", nodeHeight);
 
@@ -965,7 +967,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   showDivisions(cluster, within)
   {
-    const subData = (cluster < 0) ? this.data : this.grid.getData();
+    const subData = (cluster < 0) ? this.data : this.grid.getData(cluster);
     const dataName = subData.desc.name;
     const dataFQ = subData.desc.fqname;
     const dataID = subData.desc.id;
@@ -990,17 +992,25 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         var method = clusterName.slice(r, r + 9);
 
 
-        var subRanges = (<divider.ClusterDivider>divider).getDivisionRanges();
+        var subRanges = (<clusterDivider.ClusterDivider>divider).getDivisionRanges();
+        var rangeGroups = [];
+        console.log(subRanges);
         var groups = [];
         var groupsDesc = [];
+        var stratiSize = 0;
         for (var i = 0; i < 3; ++i)
         {
           var groupSize = subRanges[i].length;
-          subRanges[i] = ranges.parse(subRanges[i]);
+          stratiSize += groupSize;
+          rangeGroups.push(ranges.parse(subRanges[i]));
           groups.push(new ranges.Range1DGroup('Group ' + String(cluster) + ' Div' + String(i),
-            'grey', subRanges[i].dim(0)));
-          groupsDesc.push({ name: String(i), size: groupSize});
+            'grey', rangeGroups[i].dim(0)));
+          groupsDesc.push({ name: 'Division ' + String(i), size: groupSize});
         }
+
+        console.log('Stratification Size:', stratiSize);
+        console.log('Original Data:', dataFQ);
+        console.log('Group Descs', groupsDesc);
 
         var compositeRange = ranges.composite(dataName + 'divisions', groups);
 
@@ -1010,7 +1020,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
           fqname: 'none',
           name: dataName + '/K-Means_' + String(k) + '_Division_' + String(cluster),
           origin: dataFQ,
-          size: (<any>subData).dim[0],
+          size: stratiSize,
           ngroups: 3,
           type: 'stratification',
           groups: groupsDesc, // TODO: use this as desc
@@ -1384,6 +1394,10 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// class for detail view
+// TODO! Is this obsolete?
+
 export class DetailView
 {
   private $node:d3.Selection<any>;
@@ -1397,6 +1411,27 @@ export class DetailView
   destroy()
   {
     this.multi.destroy();
+    this.$node.remove();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// class for statistics view
+// TODO! Is this obsolete?
+
+export class StatsView
+{
+  private $node : d3.Selection<any>;
+  private divider : clusterDivider.ClusterDivider;
+
+  constructor($parent: d3.Selection<any>, private cluster: number, private data : datatypes.IDataType)
+  {
+
+  }
+
+  destroy()
+  {
+    this.divider.destroy();
     this.$node.remove();
   }
 }

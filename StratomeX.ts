@@ -286,7 +286,7 @@ class StratomeX extends views.AView {
 
             var distVec = vector_impl.wrap(descVec, rows, rowIds, distances);
             //that.provGraph.addObject(distVec, descVec.name, 'orlydata');
-            that.addClusterDistances(descVec.name, distVec);
+            that.addClusterDistances(descVec.name, distVec, clusterLabels);
             //console.log(distVec[i]);
           }
 
@@ -302,14 +302,14 @@ class StratomeX extends views.AView {
    * @param name
    * @param value
      */
-  private addClusterDistances(name: string, value: vector.IVector)
+  private addClusterDistances(name: string, value: vector.IVector, labels: number[])
   {
     var result = C.search(this._clusterDistances, (obj) => { return obj.name === name; });
 
     if (result) { result.value = value; }
     else
     {
-      this._clusterDistances.push({ name: name, value: value });
+      this._clusterDistances.push({ name: name, value: value, labels: labels });
     }
   }
 
@@ -321,7 +321,7 @@ class StratomeX extends views.AView {
   findClusterDistancesByName(name: string)
   {
     var result = C.search(this._clusterDistances, (obj) => { return obj.name === name; });
-    return result ? result.value : null;
+    return result ? { distances: result.value, labels: result.labels } : null;
   }
 
   addOrlyData(rowStrat: stratification.IStratification,
