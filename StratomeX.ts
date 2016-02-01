@@ -230,7 +230,7 @@ class StratomeX extends views.AView {
         }
 
         var compositeRange = ranges.composite(dataName + 'cluster', groups);
-        var clusterRange = ranges.parse(<any>compositeRange);
+        //var clusterRange = ranges.parse(<any>compositeRange);
 
         // create new stratification with description
 
@@ -258,7 +258,7 @@ class StratomeX extends views.AView {
           var rowIds = args[1];
 
           // create a new startification of the data
-          var strati:stratification.IStratification;
+          var strati : stratification.IStratification;
 
           strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
           //console.log(strati);
@@ -325,24 +325,24 @@ class StratomeX extends views.AView {
   }
 
   addOrlyData(rowStrat: stratification.IStratification,
-              dataStrat: datatypes.IDataType,
+              rowMatrix: datatypes.IDataType,
               colStrat?: stratification.IStratification)
   {
     var that = this;
-    var mref = this.provGraph.findOrAddObject(dataStrat, dataStrat.desc.name, 'orlydata');
+    var mref = this.provGraph.findOrAddObject(rowMatrix, rowMatrix.desc.name, 'orlydata');
 
-    if (rowStrat === dataStrat)
+    if (rowStrat === rowMatrix)
     {
       //both are stratifications
       rowStrat.range().then((range) => {
-        that.provGraph.push(columns.createColumnCmd(that.ref, mref, range, toName(toMiddle(dataStrat.desc.fqname), rowStrat.desc.name)));
+        that.provGraph.push(columns.createColumnCmd(that.ref, mref, range, toName(toMiddle(rowMatrix.desc.fqname), rowStrat.desc.name)));
       });
     } else {
       Promise.all<ranges.Range1D>([rowStrat.idRange(), colStrat ? colStrat.idRange() : ranges.Range1D.all()]).then((range_list:ranges.Range1D[]) => {
         const idRange = ranges.list(range_list);
-        return dataStrat.fromIdRange(idRange);
+        return rowMatrix.fromIdRange(idRange);
       }).then((range) => {
-        that.provGraph.push(columns.createColumnCmd(that.ref, mref, range, toName(dataStrat.desc.name, rowStrat.desc.name)));
+        that.provGraph.push(columns.createColumnCmd(that.ref, mref, range, toName(rowMatrix.desc.name, rowStrat.desc.name)));
       });
     }
   }
