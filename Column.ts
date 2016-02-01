@@ -1,6 +1,10 @@
 /**
  * Created by sam on 30.01.2015.
+ * Modifield by Michael Kern on 01.02.2016
  */
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// libraries
 import d3 = require('d3');
 import $ = require('jquery');
 import C = require('../caleydo_core/main');
@@ -20,12 +24,26 @@ import vis = require('../caleydo_core/vis');
 // my own libraries
 import clusterDivider = require('../gene_vis/clusterdivider');
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Column utility functions
+
+/**
+ *
+ * @param within
+ * @returns {number}
+ */
 export function animationTime(within = -1)
 {
   return within < 0 ? 50 : within;
 }
 
-//guess initial vis method
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Guess the initial visualization method suited to the type of a specific data.
+ * @param desc: description of the data
+ * @returns {any}
+ */
 function guessInitial(desc):any
 {
   if (desc.type === 'matrix')
@@ -47,12 +65,14 @@ function guessInitial(desc):any
   return -1;
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 //create a manager for all columns
 export const manager = new idtypes.ObjectManager<Column>('_column', 'Column');
 
 
 /**
- * creates a new column to display stratifications and their link to the data
+ * Creates a new column to display stratifications and their link to the data.
  * @param inputs
  * @param parameter
  * @param graph
@@ -102,6 +122,9 @@ function createColumn(inputs, parameter, graph, within)
     });
   });
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 function removeColumn(inputs, parameter, graph, within)
 {
   var column:Column = inputs[1].value;
@@ -120,6 +143,9 @@ function removeColumn(inputs, parameter, graph, within)
     };
   });
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 function swapColumns(inputs, parameter, graph, within)
 {
   return (inputs[0].value).swapColumn(inputs[1].value, inputs[2].value, within).then(() =>
@@ -130,6 +156,8 @@ function swapColumns(inputs, parameter, graph, within)
     };
   });
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 function changeVis(inputs, parameter)
 {
@@ -215,40 +243,6 @@ export function createToggleStatsCmd(column, cluster, show)
     });
 }
 
-// ---------------------------------------------------------------------------------------------------------------------
-
-//export function showDivisions(inputs, parameter, graph, within)
-//{
-//  var column:Column = inputs[0].value,
-//    cluster = parameter.cluster,
-//    show = parameter.action === 'show';
-//  var r:Promise<any>;
-//  if (show)
-//  {
-//    r = column.showDivisions(cluster, within);
-//  } else
-//  {
-//    r = column.hideDivisions(cluster, within);
-//  }
-//  return r.then(() =>
-//  {
-//    return {
-//      inverse: createToggleDivsCmd(inputs[0], cluster, !show),
-//      consumed: within
-//    };
-//  });
-//}
-
-// TODO create stats cmd
-//export function createToggleDivsCmd(column, cluster, show)
-//{
-//  var act = show ? 'Show' : 'Hide';
-//  return prov.action(prov.meta(act + ' Divisions of ' + column.toString() + ' Cluster "' + cluster + '"', prov.cat.layout),
-//    'showStratomeXDivs', showDivisions, [column], {
-//      cluster: cluster,
-//      action: show ? 'show' : 'hide'
-//    });
-//}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -256,11 +250,14 @@ export function createChangeVis(column, to, from)
 {
   const visses = column.value.grid.visses;
   const vis_desc = visses.filter((v) => v.id === to)[0];
-  return prov.action(prov.meta(column.value.name + ' as ' + vis_desc.name, prov.cat.visual), 'changeStratomeXColumnVis', changeVis, [column], {
+  return prov.action(prov.meta(column.value.name + ' as ' + vis_desc.name,
+    prov.cat.visual), 'changeStratomeXColumnVis', changeVis, [column], {
     to: to,
     from: from
   });
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 function setOption(inputs, parameter)
 {
@@ -276,30 +273,47 @@ function setOption(inputs, parameter)
   };
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 export function createSetOption(column, name, value, old)
 {
-  return prov.action(prov.meta('set option "' + name + +'" of "' + column.name + ' to "' + value + '"', prov.cat.visual), 'setStratomeXColumnOption', setOption, [column], {
+  return prov.action(prov.meta('set option "' + name + +'" of "' + column.name + ' to "' + value + '"', prov.cat.visual),
+    'setStratomeXColumnOption', setOption, [column], {
     name: name,
     value: value,
     old: old
   });
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 export function createColumnCmd(stratomex, data, partitioning, name:string, index:number = -1)
 {
-  return prov.action(prov.meta(name, prov.cat.data, prov.op.create), 'createStratomeXColumn', createColumn, [stratomex, data], {
+  return prov.action(prov.meta(name, prov.cat.data, prov.op.create),
+    'createStratomeXColumn', createColumn, [stratomex, data], {
     partitioning: partitioning.toString(),
     name: name,
     index: index
   });
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 export function createRemoveCmd(stratomex, column)
 {
-  return prov.action(prov.meta(column.name, prov.cat.data, prov.op.remove), 'removeStratomeXColumn', removeColumn, [stratomex, column]);
+  return prov.action(prov.meta(column.name, prov.cat.data, prov.op.remove),
+    'removeStratomeXColumn', removeColumn, [stratomex, column]);
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 export function createSwapColumnCmd(stratomex, columnA, columnB)
 {
-  return prov.action(prov.meta(`${columnA.name}⇄${columnB.name}`, prov.cat.layout, prov.op.update), 'swapStratomeXColumns', swapColumns, [stratomex, columnA, columnB]);
+  return prov.action(prov.meta(`${columnA.name}⇄${columnB.name}`, prov.cat.layout, prov.op.update),
+    'swapStratomeXColumns', swapColumns, [stratomex, columnA, columnB]);
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export function createCmd(id:string)
 {
@@ -320,11 +334,11 @@ export function createCmd(id:string)
   /** This is a new feature **/
     case 'showStratomeXStats' :
       return showStats;
-    //case 'showStratomeXDivs' :
-    //  return showDivisions;
   }
   return null;
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 /**
  * annihilate two swap operations: A-B and B-A
@@ -370,6 +384,8 @@ export function compressCreateRemove(path:prov.ActionNode[])
   return path;
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 export function compressSwap(path:prov.ActionNode[])
 {
   const to_remove:number[] = [];
@@ -403,6 +419,8 @@ export function compressSwap(path:prov.ActionNode[])
   return path;
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 export function compressHideShowDetail(path:prov.ActionNode[])
 {
   const to_remove:number[] = [];
@@ -415,7 +433,8 @@ export function compressHideShowDetail(path:prov.ActionNode[])
       for (let j = i + 1; j < path.length; ++j)
       {
         let q = path[j];
-        if (q.f_id === 'showStratomeXInDetail' && q.parameter.action === 'hide' && q.parameter.cluster === cluster && column === q.requires[0])
+        if (q.f_id === 'showStratomeXInDetail' && q.parameter.action === 'hide'
+          && q.parameter.cluster === cluster && column === q.requires[0])
         {
           //hide again
           to_remove.push(i, j);
@@ -432,6 +451,8 @@ export function compressHideShowDetail(path:prov.ActionNode[])
   return path;
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 function shiftBy(r, shift)
 {
   if (Array.isArray(r))
@@ -443,6 +464,8 @@ function shiftBy(r, shift)
   }
   return r ? geom.wrap(r).shift(shift) : r;
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 /**
  * utility to sync histograms over multiple instances
@@ -468,6 +491,12 @@ function groupTotalAggregator(expectedNumberOfPlots:number, agg:(v:any) => numbe
   };
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Class definition
+
+/**
+ *
+ */
 export class Column extends events.EventHandler implements idtypes.IHasUniqueId, link_m.IDataVis
 {
   id:number;
@@ -505,24 +534,19 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     cluster: number;
   };
 
-  ///** NEW! divisions view for data */
-  //private divisions:{
-  //  $node: d3.Selection<any>;
-  //  grid: multiform.MultiFormGrid;
-  //  zoom: behaviors.ZoomLogic;
-  //  cluster: number;
-  //};
-
   private $layoutHelper:d3.Selection<any>;
-
 
   changeHandler:any;
   optionHandler:any;
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   private highlightMe = (event:events.IEvent, type:string, act:ranges.Range) =>
   {
     this.$parent.classed('select-' + type, act.dim(0).contains(this.id));
   };
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   constructor(private stratomex, public data, partitioning:ranges.Range, public dataRef, options:any = {}, within = -1)
   {
@@ -532,21 +556,27 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     var that = this;
     this.$parent = d3.select(stratomex.parent).append('div').attr('class', 'column').style('opacity', 0);
     this.$parent.style('top', '20px');
+
     {
       let parentBounds = C.bounds(stratomex.parent);
       this.$parent.style('left', (parentBounds.w - this.options.width - 20) + 'px');
       this.$parent.style('height', (parentBounds.h - 20) + 'px');
     }
+
     this.$layoutHelper = d3.select(stratomex.parent).append('div').attr('class', 'column-layout');
     this.$parent.style('width', this.options.width + 'px');
     this.$layoutHelper.style('width', this.options.width + 'px');
+
     this.$toolbar = this.$parent.append('div').attr('class', 'toolbar');
+
     this.$summary = this.$parent.append('div').attr('class', 'summary').style({
       padding: this.options.padding + 'px',
       'border-color': data.desc.color || 'gray',
       'background-color': data.desc.bgColor || 'lightgray'
     });
-    this.$summary.append('div').attr('class', 'title').style('max-width', (that.options.width - this.options.padding * 2) + 'px').text(this.name).style('background-color', data.desc.bgColor || 'lightgray');
+    this.$summary.append('div').attr('class', 'title').style('max-width', (that.options.width - this.options.padding * 2) + 'px')
+      .text(this.name).style('background-color', data.desc.bgColor || 'lightgray');
+
     this.$clusters = this.$parent.append('div').attr('class', 'clusters');
     this.range = partitioning;
     //create the vis
@@ -560,6 +590,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         selectAble: false
       }
     });
+
     this.$summary.on('click', () =>
     {
       manager.select([this.id], idtypes.toSelectOperation(d3.event));
@@ -612,7 +643,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         }
         $elem.classed('select-selected', !isSelected);
       };
-      $elem.append('div').attr('class', 'title').style('max-width', (that.options.width - that.options.padding * 2) + 'px').text(cluster.dim(0).name).on('click', toggleSelection);
+      $elem.append('div').attr('class', 'title').style('max-width', (that.options.width - that.options.padding * 2) + 'px')
+        .text(cluster.dim(0).name).on('click', toggleSelection);
       $elem.append('div').attr('class', 'body').on('click', toggleSelection);
 
       const ratio = cluster.dim(0).length / partitioning.dim(0).length;
@@ -674,6 +706,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     this.$parent.transition().duration(animationTime(within)).style('opacity', 1);
   }
 
+  // -------------------------------------------------------------------------------------------------------------------
+
   setInteractive(interactive:boolean)
   {
     this.$toolbar.style('display', interactive ? null : 'none');
@@ -682,20 +716,28 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     this.$parent.selectAll('.group .title, .group .body').classed('readonly', !interactive);
   }
 
+  // -------------------------------------------------------------------------------------------------------------------
+
   get node()
   {
     return <Element>this.$parent.node();
   }
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   get layoutNode()
   {
     return <Element>this.$layoutHelper.node();
   }
 
+  // -------------------------------------------------------------------------------------------------------------------
+
   get hashString()
   {
     return this.data.desc.name + '_' + this.range.toString();
   }
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   get name()
   {
@@ -708,10 +750,14 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     return i >= 0 ? n.slice(i + 1) : n;
   }
 
+  // -------------------------------------------------------------------------------------------------------------------
+
   ids()
   {
     return this.data.ids(this.range);
   }
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   get location()
   {
@@ -719,6 +765,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     const parent = C.bounds((<Element>this.$layoutHelper.node()).parentElement);
     return geom.rect(abspos.x - parent.x, abspos.y - parent.y, abspos.w, abspos.h);
   }
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   visPos()
   {
@@ -729,6 +777,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       y: l.y + offset.top
     };
   }
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   locateImpl(range:ranges.Range)
   {
@@ -745,6 +795,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     return null; //not a cluster
   }
 
+  // -------------------------------------------------------------------------------------------------------------------
+
   locate(...args:any[])
   {
     if (args.length === 1)
@@ -753,6 +805,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     }
     return args.map((arg) => this.locateImpl(arg));
   }
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   private locateHack(groups:ranges.Range[])
   {
@@ -766,6 +820,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       return shiftBy(this.grid.getBounds(i), this.visPos());
     });
   }
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   locateById(...args:any[])
   {
@@ -884,7 +940,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       //var obj = graph.findObject(this);
       // push new command to graph
       //graph.push(createToggleDivsCmd(obj, cluster, true));
-      this.showDivisions(cluster, -1);
+      this.showDivisions(cluster);
       // stop propagation to disable further event triggering
       d3.event.stopPropagation();
     });
@@ -913,6 +969,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         //console.log(data.desc.name);
 
         var distanceData = this.stratomex.findClusterDistancesByName(distName);
+        if (distanceData === null) { return Promise.resolve([]); }
+
         var distances = distanceData.distances;
         var labels = distanceData.labels;
         var tempWidth = 196;
@@ -922,12 +980,6 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
           scaleTo: [tempWidth, 60],
           barOffsetRatio: 0.10
         });
-
-
-        //var nodePosition = $($elem.node()).position();
-        //var nodeHeight = $($elem.node()).height();
-        //console.log("node position: ", nodePosition);
-        //console.log("node height: ", nodeHeight);
 
         this.stats = {
           $node: $elem,
@@ -951,12 +1003,6 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     this.stats.$node.transition().duration(animationTime(within)).style('opacity', 0).remove();
     this.stats = null;
 
-    //if (this.divisions)
-    //{
-    //  this.divisions.$node.transition().duration(animationTime(within)).style('opacity', 0).remove();
-    //  this.divisions = null;
-    //}
-
     this.$parent.style('width', this.options.width + 'px');
     this.$layoutHelper.style('width', this.options.width + 'px');
 
@@ -965,12 +1011,13 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  showDivisions(cluster, within)
+  showDivisions(cluster)
   {
-    const subData = (cluster < 0) ? this.data : this.grid.getData(cluster);
-    const dataName = subData.desc.name;
-    const dataFQ = subData.desc.fqname;
-    const dataID = subData.desc.id;
+    //const subData = (cluster < 0) ? this.data : this.grid.getData(cluster);
+    const data = this.data;
+    const dataName = data.desc.name;
+    const dataFQ = data.desc.fqname;
+    const dataID = data.desc.id;
 
     if (!this.stats)
     {
@@ -1028,7 +1075,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
           ws: 'random' // TODO: figure out what this parameter is
         };
 
-        Promise.all([(<any>subData).rows(), (<any>subData).rowIds()]).then((args) =>
+        Promise.all([(<any>data).rows(), (<any>data).rowIds()]).then((args) =>
         {
           // obtain the rows and rowIDs of the data
           var rows = args[0];
@@ -1038,200 +1085,10 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
           var strati : stratification.IStratification;
           strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
 
-          that.stratomex.addOrlyData(strati, subData, null);
+          that.stratomex.addOrlyData(strati, data, null);
         });
       }
     }
-
-
-
-    //if (this.divisions)
-    //{
-    //  return Promise.resolve([]);
-    //}
-    //
-    //// obtain either full data (if cluster index < 0) or cluster data
-    //const data = cluster < 0 ? this.data : this.grid.getData(cluster);
-    //
-    //const $elem = this.$parent.append('div').classed('divisions', true).style('opacity', 0);
-    //$elem.classed('group', true).datum(data);
-    //
-    //var dataClusters = <ranges.CompositeRange1D>this.range.dim(0);
-    //var clusterName = cluster < 0 ? this.data.desc.name : dataClusters.groups[cluster].name;
-    //
-    //var $toolbar = $elem.append('div').attr('class', 'gtoolbar');
-    //$elem.append('div').attr('class', 'title')
-    //  .text('Divisions of ' + clusterName);
-    //
-    //const $body = $elem.append('div').attr('class', 'body');
-    //
-    //$toolbar.append('i').attr('class', 'fa fa-close').on('click', () =>
-    //{
-    //  var g = this.stratomex.provGraph;
-    //  var s = g.findObject(this);
-    //  g.push(createToggleDivsCmd(s, cluster, false));
-    //});
-    //
-    //if (cluster >= 0)
-    //{
-    //  var r = clusterName.search('K-Means_');
-    //
-    //  if (r)
-    //  {
-    //    //var k = parseInt(clusterName[r + 8]);
-    //    var method = clusterName.slice(r, r + 9);
-    //
-    //    // divide cluster data in three groups
-    //    var histo = this.stats.histo;
-    //    var slider = this.stats.slider;
-    //
-    //    var groups = [];
-    //
-    //    var groupSize = dataClusters.groups[cluster].size();
-    //    var sliderRange = <any>[(<geneSlider.DiscreteSlider>slider).getIndex(0), (
-    //      <geneSlider.DiscreteSlider>slider).getIndex(1)];
-    //
-    //    var numLikely = (<geneHisto.Histogram>histo).getNumBinElements([0, sliderRange[0]]);
-    //    var numUncertain = (<geneHisto.Histogram>histo).getNumBinElements(sliderRange);
-    //    var numUnlikely = (<geneHisto.Histogram>histo).getNumBinElements([sliderRange[1], 10]);
-    //
-    //    var subRanges = [];
-    //
-    //    subRanges.push(ranges.parse(Array.apply(null, Array(numLikely))
-    //      .map(function (_, i)
-    //      {
-    //        return i;
-    //      })));
-    //    subRanges.push(ranges.parse(Array.apply(null, Array(numUncertain))
-    //      .map(function (_, i)
-    //      {
-    //        return i + numLikely;
-    //      })));
-    //    subRanges.push(ranges.parse(Array.apply(null, Array(numUnlikely))
-    //      .map(function (_, i)
-    //      {
-    //        return i + numLikely + numUncertain;
-    //      })));
-    //
-    //    (<geneHisto.Histogram>histo).colorBars([
-    //      {range: [0, sliderRange[0]], color: 'darkgreen'},
-    //      {range: [sliderRange[0], sliderRange[1]], color: 'darkorange'},
-    //      {range: [sliderRange[1], 10], color: 'darkred'}]);
-    //
-    //    var that = this;
-    //
-    //    function refreshDivs(cluster, within)
-    //    {
-    //      // first delete old division
-    //      that.divisions.$node.transition().duration(animationTime(within)).style('opacity', 0).remove();
-    //      that.divisions = null;
-    //
-    //      var graph = that.stratomex.provGraph;
-    //      // next find the current object / selection / cluster
-    //      var obj = graph.findObject(that);
-    //      // push new command to graph
-    //      graph.push(createToggleDivsCmd(obj, cluster, true));
-    //    }
-    //
-    //    function onClickSlider(cluster, within)
-    //    {
-    //      return function (d)
-    //      {
-    //        return refreshDivs(cluster, within);
-    //      }
-    //    }
-    //
-    //    d3.select((<geneSlider.DiscreteSlider>slider).node).on('mouseup', onClickSlider(cluster, within));
-    //
-    //    var colors = ['darkgreen', 'darkorange', 'darkred'];
-    //    var divGroups = ['certain', 'uncertain', 'outliers'];
-    //    for (var i = 0; i < 3; ++i)
-    //    {
-    //      groups.push(new ranges.Range1DGroup('Cluster Division' + String(i), colors[i], subRanges[i].dim(0)));
-    //    }
-    //
-    //    var compositeRange = ranges.composite('ClusterDivisions', groups);
-    //    var divRange = ranges.parse(<any>compositeRange);
-    //    var initHeight = 150;
-    //
-    //    // draw multigrid
-    //    function viewFunc(matrix, range, pos)
-    //    {
-    //      return matrix.view(range);
-    //    }
-    //
-    //    var that = this;
-    //
-    //    function divisionWrapper(elem, data, cluster, pos)
-    //    {
-    //      // select element of current multigrid
-    //      const $elem = d3.select(elem);
-    //      // set to group classed
-    //      $elem.attr('class', 'group ' + divGroups[pos[0]]).datum(data);
-    //      // create new toolbar
-    //      //var $toolbar = $elem.append('div').attr('class','gtoolbar');
-    //
-    //      $elem.append('div').attr('class', 'title')
-    //        .style('max-width', (that.options.width - that.options.padding * 4) + 'px')
-    //        .text('Test');
-    //
-    //      $elem.append('div').attr('class', 'body');
-    //
-    //      return $elem.select('div.body').node();
-    //    }
-    //
-    //    var grid = multiform.createGrid(data, divRange, <Element>$body.node(), viewFunc, {
-    //      initialVis: 'caleydo-vis-heatmap',
-    //      singleRowOptimization: false,
-    //      wrap: divisionWrapper,
-    //
-    //      'all': {heightTo: initHeight},
-    //
-    //      'caleydo-vis-heatmap': {
-    //        initialScale: 1,
-    //        scaleTo: [this.options.width - that.options.padding * 4, initHeight],
-    //        forceThumbnails: true
-    //      }
-    //    });
-    //
-    //    this.divisions =
-    //    {
-    //      $node: $elem,
-    //      grid: grid,
-    //      zoom: new behaviors.ZoomLogic(grid, grid.asMetaData),
-    //      cluster: cluster
-    //    };
-    //
-    //    var that = this;
-    //
-    //    grid.actLoader.then(function ()
-    //    {
-    //      that.divisions.zoom.zoomTo(that.options.width - that.options.padding * 4, initHeight);
-    //    });
-    //  }
-    //}
-    //
-    //$elem.transition().duration(animationTime(within)).style('opacity', 1);
-    //
-    //var statsWidth = 200;
-    //var thisWidth = this.options.width;
-    //
-    //this.$parent.style('width', this.options.width + thisWidth + statsWidth + 'px');
-    //this.$layoutHelper.style('width', this.options.width + thisWidth + statsWidth + 'px');
-    //
-    //return this.stratomex.relayout(within);
-  }
-
-  hideDivisions(cluster, within)
-  {
-    //this.divisions.$node.transition().duration(animationTime(within)).style('opacity', 0).remove();
-    //this.divisions = null;
-    //
-    //var statsWidth = 200;
-    //this.$parent.style('width', this.options.width + statsWidth + 'px');
-    //this.$layoutHelper.style('width', this.options.width + statsWidth + 'px');
-    //
-    //return this.stratomex.relayout(within);
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -1283,10 +1140,6 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       var clusterPosY = $(clusterGrid).position().top;
 
       size.x -= tempWidth;
-      //if (this.divisions)
-      //{
-      //  size.x -= this.options.width;
-      //}
 
       var tempStatsHeight = 60 + 22;
       this.$summary.style('width', size.x + 'px');
@@ -1297,27 +1150,6 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         left: (size.x + this.options.padding * 2) + 'px'
       });
     }
-
-    // -----------------------------------------------------------------------------------------------------------------
-    // Resize if divisions are shown
-
-    //if (this.divisions)
-    //{
-    //  var clusterGrid = $(this.$parent.node()).find('div.gridrow')[this.divisions.cluster];
-    //  var clusterPosY = $(clusterGrid).position().top;
-    //
-    //  var tempWidth = 200;
-    //  var tempHeight = 150 + 22 + 30;
-    //
-    //  //size.x -= tempWidth;
-    //  this.$summary.style('width', size.x + 'px');
-    //  this.divisions.$node.style({
-    //    width: this.options.width + 'px',
-    //    height: tempHeight + 'px',
-    //    top: clusterPosY + 24 + 'px',
-    //    left: (size.x + tempWidth + this.options.padding * 2) + 'px'
-    //  });
-    //}
 
     this.summary.actLoader.then(() =>
     {
@@ -1346,6 +1178,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     //var w = (18 * (1 + this.grid.visses.length));
     //this.$toolbar.style('left', ((size.x - w) / 2) + 'px');
   }
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   createToolBar()
   {
@@ -1384,6 +1218,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     var w = (18 * (1 + this.grid.visses.length));
     $t.style('min-width', w + 'px');
   }
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   destroy(within)
   {

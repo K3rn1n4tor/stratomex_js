@@ -285,8 +285,9 @@ class StratomeX extends views.AView {
             //console.log(descVec.name);
 
             var distVec = vector_impl.wrap(descVec, rows, rowIds, distances);
+            var labelVec = clusterLabels[i];
             //that.provGraph.addObject(distVec, descVec.name, 'orlydata');
-            that.addClusterDistances(descVec.name, distVec, clusterLabels);
+            that.addClusterDistances(descVec.name, distVec, labelVec);
             //console.log(distVec[i]);
           }
 
