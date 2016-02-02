@@ -205,7 +205,7 @@ export class StratomeXLineUp extends views.AView
               {
                 name: 'cluster',
                 icon: clusterIcon,
-                action: (row: any) => { that.onCluster(row._) }
+                action: (row: any) => { that.onCluster(row, that.parent) }
               }
             ]
           },

@@ -88,21 +88,36 @@ define(function (require) {
     // -----------------------------------------------------------------------------------------------------------------
     // methods called per Orly's data tab
 
+    function openClusterMenu(row, parent)
+    {
+      var rowData = row._;
+      var rowId = row._id;
+
+
+      //var k = NaN;
+      //while (isNaN(k))
+      //{
+      //  k = parseInt(prompt('Define number of clusters:', '2'))
+      //}
+
+      //console.log(row);
+      //console.log(rowData);
+      //console.log(rowId);
+
+
+
+      //stratomex.clusterData(rowData, 'kmeans', k);
+
+      var texts = $(parent).find('g.rows');
+      console.log(texts);
+
+    }
+
     var lineupOrlyData = lineupModule.createData(document.getElementById('tab_orlydata'),
       function (vector)
       {
         stratomex.addDependentOrlyData(vector);
-      },
-      function(vector)
-      {
-        var k = NaN;
-        while (isNaN(k))
-        {
-          k = parseInt(prompt('Define number of clusters:', '2'))
-        }
-
-        stratomex.clusterData(vector, 'kmeans', k);
-    });
+      }, openClusterMenu);
 
     // -----------------------------------------------------------------------------------------------------------------
 
