@@ -1279,7 +1279,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
           if (that.activeDivision[0] != column)
           {
-            that.stratomex.swapColumn(column, that.activeDivision[0]);
+            //that.stratomex.swapColumn(column, that.activeDivision[0]);
             index = that.activeDivision.indexOf(column);
             var oldColumn = that.activeDivision[0];
             that.activeDivision[0] = column;
@@ -1316,10 +1316,10 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
             this.activeDivision.splice(0, 1);
             this.activeDivision = [newColumn].concat(this.activeDivision);
             this.activeDivision.push(oldColumn);
-            if (oldColumn != null)
-            {
-              this.stratomex.swapColumn(newColumn, oldColumn);
-            }
+            //if (oldColumn != null)
+            //{
+            //  this.stratomex.swapColumn(newColumn, oldColumn);
+            //}
           }
           else
           {
