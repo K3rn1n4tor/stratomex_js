@@ -530,7 +530,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
   };
 
   private statsViews : any[] = [];
-  private activeDivision : Column = null;
+  private activeDivision : Column[] = [];
+  public destroyed : boolean;
 
   private $layoutHelper:d3.Selection<any>;
 
@@ -603,6 +604,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     this.id = manager.nextId(this);
     manager.on('select', this.highlightMe);
     manager.select([this.id]);
+
+    this.destroyed = false;
 
     this.$parent.transition().duration(animationTime(within)).style('opacity', 1);
   }
@@ -980,12 +983,22 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     // create new cluster stats command
     $toolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
     {
-      var statsView = this.statsViews[cluster];
-      if (statsView.column == null)
-      {
-        console.log('Stats View:', statsView);
-        statsView[cluster] = null;
-      }
+      //var statsView = that.statsViews[cluster];
+      //if (statsView.column != null)
+      //{
+      //  // reset column if column was removed from StratomeX
+      //  if (statsView.column.destroyed)
+      //  {
+      //    //var index = that.activeDivision.indexOf(statsView.column);
+      //    //
+      //    //if (index != -1)
+      //    //{
+      //    //  that.activeDivision.splice(index, 1);
+      //    //  console.log(that.activeDivision);
+      //    //}
+      //    statsView.column = null;
+      //  }
+      //}
 
       // first obtain the provenance graph
       var graph = this.stratomex.provGraph;
@@ -1087,6 +1100,12 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     var statsView = this.statsViews[cluster];
 
     if (statsView == null)
+    {
+      return Promise.resolve([]);
+    }
+
+    var index = this.activeDivision.indexOf(statsView.column);
+    if (index != -1 && column == null)
     {
       return Promise.resolve([]);
     }
@@ -1204,12 +1223,31 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     // -----------------------------------------------------------------------------------------------------------------
     // Resize if statistics are shown
 
-    var numGroups = this.range.dim(0).length;
+    var numGroups = (<any>this.range.dims[0]).groups.length;
     var tempWidth = 200;
 
     if (this.statsViews.some( (d : any) => { return d.visible == true; } ))
     {
       size.x -= tempWidth;
+    }
+
+    // check if any column was removed and update active divisions
+    for (var j = 0; j < numGroups; ++j)
+    {
+      var statsView = this.statsViews[j];
+      if (statsView == null) { continue; }
+
+      if (statsView.column != null)
+      {
+        if (statsView.column.destroyed)
+        {
+          var index = this.activeDivision.indexOf(statsView.column);
+          statsView.column = null;
+          this.activeDivision.splice(index, 1);
+        }
+      }
+
+
     }
 
     for (var j = 0; j < numGroups; ++j)
@@ -1239,10 +1277,13 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         {
           that.showDivisions(cluster, column);
 
-          if (that.activeDivision != column)
+          if (that.activeDivision[0] != column)
           {
-            that.stratomex.swapColumn(column, that.activeDivision);
-            that.activeDivision = column;
+            that.stratomex.swapColumn(column, that.activeDivision[0]);
+            index = that.activeDivision.indexOf(column);
+            var oldColumn = that.activeDivision[0];
+            that.activeDivision[0] = column;
+            that.activeDivision[index] = oldColumn;
           }
         }
 
@@ -1260,16 +1301,37 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         this.connectSignal = null;
 
         // swap active and current column
-        if (this.activeDivision == null)
+        var oldColumn = this.activeDivision[0];
+
+        if (oldColumn == null)
         {
-          this.activeDivision = newColumn;
+          this.activeDivision[0] = newColumn;
         }
         else
         {
-          //console.log('swap columns', this.activeDivision, newColumn);
-          this.stratomex.swapColumn(newColumn, this.activeDivision);
-          this.activeDivision = newColumn;
+          var index = this.activeDivision.indexOf(newColumn);
+
+          if (index == -1)
+          {
+            this.activeDivision.splice(0, 1);
+            this.activeDivision = [newColumn].concat(this.activeDivision);
+            this.activeDivision.push(oldColumn);
+            if (oldColumn != null)
+            {
+              this.stratomex.swapColumn(newColumn, oldColumn);
+            }
+          }
+          else
+          {
+            console.log("ERROR when trying to swap columns");
+          }
         }
+        //else
+        //{
+        //  //console.log('swap columns', this.activeDivision, newColumn);
+        //  this.stratomex.swapColumn(newColumn, this.activeDivision);
+        //  this.activeDivision = newColumn;
+        //}
       }
     }
 
@@ -1349,6 +1411,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     manager.remove(this);
     this.$parent.style('opacity', 1).transition().duration(animationTime(within)).style('opacity', 0).remove();
     this.$layoutHelper.remove();
+    this.destroyed = true;
   }
 }
 

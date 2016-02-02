@@ -416,6 +416,7 @@ class StratomeX extends views.AView {
     } else {
       console.error('cant find column');
     }
+
     return Promise.resolve(-1);
   }
 
