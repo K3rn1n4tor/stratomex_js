@@ -983,29 +983,6 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     // create new cluster stats command
     $toolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
     {
-      //var statsView = that.statsViews[cluster];
-      //if (statsView.column != null)
-      //{
-      //  // reset column if column was removed from StratomeX
-      //  if (statsView.column.destroyed)
-      //  {
-      //    //var index = that.activeDivision.indexOf(statsView.column);
-      //    //
-      //    //if (index != -1)
-      //    //{
-      //    //  that.activeDivision.splice(index, 1);
-      //    //  console.log(that.activeDivision);
-      //    //}
-      //    statsView.column = null;
-      //  }
-      //}
-
-      // first obtain the provenance graph
-      var graph = this.stratomex.provGraph;
-      // next find the current object / selection / cluster
-      //var obj = graph.findObject(this);
-      // push new command to graph
-      //graph.push(createToggleDivsCmd(obj, cluster, true));
       this.showDivisions(cluster);
       // stop propagation to disable further event triggering
       d3.event.stopPropagation();
@@ -1276,15 +1253,6 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         function refreshColumn(cluster, column : Column)
         {
           that.showDivisions(cluster, column);
-
-          if (that.activeDivision[0] != column)
-          {
-            //that.stratomex.swapColumn(column, that.activeDivision[0]);
-            index = that.activeDivision.indexOf(column);
-            var oldColumn = that.activeDivision[0];
-            that.activeDivision[0] = column;
-            that.activeDivision[index] = oldColumn;
-          }
         }
 
         function onClickSlider(cluster, column)
@@ -1300,38 +1268,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
         this.connectSignal = null;
 
-        // swap active and current column
-        var oldColumn = this.activeDivision[0];
-
-        if (oldColumn == null)
-        {
-          this.activeDivision[0] = newColumn;
-        }
-        else
-        {
-          var index = this.activeDivision.indexOf(newColumn);
-
-          if (index == -1)
-          {
-            this.activeDivision.splice(0, 1);
-            this.activeDivision = [newColumn].concat(this.activeDivision);
-            this.activeDivision.push(oldColumn);
-            //if (oldColumn != null)
-            //{
-            //  this.stratomex.swapColumn(newColumn, oldColumn);
-            //}
-          }
-          else
-          {
-            console.log("ERROR when trying to swap columns");
-          }
-        }
-        //else
-        //{
-        //  //console.log('swap columns', this.activeDivision, newColumn);
-        //  this.stratomex.swapColumn(newColumn, this.activeDivision);
-        //  this.activeDivision = newColumn;
-        //}
+        this.activeDivision.push(newColumn);
       }
     }
 
