@@ -521,25 +521,23 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
   private grid_zoom:behaviors.ZoomLogic;
   private summary_zoom:behaviors.ZoomLogic;
 
-  private detail:{
+  private detail:
+  {
     $node : d3.Selection<any>;
     multi : multiform.IMultiForm;
     zoom : behaviors.ZoomBehavior;
     cluster : number;
   };
-  /** NEW! statistics view for data */
-  private stats:{
-    $node: d3.Selection<any>;
-    divider: vis.AVisInstance;
-    cluster: number;
-  };
+
+  private statsViews : any[] = [];
+  private activeDivision : Column = null;
 
   private $layoutHelper:d3.Selection<any>;
 
   changeHandler:any;
   optionHandler:any;
 
-  private tempAction : string = '';
+  private connectSignal : any = null;
 
   // -------------------------------------------------------------------------------------------------------------------
 
@@ -598,7 +596,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       manager.select([this.id], idtypes.toSelectOperation(d3.event));
     });
 
-    console.log("Normal partitioning:", partitioning);
+    //console.log("Normal partitioning:", partitioning);
     this.createMultiGrid(partitioning, data);
     this.createToolBar();
 
@@ -951,9 +949,17 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   showStats(cluster, within = -1)
   {
-    if (this.stats)
+    var statsView = this.statsViews[cluster];
+
+    if (statsView != null)
     {
-      return Promise.resolve([]);
+      var tempStatsWidth = 200;
+      this.$parent.style('width', this.options.width + tempStatsWidth + 'px');
+      this.$layoutHelper.style('width', this.options.width + tempStatsWidth + 'px');
+      statsView.$node.transition().duration(animationTime(within)).style('opacity', 1);
+      statsView.visible = true;
+
+      return this.stratomex.relayout(within);
     }
 
     var that = this;
@@ -974,6 +980,13 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     // create new cluster stats command
     $toolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
     {
+      var statsView = this.statsViews[cluster];
+      if (statsView.column == null)
+      {
+        console.log('Stats View:', statsView);
+        statsView[cluster] = null;
+      }
+
       // first obtain the provenance graph
       var graph = this.stratomex.provGraph;
       // next find the current object / selection / cluster
@@ -1021,12 +1034,14 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
           barOffsetRatio: 0.10
         });
 
-        this.stats = {
+        this.statsViews[cluster] =
+        {
           $node: $elem,
           divider: divider,
-          cluster: cluster
+          cluster: cluster,
+          visible: true,
+          column: null
         };
-
       }
     }
 
@@ -1040,11 +1055,21 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   hideStats(cluster, within)
   {
-    this.stats.$node.transition().duration(animationTime(within)).style('opacity', 0).remove();
-    this.stats = null;
+    var statsView = this.statsViews[cluster];
 
-    this.$parent.style('width', this.options.width + 'px');
-    this.$layoutHelper.style('width', this.options.width + 'px');
+    statsView.$node.transition().duration(animationTime(within)).style('opacity', 0); //.remove();
+    statsView.visible = false;
+
+    var layoutWidth = this.options.width;
+    var tempWidth = 200;
+
+    if (this.statsViews.some( (d : any) => { return d.visible == true; } ))
+    {
+      layoutWidth += tempWidth;
+    }
+
+    this.$parent.style('width', layoutWidth + 'px');
+    this.$layoutHelper.style('width', layoutWidth + 'px');
 
     return this.stratomex.relayout(within);
   }
@@ -1059,12 +1084,14 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     const dataFQ = data.desc.fqname;
     const dataID = data.desc.id;
 
-    if (!this.stats)
+    var statsView = this.statsViews[cluster];
+
+    if (statsView == null)
     {
       return Promise.resolve([]);
     }
 
-    var divider = this.stats.divider;
+    var divider = statsView.divider;
     var that = this;
 
     if (cluster >= 0)
@@ -1080,7 +1107,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
         var subRanges = (<clusterDivider.ClusterDivider>divider).getDivisionRanges();
         var rangeGroups = [];
-        console.log(subRanges);
+        //console.log(subRanges);
         var groups = [];
         var groupsDesc = [];
         var stratiSize = 0;
@@ -1125,7 +1152,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
           if (column === null)
           {
             that.stratomex.addOrlyData(strati, data, null);
-            that.tempAction = 'connectLastColumn';
+            that.connectSignal = { cluster: cluster };
 
           } else {
             column.updateGrid(strati);
@@ -1176,32 +1203,47 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     // -----------------------------------------------------------------------------------------------------------------
     // Resize if statistics are shown
-    if (this.stats)
+
+    var numGroups = this.range.dim(0).length;
+    var tempWidth = 200;
+
+    if (this.statsViews.some( (d : any) => { return d.visible == true; } ))
     {
-      var tempWidth = 200;
-
-      var clusterGrid = $(this.$parent.node()).find('div.gridrow')[this.stats.cluster];
-      var clusterPosY = $(clusterGrid).position().top;
-
       size.x -= tempWidth;
+    }
+
+    for (var j = 0; j < numGroups; ++j)
+    {
+      var statsView = this.statsViews[j];
+
+      if (statsView == null) { continue; }
+      if (statsView.visible == false) { continue; }
+
+      var clusterGrid = $(this.$parent.node()).find('div.gridrow')[j];
+      var clusterPosY = $(clusterGrid).position().top;
 
       var tempStatsHeight = 60 + 22;
       this.$summary.style('width', size.x + 'px');
-      this.stats.$node.style({
+      statsView.$node.style({
         width: tempWidth + 'px',
         height: tempStatsHeight + 'px',
         top: clusterPosY + 12 + 'px',
         left: (size.x + this.options.padding * 2) + 'px'
       });
 
-      if (this.tempAction == 'connectLastColumn')
+      if (this.connectSignal != null && this.connectSignal.cluster == j)
       {
         var that = this;
 
         function refreshColumn(cluster, column : Column)
         {
-          console.log('update division');
           that.showDivisions(cluster, column);
+
+          if (that.activeDivision != column)
+          {
+            that.stratomex.swapColumn(column, that.activeDivision);
+            that.activeDivision = column;
+          }
         }
 
         function onClickSlider(cluster, column)
@@ -1210,10 +1252,24 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         }
 
         var newColumn = this.stratomex.getLastColumn();
-        d3.select((<clusterDivider.ClusterDivider>this.stats.divider).node)
-          .on('mouseup', onClickSlider(this.stats.cluster, newColumn));
+        statsView.column = newColumn;
 
-        this.tempAction = '';
+        d3.select((<clusterDivider.ClusterDivider>statsView.divider).node)
+          .on('mouseup', onClickSlider(statsView.cluster, newColumn));
+
+        this.connectSignal = null;
+
+        // swap active and current column
+        if (this.activeDivision == null)
+        {
+          this.activeDivision = newColumn;
+        }
+        else
+        {
+          //console.log('swap columns', this.activeDivision, newColumn);
+          this.stratomex.swapColumn(newColumn, this.activeDivision);
+          this.activeDivision = newColumn;
+        }
       }
     }
 
