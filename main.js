@@ -12,6 +12,7 @@ define(function (require) {
   // requirements
 
   var $ = require('jquery');
+  var d3 = require('d3');
   var data = require('../caleydo_core/data');
   var vis = require('../caleydo_core/vis');
   var C = require('../caleydo_core/main');
@@ -108,8 +109,23 @@ define(function (require) {
 
       //stratomex.clusterData(rowData, 'kmeans', k);
 
-      var texts = $(parent).find('g.rows');
-      console.log(texts);
+      var rows = $(parent).find('g.rows')[0];
+      var currentRow = $(rows).find('g.row')[rowId];
+      var action = $(rows).find("tspan[title='cluster']")[0];
+
+      var position = $(action).position();
+      console.log(position);
+
+      var winCluster = d3.select('div#stratomex').append('div').attr(
+        {
+          class: 'group cluster',
+          left: position.left,
+          top: position.top,
+          width: 200, height: 200
+        });
+
+      console.log(winCluster);
+      winCluster.append('title').text('Test');
 
     }
 

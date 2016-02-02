@@ -188,6 +188,11 @@ main {
         }
       }
 
+      &.cluster
+      {
+        position: absolute;
+      }
+
       div.body {
         /*disable selection*/
 
