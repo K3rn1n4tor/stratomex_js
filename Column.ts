@@ -1252,7 +1252,12 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
         function refreshColumn(cluster, column : Column)
         {
-          that.showDivisions(cluster, column);
+          var statsView = that.statsViews[cluster];
+          //console.log('divider has changed:', statsView.divider.hasChanged());
+          if (statsView.divider.hasChanged())
+          {
+            that.showDivisions(cluster, column);
+          }
         }
 
         function onClickSlider(cluster, column)
