@@ -1008,10 +1008,10 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         //var k = parseInt(clusterName[r + 8]);
         var method = clusterName.slice(r, r + 9);
 
-        var distName = data.desc.name + '/' + method + "_Distances_" + String(cluster);
-        //console.log(data.desc.name);
+        //var distName = data.desc.name + '/' + method + "_Distances_" + String(cluster) + '_Col_' + this.id;
+        console.log("Requester ID", this.id);
 
-        var distanceData = this.stratomex.findClusterDistancesByName(distName);
+        var distanceData = this.stratomex.findClusterDistancesByIndex(cluster, this.id);
         if (distanceData === null) { return Promise.resolve([]); }
 
         var distances = distanceData.distances;

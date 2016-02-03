@@ -153,11 +153,10 @@ class StratomeX extends views.AView {
    * @param data
    * @param method
      */
-  clusterData(data: datatypes.IDataType, method: string, arg: string)
+  clusterData(data: datatypes.IDataType, method: string, arg: any)
   {
-    if (method === 'kmeans') {
-      const k = parseInt(arg);
-      this.applyKMeans(data, k);
+    if (method === 'k-means') {
+      this.applyKMeans(data, arg);
     }
     else if (method === 'hierarchical') {
       const linkage = arg;
@@ -282,12 +281,14 @@ class StratomeX extends views.AView {
               idtype: 'patient'
             };
 
-            //console.log(descVec.name);
+            //console.log("Stored distances:", descVec.name);
 
             var distVec = vector_impl.wrap(descVec, rows, rowIds, distances);
             var labelVec = clusterLabels[i];
             //that.provGraph.addObject(distVec, descVec.name, 'orlydata');
-            that.addClusterDistances(descVec.name, distVec, labelVec);
+            var newIndex = that._columns.length;
+            console.log("Storer ID", newIndex);
+            that.addClusterDistances(i, newIndex, distVec , labelVec);
             //console.log(distVec[i]);
           }
 
@@ -303,26 +304,35 @@ class StratomeX extends views.AView {
    * @param name
    * @param value
      */
-  private addClusterDistances(name: string, value: vector.IVector, labels: number[])
+  private addClusterDistances(cluster: number, index: number, value: vector.IVector, labels: number[])
   {
-    var result = C.search(this._clusterDistances, (obj) => { return obj.name === name; });
+    //var result = C.search(this._clusterDistances, (obj) => { return obj.name === name; });
+    //
+    //if (result) { result.value = value; }
+    //else
+    //{
+    //  this._clusterDistances.push({ name: name, value: value, labels: labels });
+    //}
+    if (this._clusterDistances[index] == null) { this._clusterDistances[index] = []; }
 
-    if (result) { result.value = value; }
-    else
-    {
-      this._clusterDistances.push({ name: name, value: value, labels: labels });
-    }
+    this._clusterDistances[index][cluster] = { distances: value, labels: labels };
   }
 
   /**
    * NEW! find all cluster distances to be analyzed later
-   * @param name
+   * @param cluster
+   * @param index
    * @returns {vector.IVector|any}
      */
-  findClusterDistancesByName(name: string)
+  findClusterDistancesByIndex(cluster: number, index: number)
   {
-    var result = C.search(this._clusterDistances, (obj) => { return obj.name === name; });
-    return result ? { distances: result.value, labels: result.labels } : null;
+    var distData = this._clusterDistances[index];
+    if (distData == null) { return null; }
+
+    return distData[cluster];
+
+    //var result = C.search(this._clusterDistances, (obj) => { return obj.name === name; });
+    //return result ? { distances: result.value, labels: result.labels } : null;
   }
 
   addOrlyData(rowStrat: stratification.IStratification,
@@ -393,6 +403,7 @@ class StratomeX extends views.AView {
   }
 
   addColumn(column:columns.Column, index: number = -1, within = -1) {
+    console.log("new index", index);
     if (index < 0) {
       this._columns.push(column);
     } else {
@@ -410,6 +421,11 @@ class StratomeX extends views.AView {
     if (i >= 0) {
       //console.log('remove '+column.id);
       this._columns.splice(i, 1);
+      this._columns.forEach((col: any, _: number) => {
+        if (col.id > i) { col.id -= 1; }
+      });
+
+      this._clusterDistances.splice(i, 1);
       this._links.remove(false, column);
       column.destroy(within);
       return this.relayout(within).then(() => i);
@@ -426,10 +442,24 @@ class StratomeX extends views.AView {
   }
 
   swapColumn(columnA: columns.Column, columnB: columns.Column, within = -1) {
-    const i = this.indexOf(columnA),
-      j = this.indexOf(columnB);
+    const i = this.indexOf(columnA);
+    const j = this.indexOf(columnB);
+
+    // swap column ids
+    columnA.id = j;
+    columnB.id = i;
+
+    // swap columns
     this._columns[i] = columnB;
     this._columns[j] = columnA;
+
+    var clusterDistA = this._clusterDistances[i];
+    var clusterDistB = this._clusterDistances[j];
+
+    // swap cluster distances
+    this._clusterDistances[i] = clusterDistB;
+    this._clusterDistances[j] = clusterDistA;
+
     if (i < j) {
       this.parent.insertBefore(columnB.layoutNode, columnA.layoutNode);
     } else {
