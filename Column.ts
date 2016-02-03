@@ -580,6 +580,10 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     this.$clusters = this.$parent.append('div').attr('class', 'clusters');
     this.range = partitioning;
+    //console.log("Range  of column:", this.range);
+    //console.log("Range Group 0 of column:", (<any>this.range.dims[0]).groups[0].asList());
+    //console.log("Range Group 1 of column:", (<any>this.range.dims[0]).groups[1].asList());
+
     //create summary visualization as a multiform to display all compatible visualization
     this.summary = multiform.create(data.desc.type !== 'stratification' ? data.view(partitioning) : data, <Element>this.$summary.node(), {
       initialVis: 'caleydo-vis-histogram',
@@ -1009,7 +1013,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         var method = clusterName.slice(r, r + 9);
 
         //var distName = data.desc.name + '/' + method + "_Distances_" + String(cluster) + '_Col_' + this.id;
-        console.log("Requester ID", this.id);
+        //console.log("Requester ID", this.id);
 
         var distanceData = this.stratomex.findClusterDistancesByIndex(cluster, this.id);
         if (distanceData === null) { return Promise.resolve([]); }

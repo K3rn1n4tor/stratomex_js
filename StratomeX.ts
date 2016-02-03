@@ -155,7 +155,12 @@ class StratomeX extends views.AView {
      */
   clusterData(data: datatypes.IDataType, method: string, arg: any)
   {
-    if (method === 'k-means') {
+    if (method === 'k-means')
+    {
+      // this is just a way to send POST requests to given url
+    //  ajax.send('/api/gene_clustering/kmeans/' + String(arg) + '/' + data.desc.id,
+    //    { test: "{ \"values\": [1,2,3,4] }" }, 'post');
+
       this.applyKMeans(data, arg);
     }
     else if (method === 'hierarchical') {
@@ -201,10 +206,6 @@ class StratomeX extends views.AView {
           newLabels = newLabels.concat(clusterLabels[i]);
         }
 
-        // sort data
-        //var sortedData = (<any>data).view(ranges.parse(newLabels));
-
-        //console.log('k-means result: ', result);
 
         // first from groups
         var groups = <any>[];
@@ -260,8 +261,6 @@ class StratomeX extends views.AView {
           var strati : stratification.IStratification;
 
           strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
-          //console.log(strati);
-          //console.log(that);
 
           // create new data containg the distances of the genes to their clusters
           //var distVec = <any>[];
@@ -281,18 +280,13 @@ class StratomeX extends views.AView {
               idtype: 'patient'
             };
 
-            //console.log("Stored distances:", descVec.name);
-
             var distVec = vector_impl.wrap(descVec, rows, rowIds, distances);
             var labelVec = clusterLabels[i];
-            //that.provGraph.addObject(distVec, descVec.name, 'orlydata');
             var newIndex = that._columns.length;
-            console.log("Storer ID", newIndex);
             that.addClusterDistances(i, newIndex, distVec , labelVec);
-            //console.log(distVec[i]);
           }
 
-          //console.log(that._clusterDistances);
+          // add new clustered data with its stratification to StratomeX
           that.addOrlyData(strati, data, null);
         });
       });
@@ -306,13 +300,6 @@ class StratomeX extends views.AView {
      */
   private addClusterDistances(cluster: number, index: number, value: vector.IVector, labels: number[])
   {
-    //var result = C.search(this._clusterDistances, (obj) => { return obj.name === name; });
-    //
-    //if (result) { result.value = value; }
-    //else
-    //{
-    //  this._clusterDistances.push({ name: name, value: value, labels: labels });
-    //}
     if (this._clusterDistances[index] == null) { this._clusterDistances[index] = []; }
 
     this._clusterDistances[index][cluster] = { distances: value, labels: labels };
@@ -330,9 +317,6 @@ class StratomeX extends views.AView {
     if (distData == null) { return null; }
 
     return distData[cluster];
-
-    //var result = C.search(this._clusterDistances, (obj) => { return obj.name === name; });
-    //return result ? { distances: result.value, labels: result.labels } : null;
   }
 
   addOrlyData(rowStrat: stratification.IStratification,
@@ -403,7 +387,7 @@ class StratomeX extends views.AView {
   }
 
   addColumn(column:columns.Column, index: number = -1, within = -1) {
-    console.log("new index", index);
+    //console.log("new index", index);
     if (index < 0) {
       this._columns.push(column);
     } else {
