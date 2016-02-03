@@ -47,7 +47,7 @@ class StratomeX extends views.AView {
 
   private interactive = true;
   /** NEW gather all distances vectors */
-  private _clusterDistances: any[] = [];
+  //private _clusterDistances: any[] = [];
 
   constructor(private parent:Element, private provGraph:prov.ProvenanceGraph) {
     super();
@@ -211,9 +211,9 @@ class StratomeX extends views.AView {
         //var request = { group: JSON.stringify(labeldesc) };
         //var resp = ajax.send('/api/gene_clustering/distances/' + data.desc.id, request, 'post');
 
-        console.log(clusterLabels, clusterDists);
+        //console.log(clusterLabels, clusterDists);
 
-        resp.then((result: any) => { console.log(result); });
+        //resp.then((result: any) => { console.log(result); });
 
 
         // first from groups
@@ -270,30 +270,30 @@ class StratomeX extends views.AView {
           var strati : stratification.IStratification;
 
           strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
-
-          // create new data containg the distances of the genes to their clusters
-          //var distVec = <any>[];
-          for (var i = 0; i < k; ++i)
-          {
-            var distances = clusterDists[i];
-            var rangeDist = [Math.min.apply(null, distances), Math.max.apply(null, distances)];
-
-            var descVec =
-            {
-              id: dataID + 'KMeans' + String(k) + 'Distances' + String(i),
-              fqname: 'none',
-              name: dataName + '/K-Means_' + String(k) + '_Distances_' + String(i),
-              type: 'vector',
-              size: distances.length,
-              value: {type: 'real', range: rangeDist},
-              idtype: 'patient'
-            };
-
-            var distVec = vector_impl.wrap(descVec, rows, rowIds, distances);
-            var labelVec = clusterLabels[i];
-            var newIndex = that._columns.length;
-            that.addClusterDistances(i, newIndex, distVec , labelVec);
-          }
+          //
+          //// create new data containg the distances of the genes to their clusters
+          ////var distVec = <any>[];
+          //for (var i = 0; i < k; ++i)
+          //{
+          //  var distances = clusterDists[i];
+          //  var rangeDist = [Math.min.apply(null, distances), Math.max.apply(null, distances)];
+          //
+          //  var descVec =
+          //  {
+          //    id: dataID + 'KMeans' + String(k) + 'Distances' + String(i),
+          //    fqname: 'none',
+          //    name: dataName + '/K-Means_' + String(k) + '_Distances_' + String(i),
+          //    type: 'vector',
+          //    size: distances.length,
+          //    value: {type: 'real', range: rangeDist},
+          //    idtype: 'patient'
+          //  };
+          //
+          //  var distVec = vector_impl.wrap(descVec, rows, rowIds, distances);
+          //  var labelVec = clusterLabels[i];
+          //  var newIndex = that._columns.length;
+          //  that.addClusterDistances(i, newIndex, distVec , labelVec);
+          //}
 
           // add new clustered data with its stratification to StratomeX
           that.addOrlyData(strati, data, null);
@@ -302,31 +302,31 @@ class StratomeX extends views.AView {
     });
   }
 
-  /**
-   * NEW! gather all cluster distances by name
-   * @param name
-   * @param value
-     */
-  private addClusterDistances(cluster: number, index: number, value: vector.IVector, labels: number[])
-  {
-    if (this._clusterDistances[index] == null) { this._clusterDistances[index] = []; }
-
-    this._clusterDistances[index][cluster] = { distances: value, labels: labels };
-  }
-
-  /**
-   * NEW! find all cluster distances to be analyzed later
-   * @param cluster
-   * @param index
-   * @returns {vector.IVector|any}
-     */
-  findClusterDistancesByIndex(cluster: number, index: number)
-  {
-    var distData = this._clusterDistances[index];
-    if (distData == null) { return null; }
-
-    return distData[cluster];
-  }
+  ///**
+  // * NEW! gather all cluster distances by name
+  // * @param name
+  // * @param value
+  //   */
+  //private addClusterDistances(cluster: number, index: number, value: vector.IVector, labels: number[])
+  //{
+  //  if (this._clusterDistances[index] == null) { this._clusterDistances[index] = []; }
+  //
+  //  this._clusterDistances[index][cluster] = { distances: value, labels: labels };
+  //}
+  //
+  ///**
+  // * NEW! find all cluster distances to be analyzed later
+  // * @param cluster
+  // * @param index
+  // * @returns {vector.IVector|any}
+  //   */
+  //findClusterDistancesByIndex(cluster: number, index: number)
+  //{
+  //  var distData = this._clusterDistances[index];
+  //  if (distData == null) { return null; }
+  //
+  //  return distData[cluster];
+  //}
 
   addOrlyData(rowStrat: stratification.IStratification,
               rowMatrix: datatypes.IDataType,
@@ -418,7 +418,7 @@ class StratomeX extends views.AView {
         if (col.id > i) { col.id -= 1; }
       });
 
-      this._clusterDistances.splice(i, 1);
+      //this._clusterDistances.splice(i, 1);
       this._links.remove(false, column);
       column.destroy(within);
       return this.relayout(within).then(() => i);
@@ -446,12 +446,12 @@ class StratomeX extends views.AView {
     this._columns[i] = columnB;
     this._columns[j] = columnA;
 
-    var clusterDistA = this._clusterDistances[i];
-    var clusterDistB = this._clusterDistances[j];
+    //var clusterDistA = this._clusterDistances[i];
+    //var clusterDistB = this._clusterDistances[j];
 
     // swap cluster distances
-    this._clusterDistances[i] = clusterDistB;
-    this._clusterDistances[j] = clusterDistA;
+    //this._clusterDistances[i] = clusterDistB;
+    //this._clusterDistances[j] = clusterDistA;
 
     if (i < j) {
       this.parent.insertBefore(columnB.layoutNode, columnA.layoutNode);

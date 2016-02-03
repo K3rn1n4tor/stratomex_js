@@ -7,6 +7,7 @@
 // libraries
 import d3 = require('d3');
 import $ = require('jquery');
+import ajax = require('../caleydo_core/ajax');
 import C = require('../caleydo_core/main');
 import multiform = require('../caleydo_core/multiform');
 import geom = require('../caleydo_core/geom');
@@ -1009,50 +1010,59 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
       if (r)
       {
-        //var k = parseInt(clusterName[r + 8]);
+        var k = parseInt(clusterName[r + 8]);
         var method = clusterName.slice(r, r + 9);
 
-        //var distName = data.desc.name + '/' + method + "_Distances_" + String(cluster) + '_Col_' + this.id;
-        //console.log("Requester ID", this.id);
+        //var distanceData = this.stratomex.findClusterDistancesByIndex(cluster, this.id);
+        var labelList = (<any>this.range.dims[0]).groups[cluster].asList();
+        //console.log(labelList);
 
-        var distanceData = this.stratomex.findClusterDistancesByIndex(cluster, this.id);
-        if (distanceData === null) { return Promise.resolve([]); }
+        // request cluster distance data from server
+        var request = { group: JSON.stringify({ labels: labelList }) };
+        var response = ajax.send('/api/gene_clustering/distances/' + this.data.desc.id, request, 'post');
 
-        var distances = distanceData.distances;
-        var labels = distanceData.labels;
-        var tempWidth = 196;
-
-        var divider = clusterDivider.create(distances, labels, data, <Element>$body.node(), {
-          bins: 10,
-          scaleTo: [tempWidth, 60],
-          barOffsetRatio: 0.10
-        });
-
-        this.statsViews[cluster] =
+        return response.then( (distanceData: any) =>
         {
-          $node: $elem,
-          divider: divider,
-          cluster: cluster,
-          visible: true,
-          column: null
-        };
+          if (distanceData === null) { return Promise.resolve([]); }
+
+          var distances = distanceData.distances;
+          var labels = distanceData.labels;
+          var tempWidth = 196;
+
+          var divider = clusterDivider.createFromArray(distances, labels, data, <Element>$body.node(), {
+            bins: 10,
+            scaleTo: [tempWidth, 60],
+            barOffsetRatio: 0.10
+          });
+
+          this.statsViews[cluster] =
+          {
+            $node: $elem,
+            divider: divider,
+            cluster: cluster,
+            visible: true,
+            column: null
+          };
+
+          var tempStatsWidth = 200;
+          this.$parent.style('width', this.options.width + tempStatsWidth + 'px');
+          this.$layoutHelper.style('width', this.options.width + tempStatsWidth + 'px');
+          $elem.transition().duration(animationTime(within)).style('opacity', 1);
+
+          return this.stratomex.relayout(within);
+        });
       }
     }
 
-    var tempStatsWidth = 200;
-    this.$parent.style('width', this.options.width + tempStatsWidth + 'px');
-    this.$layoutHelper.style('width', this.options.width + tempStatsWidth + 'px');
-    $elem.transition().duration(animationTime(within)).style('opacity', 1);
 
-    return this.stratomex.relayout(within);
   }
 
   hideStats(cluster, within)
   {
     var statsView = this.statsViews[cluster];
 
-    statsView.$node.transition().duration(animationTime(within)).style('opacity', 0); //.remove();
     statsView.visible = false;
+    statsView.$node.transition().duration(animationTime(within)).style('opacity', 0); //.remove();
 
     var layoutWidth = this.options.width;
     var tempWidth = 200;
@@ -1101,64 +1111,63 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
       var r = clusterName.search('K-Means_');
 
-      if (r) {
-        var k = parseInt(clusterName[r + 8]);
-        var method = clusterName.slice(r, r + 9);
+      var groupName = (r == -1) ? clusterName : clusterName.slice(0, r - 1);
+      var k = parseInt(clusterName[r + 8]);
+      var method = clusterName.slice(r, r + 9);
 
-        var subRanges = (<clusterDivider.ClusterDivider>divider).getDivisionRanges();
-        var rangeGroups = [];
-        //console.log(subRanges);
-        var groups = [];
-        var groupsDesc = [];
-        var stratiSize = 0;
-        for (var i = 0; i < 3; ++i)
-        {
-          var groupSize = subRanges[i].length;
-          stratiSize += groupSize;
+      var subRanges = (<clusterDivider.ClusterDivider>divider).getDivisionRanges();
+      var rangeGroups = [];
+      //console.log(subRanges);
+      var groups = [];
+      var groupsDesc = [];
+      var stratiSize = 0;
+      for (var i = 0; i < 3; ++i)
+      {
+        var groupSize = subRanges[i].length;
+        stratiSize += groupSize;
 
-          rangeGroups.push(ranges.parse(subRanges[i]));
-          groups.push(new ranges.Range1DGroup('Group ' + String(cluster) + ' Div' + String(i),
-            'grey', rangeGroups[i].dim(0)));
+        rangeGroups.push(ranges.parse(subRanges[i]));
+        groups.push(new ranges.Range1DGroup(groupName + ' (Div ' + String(i) + ')',
+          'grey', rangeGroups[i].dim(0)));
 
-          groupsDesc.push({ name: 'Division ' + String(i), size: groupSize});
-        }
-
-        var compositeRange = ranges.composite(dataName + 'divisions', groups);
-
-        var descStrati =
-        {
-          id: dataID + 'KMeans' + String(k) + 'Division' + String(cluster),
-          fqname: 'none',
-          name: dataName + '/K-Means_' + String(k) + '_Division_' + String(cluster),
-          origin: dataFQ,
-          size: stratiSize,
-          ngroups: 3,
-          type: 'stratification',
-          groups: groupsDesc, // TODO: use this as desc
-          idtype: 'patient', // TODO: figure out what idtypes are important for
-          ws: 'random' // TODO: figure out what this parameter is
-        };
-
-        Promise.all([(<any>data).rows(), (<any>data).rowIds()]).then((args) =>
-        {
-          // obtain the rows and rowIDs of the data
-          var rows = args[0];
-          var rowIds = args[1];
-
-          // create a new startification of the data
-          var strati : stratification.IStratification;
-          strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
-
-          if (column === null)
-          {
-            that.stratomex.addOrlyData(strati, data, null);
-            that.connectSignal = { cluster: cluster };
-
-          } else {
-            column.updateGrid(strati);
-          }
-        });
+        groupsDesc.push({ name: 'Division ' + String(i), size: groupSize});
       }
+
+      var compositeRange = ranges.composite(dataName + 'divisions', groups);
+
+      var descStrati =
+      {
+        id: dataID + 'KMeans' + String(k) + 'Division' + String(cluster),
+        fqname: 'none',
+        name: dataName + '/K-Means_' + String(k) + '_Division_' + String(cluster),
+        origin: dataFQ,
+        size: stratiSize,
+        ngroups: 3, // number of division / ranges of clusterDivider
+        type: 'stratification',
+        groups: groupsDesc, // TODO: use this as desc
+        idtype: 'patient', // TODO: figure out what idtypes are important for
+        ws: 'random' // TODO: figure out what this parameter is
+      };
+
+      Promise.all([(<any>data).rows(), (<any>data).rowIds()]).then((args) =>
+      {
+        // obtain the rows and rowIDs of the data
+        var rows = args[0];
+        var rowIds = args[1];
+
+        // create a new startification of the data
+        var strati : stratification.IStratification;
+        strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
+
+        if (column === null)
+        {
+          that.stratomex.addOrlyData(strati, data, null);
+          that.connectSignal = { cluster: cluster };
+
+        } else {
+          column.updateGrid(strati);
+        }
+      });
     }
   }
 
@@ -1227,10 +1236,9 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
           this.activeDivision.splice(index, 1);
         }
       }
-
-
     }
 
+    // go through all stats view and determine their position
     for (var j = 0; j < numGroups; ++j)
     {
       var statsView = this.statsViews[j];
@@ -1239,14 +1247,31 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       if (statsView.visible == false) { continue; }
 
       var clusterGrid = $(this.$parent.node()).find('div.gridrow')[j];
-      var clusterPosY = $(clusterGrid).position().top;
+      var clusterPosY = $(clusterGrid).position().top + 12;
 
-      var tempStatsHeight = 60 + 22;
+      if (j > 0 && this.statsViews[j - 1] != null)
+      {
+        var previousNode = this.statsViews[j - 1].$node;
+        if (previousNode != null)
+        {
+          var $prevNode = $(previousNode.node());
+          var previousPosY = (this.statsViews[j - 1].visible == true) ? $prevNode.position().top : 0;
+          var distPosY = clusterPosY - previousPosY;
+
+          var tempStatsHeight = 60 + 22;
+
+          if (distPosY < tempStatsHeight)
+          {
+            clusterPosY += (tempStatsHeight - distPosY + 6);
+          }
+        }
+      }
+
       this.$summary.style('width', size.x + 'px');
       statsView.$node.style({
         width: tempWidth + 'px',
         height: tempStatsHeight + 'px',
-        top: clusterPosY + 12 + 'px',
+        top: clusterPosY + 'px',
         left: (size.x + this.options.padding * 2) + 'px'
       });
 
