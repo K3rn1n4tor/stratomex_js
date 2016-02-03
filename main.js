@@ -94,39 +94,77 @@ define(function (require) {
       var rowData = row._;
       var rowId = row._id;
 
-
-      //var k = NaN;
-      //while (isNaN(k))
-      //{
-      //  k = parseInt(prompt('Define number of clusters:', '2'))
-      //}
-
-      //console.log(row);
-      //console.log(rowData);
-      //console.log(rowId);
-
-
-
-      //stratomex.clusterData(rowData, 'kmeans', k);
-
       var rows = $(parent).find('g.rows')[0];
       var currentRow = $(rows).find('g.row')[rowId];
       var action = $(rows).find("tspan[title='cluster']")[0];
 
       var position = $(action).position();
-      console.log(position);
+      //console.log(position);
 
-      var winCluster = d3.select('div#stratomex').append('div').attr(
+      var winCluster = d3.select(parent).append('div').attr(
         {
-          class: 'group cluster',
-          left: position.left,
-          top: position.top,
-          width: 200, height: 200
+          'class': 'clusterPopup'
+        });
+      //winCluster.style('position', 'absolute');
+      var windowHeight = 80;
+      var windowWidth = 200;
+      var offsetX = 10;
+      var offsetY = 20;
+      // define the style of the window
+      winCluster.style('opacity', 0);
+      winCluster.style({
+        left: String(position.left + offsetX) + 'px',
+        top: String(position.top - windowHeight) + 'px'});
+
+      winCluster.transition().duration(200).style({ opacity: 1});
+
+      winCluster.append('div').classed('title', true).text('\u2756 Apply Clustering Algorithm');
+
+      var toolbar = winCluster.append('div').classed('toolbar', true);
+      toolbar.append('i').attr('class', 'fa fa-close').on('click', function(d) {
+        winCluster.transition().duration(200).style('opacity', 0).remove();
+      });
+
+      var body = winCluster.append('div').classed('body', true);
+      body.transition().duration(200).style({
+        width: String(windowWidth) + 'px'
+        //height: String(windowHeight) + 'px'
         });
 
-      console.log(winCluster);
-      winCluster.append('title').text('Test');
+      var row = body.append('div').classed('method', true);
+      var row2 = body.append('div').classed('method', true);
 
+      var button = row.append('button').text('k-means');
+      row.append('input').attr({
+        class: 'k-number',
+        type: 'number',
+        min: '2',
+        max: '10',
+        value: '2'
+      });
+
+      var button2 = row2.append('button').text('affinity');
+      row2.append('input').attr({
+        class: 'aff-number',
+        type: 'number',
+        min: '2',
+        max: '10',
+        value: '2'
+      });
+
+      var that = this;
+
+      button.on('mouseup', function(d) {
+        var inputElem = $(row.node()).find('input');
+        var k = parseInt($(inputElem).val());
+
+        stratomex.clusterData(rowData, 'kmeans', k);
+      });
+
+      //winCluster.on('mouseout', function(d)
+      //{
+      //  this.remove();
+      //});
     }
 
     var lineupOrlyData = lineupModule.createData(document.getElementById('tab_orlydata'),
