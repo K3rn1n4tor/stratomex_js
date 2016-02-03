@@ -194,7 +194,7 @@ class StratomeX extends views.AView {
 
       var that = this;
 
-      response.then(function (result)
+      response.then( (result: any) =>
       {
         var clusterLabels = result.clusterLabels;
         var clusterDists = result.clusterDistances;
@@ -205,6 +205,15 @@ class StratomeX extends views.AView {
         {
           newLabels = newLabels.concat(clusterLabels[i]);
         }
+
+        // this is only a test
+        //var labeldesc = { labels: clusterLabels[0] };
+        //var request = { group: JSON.stringify(labeldesc) };
+        //var resp = ajax.send('/api/gene_clustering/distances/' + data.desc.id, request, 'post');
+
+        console.log(clusterLabels, clusterDists);
+
+        resp.then((result: any) => { console.log(result); });
 
 
         // first from groups
