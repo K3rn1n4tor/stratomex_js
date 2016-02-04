@@ -168,7 +168,7 @@ class StratomeX extends views.AView {
       // TODO
     }
     else if (method === 'affinity') {
-      // TODO
+      this.applyAffinity(data)
     }
     else {
       // TODO
@@ -205,15 +205,6 @@ class StratomeX extends views.AView {
         {
           newLabels = newLabels.concat(clusterLabels[i]);
         }
-
-        // this is only a test
-        //var labeldesc = { labels: clusterLabels[0] };
-        //var request = { group: JSON.stringify(labeldesc) };
-        //var resp = ajax.send('/api/gene_clustering/distances/' + data.desc.id, request, 'post');
-
-        //console.log(clusterLabels, clusterDists);
-
-        //resp.then((result: any) => { console.log(result); });
 
 
         // first from groups
@@ -270,30 +261,101 @@ class StratomeX extends views.AView {
           var strati : stratification.IStratification;
 
           strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
-          //
-          //// create new data containg the distances of the genes to their clusters
-          ////var distVec = <any>[];
-          //for (var i = 0; i < k; ++i)
-          //{
-          //  var distances = clusterDists[i];
-          //  var rangeDist = [Math.min.apply(null, distances), Math.max.apply(null, distances)];
-          //
-          //  var descVec =
-          //  {
-          //    id: dataID + 'KMeans' + String(k) + 'Distances' + String(i),
-          //    fqname: 'none',
-          //    name: dataName + '/K-Means_' + String(k) + '_Distances_' + String(i),
-          //    type: 'vector',
-          //    size: distances.length,
-          //    value: {type: 'real', range: rangeDist},
-          //    idtype: 'patient'
-          //  };
-          //
-          //  var distVec = vector_impl.wrap(descVec, rows, rowIds, distances);
-          //  var labelVec = clusterLabels[i];
-          //  var newIndex = that._columns.length;
-          //  that.addClusterDistances(i, newIndex, distVec , labelVec);
-          //}
+
+          // add new clustered data with its stratification to StratomeX
+          that.addOrlyData(strati, data, null);
+        });
+      });
+    });
+  }
+
+   /**
+   * apply k-Means clustering algorithm to data
+   * @param data: genomic data
+   * @param k: number of desired clusters
+     */
+  private applyAffinity(data: datatypes.IDataType)
+  {
+    const dataFQ = data.desc.fqname;
+    const dataID = data.desc.id;
+    const dataName = data.desc.name;
+
+    (<any>data).data().then((d: any) =>
+    {
+
+      // TODO! figure out what the difference between APIData and APIJson is
+      var response = ajax.getAPIJSON('/gene_clustering/affinity/' + dataID, {});
+
+      var that = this;
+
+      response.then( (result: any) =>
+      {
+        var clusterLabels = result.clusterLabels;
+        var numClusters = result.centroids.length;
+        //var clusterDists = result.clusterDistances;
+
+        // sort data
+        var newLabels: number[] = [];
+        for (var i = 0; i < clusterLabels.length; ++i)
+        {
+          newLabels = newLabels.concat(clusterLabels[i]);
+        }
+
+
+        // first from groups
+        var groups = <any>[];
+        var groupsDesc = <any>[];
+        var clusterRanges = <any>[];
+
+        // sort groups in ascending order
+        function compareCluster(a, b)
+        {
+          return (a.length < b.length) ? -1 : (a.length > b.length) ? 1 : 0;
+        }
+
+        clusterLabels = clusterLabels.sort(compareCluster);
+        //clusterDists = clusterDists.sort(compareCluster);
+
+        for (var i = 0; i < numClusters; ++i)
+        {
+          clusterRanges.push(ranges.parse(clusterLabels[i]));
+          groups.push(new ranges.Range1DGroup('Group ' + String(i) + '(Affinity)',
+            'red', clusterRanges[i].dim(0)));
+          groupsDesc.push({name: String(i), size: clusterLabels[i].length});
+        }
+
+        var compositeRange = ranges.composite(dataName + 'cluster', groups);
+        //var clusterRange = ranges.parse(<any>compositeRange);
+
+        // create new stratification with description
+
+        var descStrati =
+        {
+          id: dataID + 'Affinity',
+          fqname: 'none',
+          name: dataName + '/Affinity',
+          origin: dataFQ,
+          size: (<any>data).dim[0],
+          ngroups: numClusters,
+          type: 'stratification',
+          groups: groupsDesc, // TODO: use this as desc
+          idtype: 'patient', // TODO: figure out what idtypes are important for
+          ws: 'random' // TODO: figure out what this parameter is
+        };
+
+        //debug = data;
+        //console.log('data: ', data, desc);
+
+        Promise.all([(<any>data).rows(), (<any>data).rowIds()]).then((args) =>
+        {
+          // obtain the rows and rowIDs of the data
+          var rows = args[0];
+          var rowIds = args[1];
+
+          // create a new startification of the data
+          var strati : stratification.IStratification;
+
+          strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
 
           // add new clustered data with its stratification to StratomeX
           that.addOrlyData(strati, data, null);
