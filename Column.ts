@@ -24,6 +24,7 @@ import vis = require('../caleydo_core/vis');
 
 // my own libraries
 import clusterDivider = require('../gene_vis/clusterdivider');
+import boxSlider = require('../gene_vis/boxslider');
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Column utility functions
@@ -1047,10 +1048,18 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
           var labels = distanceData.labels;
           var dividerWidth = this.options.statsWidth - this.options.padding * 2;
 
-          var divider = clusterDivider.createFromArray(distances, labels, data, <Element>$body.node(), {
-            bins: 10,
-            scaleTo: [dividerWidth, 60],
-            barOffsetRatio: 0.10
+          //var divider = clusterDivider.createFromArray(distances, labels, data, <Element>$body.node(), {
+          //  bins: 10,
+          //  scaleTo: [dividerWidth, 60],
+          //  barOffsetRatio: 0.10
+          //});
+
+          this.options.statsWidth = 60;
+          var clusterGrid = $(this.$parent.node()).find('div.gridrow')[cluster];
+          var height = $(clusterGrid).height() - 18 - 10 - 2 * this.options.padding;
+
+          var divider = boxSlider.createRaw(distances, <Element>$body.node(), {
+            scaleTo: [this.options.statsWidth - this.options.padding * 2, height]
           });
 
           this.statsViews[cluster] =
@@ -1264,30 +1273,31 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       if (statsView.visible == false) { continue; }
 
       var clusterGrid = $(this.$parent.node()).find('div.gridrow')[j];
-      var clusterPosY = $(clusterGrid).position().top + 12;
+      var clusterPosY = $(clusterGrid).position().top;
+      var clusterHeight = $(clusterGrid).height() - 10;
 
-      if (j > 0 && this.statsViews[j - 1] != null)
-      {
-        var previousNode = this.statsViews[j - 1].$node;
-        if (previousNode != null)
-        {
-          var $prevNode = $(previousNode.node());
-          var previousPosY = (this.statsViews[j - 1].visible == true) ? $prevNode.position().top : 0;
-          var distPosY = clusterPosY - previousPosY;
-
-          var statsHeight = 60 + 22;
-
-          if (distPosY < statsHeight)
-          {
-            clusterPosY += (statsHeight - distPosY + 6);
-          }
-        }
-      }
+      //if (j > 0 && this.statsViews[j - 1] != null)
+      //{
+      //  var previousNode = this.statsViews[j - 1].$node;
+      //  if (previousNode != null)
+      //  {
+      //    var $prevNode = $(previousNode.node());
+      //    var previousPosY = (this.statsViews[j - 1].visible == true) ? $prevNode.position().top : 0;
+      //    var distPosY = clusterPosY - previousPosY;
+      //
+      //    var statsHeight = 60 + 22;
+      //
+      //    if (distPosY < statsHeight)
+      //    {
+      //      clusterPosY += (statsHeight - distPosY + 6);
+      //    }
+      //  }
+      //}
 
       this.$summary.style('width', size.x + 'px');
       statsView.$node.style({
         width: this.options.statsWidth + 'px',
-        height: statsHeight + 'px',
+        height: clusterHeight + 'px',
         top: clusterPosY + 'px',
         left: (size.x + this.options.padding * 2) + 'px'
       });
