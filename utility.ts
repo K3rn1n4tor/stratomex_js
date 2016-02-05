@@ -39,7 +39,7 @@ export class ClusterPopup
   {
     this.options = C.mixin(
       {
-        width: 450,
+        width: 420,
         animationTime: 200,
         'kmeans':
         {
