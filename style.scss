@@ -116,9 +116,11 @@ div.clusterPopup
       display: flex;
       flex: 1 1 20px;
       flex-flow: row;
-      justify-content: space-around;
+      justify-content: space-between;
       align-items: center;
       min-height: 35px;
+      padding-left: 10px;
+      padding-right: 10px;
 
       > button
       {
@@ -136,12 +138,21 @@ div.clusterPopup
         font-weight: bold;
       }
 
-      > input[type='number']
+      > input, select
       {
         text-align: center;
         border: 1px solid $exploration-stage;
         border-radius: 4px;
         background-color: $header-menu-bg-color;
+        min-width: 100px;
+        min-height: 24px;
+      }
+
+      > input[type=number]
+      {
+        margin-left: 12.5px;
+        margin-right: 12.5px;
+        min-width: 75px;
       }
     }
   }

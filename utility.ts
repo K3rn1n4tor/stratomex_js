@@ -39,7 +39,7 @@ export class ClusterPopup
   {
     this.options = C.mixin(
       {
-        width: 200,
+        width: 450,
         animationTime: 200,
         'kmeans':
         {
@@ -47,7 +47,8 @@ export class ClusterPopup
         },
         'affinity':
         {
-          range: [0, 10]
+          rangeDamping: [0.5, 1],
+          rangeFactor: [0.2, 5]
         }
       }, options);
     this.$node = this._build(d3.select(parent), rowID);
@@ -116,9 +117,16 @@ export class ClusterPopup
     var rowKMeans = $body.append('div').classed('method', true);
     var buttonKMeans = rowKMeans.append('button').text('k-Means');
     var inputKMeans = rowKMeans.append('input').attr({
-      class: 'k-number', type: 'number', min: this.options.kmeans.range[0], max: this.options.kmeans.range[1],
-      value: this.options.kmeans.range[0]
+      class: 'k-number', type: 'number',
+      min: this.options.kmeans.range[0], max: this.options.kmeans.range[1],
+      value: this.options.kmeans.range[0], step: 1, title: "Number of Clusters"
     });
+
+    var initMethods = ['forgy', 'uniform', 'random', 'kmeans++'];
+    var selectKMeans = rowKMeans.append('select').attr({ title: 'Initialization Method' });
+    var optionsKMeans = selectKMeans.selectAll('option').data(initMethods).enter().append('option')
+      .text( (d: string) => { return d });
+    $(optionsKMeans.node()).val(initMethods[3]);
 
     buttonKMeans.on('mouseup', (_ : any) => {
       var $input = $(rowKMeans.node()).find('input');
@@ -130,16 +138,28 @@ export class ClusterPopup
     // create affinity row
     var rowAffinity = $body.append('div').classed('method', true);
     var buttonAffinity = rowAffinity.append('button').text('Affinity');
-    var inputAffinity = rowAffinity.append('input').attr({
-      class: 'aff-number', type: 'number', min: this.options.affinity.range[0], max: this.options.affinity.range[1],
-      value: this.options.affinity.range[0]
+    var inputDamping = rowAffinity.append('input').attr({
+      class: 'aff-number', type: 'number', name: 'damping',
+      min: this.options.affinity.rangeDamping[0], max: this.options.affinity.rangeDamping[1],
+      value: 0.5, step: 0.05, title: "Damping Value"
+    });
+    var inputFactor = rowAffinity.append('input').attr({
+      class: 'aff-number', type: 'number', name: 'factor',
+      min: this.options.affinity.rangeFactor[0], max: this.options.affinity.rangeFactor[1],
+      value: 1.0, step: 0.05, title: "Factor Value"
     });
 
-    buttonAffinity.on('mouseup', (_ : any) => {
-      var $input = $(rowAffinity.node()).find('input');
-      const aff = parseFloat($($input).val());
+    var initMethods = ['median', 'minimum'];
+    var selectAffinity = rowAffinity.append('select').attr({ title: 'Initial Preference' });
+    var optionsAffinity = selectAffinity.selectAll('option').data(initMethods).enter().append('option')
+      .text( (d: string) => { return d });
+    $(optionsKMeans.node()).val(initMethods[0]);
 
-      this.stratomex.clusterData(that.data, 'affinity', aff);
+    buttonAffinity.on('mouseup', (_ : any) => {
+      var $inputDamping = $(rowAffinity.node()).find("input[name='damping']");
+      const affDamping = parseFloat($($inputDamping).val());
+
+      this.stratomex.clusterData(that.data, 'affinity', affDamping);
     });
 
     return $root;
