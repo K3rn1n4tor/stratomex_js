@@ -932,8 +932,17 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       zoom: new behaviors.ZoomBehavior(<Element>$elem.node(), multi, multi.asMetaData),
       cluster: cluster
     };
-    this.$parent.style('width', this.options.width + this.options.detailWidth + 'px');
-    this.$layoutHelper.style('width', this.options.width + this.options.detailWidth + 'px');
+
+    var width = this.options.width + this.options.detailWidth;
+    var tempWidth = 200;
+    if (this.statsViews.some( (d : any) => { return d.visible == true; } ))
+    {
+      width += tempWidth;
+    }
+
+
+    this.$parent.style('width', width + 'px');
+    this.$layoutHelper.style('width', width + 'px');
     $elem.transition().duration(animationTime(within)).style('opacity', 1);
     return this.stratomex.relayout(within);
   }
@@ -948,8 +957,16 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     this.detail.$node.transition().duration(animationTime(within)).style('opacity', 0).remove();
 
     this.detail = null;
-    this.$parent.style('width', this.options.width + 'px');
-    this.$layoutHelper.style('width', this.options.width + 'px');
+
+    var width = this.options.width;
+    var tempWidth = 200;
+    if (this.statsViews.some( (d : any) => { return d.visible == true; } ))
+    {
+      width += tempWidth;
+    }
+
+    this.$parent.style('width', width + 'px');
+    this.$layoutHelper.style('width', width + 'px');
     return this.stratomex.relayout(within);
   }
 
@@ -962,8 +979,11 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     if (statsView != null)
     {
       var tempStatsWidth = 200;
-      this.$parent.style('width', this.options.width + tempStatsWidth + 'px');
-      this.$layoutHelper.style('width', this.options.width + tempStatsWidth + 'px');
+      var layoutWidth = tempStatsWidth + this.options.width;
+      if (this.detail) { layoutWidth += this.options.detailWidth; }
+
+      this.$parent.style('width', layoutWidth + 'px');
+      this.$layoutHelper.style('width', layoutWidth + 'px');
       statsView.$node.transition().duration(animationTime(within)).style('opacity', 1);
       statsView.visible = true;
 
@@ -1045,8 +1065,11 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
           };
 
           var tempStatsWidth = 200;
-          this.$parent.style('width', this.options.width + tempStatsWidth + 'px');
-          this.$layoutHelper.style('width', this.options.width + tempStatsWidth + 'px');
+          var layoutWidth = tempStatsWidth + this.options.width;
+          if (this.detail) { layoutWidth += this.options.detailWidth; }
+
+          this.$parent.style('width', layoutWidth + 'px');
+          this.$layoutHelper.style('width', layoutWidth + 'px');
           $elem.transition().duration(animationTime(within)).style('opacity', 1);
 
           return this.stratomex.relayout(within);
@@ -1071,6 +1094,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     {
       layoutWidth += tempWidth;
     }
+
+    if (this.detail) { layoutWidth += this.options.detailWidth; }
 
     this.$parent.style('width', layoutWidth + 'px');
     this.$layoutHelper.style('width', layoutWidth + 'px');
@@ -1108,16 +1133,18 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     {
       var dataClusters = <ranges.CompositeRange1D>this.range.dim(0);
       var clusterName = dataClusters.groups[cluster].name;
+      var numClusters = dataClusters.groups.length;
 
-      var r = clusterName.search('K-Means_');
+      var rStart = clusterName.search(/\(/);
+      var rEnd = clusterName.search(/\)/);
 
-      var groupName = (r == -1) ? clusterName : clusterName.slice(0, r - 1);
-      var k = parseInt(clusterName[r + 8]);
-      var method = clusterName.slice(r, r + 9);
+      var groupName = (rStart == -1) ? clusterName : clusterName.slice(0, rStart);
+      var method = clusterName.slice(rStart, rEnd);
 
+      // obtain subranges from cluster divider
       var subRanges = (<clusterDivider.ClusterDivider>divider).getDivisionRanges();
+
       var rangeGroups = [];
-      //console.log(subRanges);
       var groups = [];
       var groupsDesc = [];
       var stratiSize = 0;
@@ -1137,14 +1164,10 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
       var descStrati =
       {
-        id: dataID + 'KMeans' + String(k) + 'Division' + String(cluster),
-        fqname: 'none',
-        name: dataName + '/K-Means_' + String(k) + '_Division_' + String(cluster),
-        origin: dataFQ,
-        size: stratiSize,
-        ngroups: 3, // number of division / ranges of clusterDivider
-        type: 'stratification',
-        groups: groupsDesc, // TODO: use this as desc
+        id: dataID + method + String(numClusters) + 'Division' + String(cluster),
+        fqname: 'none', name: dataName + '/' + method + '_' + String(numClusters) + '_Division_' + String(cluster),
+        origin: dataFQ, size: stratiSize, ngroups: 3,
+        type: 'stratification', groups: groupsDesc, // TODO: use this as desc
         idtype: 'patient', // TODO: figure out what idtypes are important for
         ws: 'random' // TODO: figure out what this parameter is
       };
@@ -1328,10 +1351,6 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       });
     });
 
-
-    //center the toolbar
-    //var w = (18 * (1 + this.grid.visses.length));
-    //this.$toolbar.style('left', ((size.x - w) / 2) + 'px');
   }
 
   // -------------------------------------------------------------------------------------------------------------------
