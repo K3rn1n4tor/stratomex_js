@@ -60,12 +60,33 @@ main {
   flex-flow: column;
 }
 
+@keyframes opacityAnimIn
+{
+  from { opacity: 0.5; }
+  to { opacity: 1.0; }
+}
+
+@keyframes opacityAnimOut
+{
+  from { opacity: 1.0; }
+  to { opacity: 0.5; }
+}
+
+div.clusterPopup:hover
+{
+  animation: opacityAnimIn 200ms forwards;
+  -webkit-animation: opacityAnimIn 200ms forwards;
+}
+
 div.clusterPopup
 {
   position: absolute !important;
   background-color: white;
   border: 2px solid $exploration-stage;
   border-radius: 4px;
+
+  animation: opacityAnimOut 200ms forwards;
+  -webkit-animation: opacityAnimOut 200ms forwards;
 
   div.title
   {

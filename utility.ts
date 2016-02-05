@@ -15,7 +15,7 @@ import matrix = require('../caleydo_core/matrix');
 // class definition
 
 /**
- * Implemenation of a simple popup to select a cluster algorithm applied to any matrix with
+ * Implementation of a simple popup to select a cluster algorithm applied to any matrix with
  * corresponding parameter settings.
  */
 export class ClusterPopup
@@ -26,13 +26,14 @@ export class ClusterPopup
   // -------------------------------------------------------------------------------------------------------------------
 
   /**
-   *
-   * @param data
-   * @param parent
-   * @param stratomex
-   * @param rowID
-     * @param options
-     */
+   * Creates a new popup window that contains controls and buttons for all supported clustering algorithms in
+   * StratomeX.
+   * @param data genomic data / matrix
+   * @param parent parent node
+   * @param stratomex application
+   * @param rowID index of row
+   * @param options options for algorithms
+   */
   constructor(private data: datatypes.IDataType, private parent: Element,
               private stratomex : any, rowID : number,
               private options: any)
@@ -43,12 +44,16 @@ export class ClusterPopup
         animationTime: 200,
         'kmeans':
         {
-          range: [2, 10]
+          range: [2, 20, 2],
+          inits: ['forgy', 'uniform', 'random', 'kmeans++'], // initialization method for k-means
+          initSelect: 3
         },
         'affinity':
         {
-          rangeDamping: [0.5, 1],
-          rangeFactor: [0.2, 5]
+          rangeDamping: [0, 1, 0.5], // damping avoids oscillations of algorithm [min, max, value]
+          rangeFactor: [0.1, 10, 1.0], // influences the preference value (influences number of clusters)
+          prefs: ['median', 'minimum'], // median produces moderate number, minimum a small number of clusters
+          prefSelect: 1
         }
       }, options);
     this.$node = this._build(d3.select(parent), rowID);
@@ -57,7 +62,7 @@ export class ClusterPopup
   // -------------------------------------------------------------------------------------------------------------------
 
   /**
-   *
+   * Returns the html node.
    * @returns {d3.Selection<any>}
      */
   get node()
@@ -68,7 +73,7 @@ export class ClusterPopup
   // -------------------------------------------------------------------------------------------------------------------
 
   /**
-   *
+   * Build the layout.
    * @param $parent
    * @param rowID
    * @returns {Selection<any>}
@@ -99,7 +104,7 @@ export class ClusterPopup
     });
 
     // start animation of popup
-    $root.transition().duration(this.options.animationTime).style('opacity', 1);
+    $root.transition().duration(this.options.animationTime).style('opacity', 0.5);
 
     // create title
     $root.append('div').classed('title', true).text('\u2756 Apply Clustering Algorithm');
@@ -114,28 +119,51 @@ export class ClusterPopup
     $body.transition().duration(this.options.animationTime).style('width', String(this.options.width) + 'px');
 
     // create k-means row
+    this._buildKMeansRow($body);
+
+    // create affinity row
+    this._buildAffinityRow($body);
+
+    return $root;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  private _buildKMeansRow($body: d3.Selection<any>)
+  {
+    var that = this;
+
     var rowKMeans = $body.append('div').classed('method', true);
     var buttonKMeans = rowKMeans.append('button').text('k-Means');
     var inputKMeans = rowKMeans.append('input').attr({
       class: 'k-number', type: 'number',
       min: this.options.kmeans.range[0], max: this.options.kmeans.range[1],
-      value: this.options.kmeans.range[0], step: 1, title: "Number of Clusters"
+      value: this.options.kmeans.range[2], step: 1, title: "Number of Clusters"
     });
 
-    var initMethods = ['forgy', 'uniform', 'random', 'kmeans++'];
     var selectKMeans = rowKMeans.append('select').attr({ title: 'Initialization Method' });
-    var optionsKMeans = selectKMeans.selectAll('option').data(initMethods).enter().append('option')
+    selectKMeans.selectAll('option').data(this.options.kmeans.inits)
+      .enter().append('option').attr('value', (d: any) => { return d; })
       .text( (d: string) => { return d });
-    $(optionsKMeans.node()).val(initMethods[3]);
+
+    selectKMeans.property('value', this.options.kmeans.inits[this.options.kmeans.initSelect]);
 
     buttonKMeans.on('mouseup', (_ : any) => {
-      var $input = $(rowKMeans.node()).find('input');
-      const k = parseInt($($input).val());
+      var input = $(rowKMeans.node()).find('input');
+      var select = $(rowKMeans.node()).find('select');
+      const k = parseInt($(input).val());
+      const initMethod = $(select).val();
 
-      this.stratomex.clusterData(that.data, 'k-means', k);
+      that.stratomex.clusterData(that.data, 'k-means', [k, initMethod]);
     });
+  }
 
-    // create affinity row
+  // -------------------------------------------------------------------------------------------------------------------
+
+  private _buildAffinityRow($body: d3.Selection<any>)
+  {
+    var that = this;
+
     var rowAffinity = $body.append('div').classed('method', true);
     var buttonAffinity = rowAffinity.append('button').text('Affinity');
     var inputDamping = rowAffinity.append('input').attr({
@@ -146,29 +174,34 @@ export class ClusterPopup
     var inputFactor = rowAffinity.append('input').attr({
       class: 'aff-number', type: 'number', name: 'factor',
       min: this.options.affinity.rangeFactor[0], max: this.options.affinity.rangeFactor[1],
-      value: 1.0, step: 0.05, title: "Factor Value"
+      value: this.options.affinity.rangeFactor[2], step: 0.05, title: "Factor Value"
     });
 
-    var initMethods = ['median', 'minimum'];
     var selectAffinity = rowAffinity.append('select').attr({ title: 'Initial Preference' });
-    var optionsAffinity = selectAffinity.selectAll('option').data(initMethods).enter().append('option')
+    selectAffinity.selectAll('option').data(this.options.affinity.prefs)
+      .enter().append('option').attr('value', (d: any) => { return d; })
       .text( (d: string) => { return d });
-    $(optionsKMeans.node()).val(initMethods[0]);
 
-    buttonAffinity.on('mouseup', (_ : any) => {
-      var $inputDamping = $(rowAffinity.node()).find("input[name='damping']");
-      const affDamping = parseFloat($($inputDamping).val());
+    selectAffinity.property('value', this.options.affinity.prefs[this.options.affinity.prefSelect]);
 
-      this.stratomex.clusterData(that.data, 'affinity', affDamping);
+    buttonAffinity.on('mouseup', (_ : any) =>
+    {
+      var inputDamping = $(rowAffinity.node()).find("input[name='damping']");
+      var inputFactor = $(rowAffinity.node()).find("input[name='factor']");
+      var inputSelect = $(rowAffinity.node()).find("select");
+
+      const affDamping = parseFloat($(inputDamping).val());
+      const affFactor = parseFloat($(inputFactor).val());
+      const affPref = $(inputSelect).val();
+
+      that.stratomex.clusterData(that.data, 'affinity', [affDamping, affFactor, affPref]);
     });
-
-    return $root;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
 
   /**
-   *
+   * Destroys the node and all its children.
    */
   destroy()
   {

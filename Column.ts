@@ -506,6 +506,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     summaryHeight: 90,
     width: 180,
     detailWidth: 500,
+    statsWidth: 200,
     padding: 2,
     name: null
   };
@@ -934,10 +935,9 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     };
 
     var width = this.options.width + this.options.detailWidth;
-    var tempWidth = 200;
     if (this.statsViews.some( (d : any) => { return d.visible == true; } ))
     {
-      width += tempWidth;
+      width += this.options.statsWidth;
     }
 
 
@@ -959,10 +959,9 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     this.detail = null;
 
     var width = this.options.width;
-    var tempWidth = 200;
     if (this.statsViews.some( (d : any) => { return d.visible == true; } ))
     {
-      width += tempWidth;
+      width += this.options.statsWidth;
     }
 
     this.$parent.style('width', width + 'px');
@@ -978,8 +977,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     if (statsView != null)
     {
-      var tempStatsWidth = 200;
-      var layoutWidth = tempStatsWidth + this.options.width;
+      var layoutWidth = this.options.statsWidth + this.options.width;
       if (this.detail) { layoutWidth += this.options.detailWidth; }
 
       this.$parent.style('width', layoutWidth + 'px');
@@ -1047,11 +1045,11 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
           var distances = distanceData.distances;
           var labels = distanceData.labels;
-          var tempWidth = 196;
+          var dividerWidth = this.options.statsWidth - this.options.padding * 2;
 
           var divider = clusterDivider.createFromArray(distances, labels, data, <Element>$body.node(), {
             bins: 10,
-            scaleTo: [tempWidth, 60],
+            scaleTo: [dividerWidth, 60],
             barOffsetRatio: 0.10
           });
 
@@ -1064,8 +1062,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
             column: null
           };
 
-          var tempStatsWidth = 200;
-          var layoutWidth = tempStatsWidth + this.options.width;
+          var layoutWidth = this.options.statsWidth + this.options.width;
           if (this.detail) { layoutWidth += this.options.detailWidth; }
 
           this.$parent.style('width', layoutWidth + 'px');
@@ -1088,11 +1085,10 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     statsView.$node.transition().duration(animationTime(within)).style('opacity', 0); //.remove();
 
     var layoutWidth = this.options.width;
-    var tempWidth = 200;
 
     if (this.statsViews.some( (d : any) => { return d.visible == true; } ))
     {
-      layoutWidth += tempWidth;
+      layoutWidth += this.options.statsWidth;
     }
 
     if (this.detail) { layoutWidth += this.options.detailWidth; }
@@ -1215,7 +1211,6 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     // -----------------------------------------------------------------------------------------------------------------
     // Resize if detail is shown
 
-    //console.log('current sise-x:', size.x);
 
     if (this.detail)
     {
@@ -1237,11 +1232,10 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     // Resize if statistics are shown
 
     var numGroups = (<any>this.range.dims[0]).groups.length;
-    var tempWidth = 200;
 
     if (this.statsViews.some( (d : any) => { return d.visible == true; } ))
     {
-      size.x -= tempWidth;
+      size.x -= this.options.statsWidth;
     }
 
     // check if any column was removed and update active divisions
@@ -1281,19 +1275,19 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
           var previousPosY = (this.statsViews[j - 1].visible == true) ? $prevNode.position().top : 0;
           var distPosY = clusterPosY - previousPosY;
 
-          var tempStatsHeight = 60 + 22;
+          var statsHeight = 60 + 22;
 
-          if (distPosY < tempStatsHeight)
+          if (distPosY < statsHeight)
           {
-            clusterPosY += (tempStatsHeight - distPosY + 6);
+            clusterPosY += (statsHeight - distPosY + 6);
           }
         }
       }
 
       this.$summary.style('width', size.x + 'px');
       statsView.$node.style({
-        width: tempWidth + 'px',
-        height: tempStatsHeight + 'px',
+        width: this.options.statsWidth + 'px',
+        height: statsHeight + 'px',
         top: clusterPosY + 'px',
         left: (size.x + this.options.padding * 2) + 'px'
       });

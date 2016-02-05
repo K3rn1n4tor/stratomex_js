@@ -158,7 +158,7 @@ class StratomeX extends views.AView {
    * @param method
    * @param arg
      */
-  clusterData(data: datatypes.IDataType, method: string, arg: any)
+  clusterData(data: datatypes.IDataType, method: string, args: any)
   {
     const dataID = data.desc.id;
     var that = this;
@@ -167,8 +167,11 @@ class StratomeX extends views.AView {
     {
       if (method === 'k-means')
       {
-        var k = String(arg);
-        var response = ajax.getAPIJSON('/gene_clustering/kmeans/' + k + '/' + dataID, {});
+        const k = String(args[0]);
+        const initMethod = args[1];
+
+        var argUrl = [k, initMethod, dataID].join('/');
+        var response = ajax.getAPIJSON('/gene_clustering/kmeans/' + argUrl, {});
 
         response.then( (result: any) =>
         {
@@ -177,7 +180,12 @@ class StratomeX extends views.AView {
       }
 
       else if (method === 'affinity') {
-        var response = ajax.getAPIJSON('/gene_clustering/affinity/' + dataID, {});
+        const damping = args[0];
+        const factor = args[1];
+        const pref = args[2];
+
+        var argUrl = [damping, factor, pref, dataID].join('/');
+        var response = ajax.getAPIJSON('/gene_clustering/affinity/' + argUrl, {});
 
         response.then( (result: any) =>
         {
@@ -185,7 +193,8 @@ class StratomeX extends views.AView {
         });
       }
 
-      else {
+      else
+      {
         // TODO! support more algorithms like hierarchical, ...
       }
     });
