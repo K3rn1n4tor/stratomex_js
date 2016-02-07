@@ -1054,7 +1054,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
           //  barOffsetRatio: 0.10
           //});
 
-          this.options.statsWidth = 60;
+          this.options.statsWidth = 100;
           var clusterGrid = $(this.$parent.node()).find('div.gridrow')[cluster];
           var height = $(clusterGrid).height() - 18 - 10 - 2 * this.options.padding;
 
