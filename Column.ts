@@ -751,6 +751,32 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     {
       that.range = ranges.parse(range.toString());
       that.createMultiGrid(that.range, that.data);
+
+      this.$parent.style('width', this.options.width + 'px');
+      this.$layoutHelper.style('width', this.options.width + 'px');
+
+      this.layouted();
+
+      // destroy current stats views
+      for (var i = 0; i < 3; ++i)
+      {
+        var statsView = that.statsViews[i];
+        that.statsViews[i] = null;
+        if (statsView != null)
+        {
+          statsView.divider.destroy();
+          statsView.$node.remove();
+          //that.hideStats(i, null);
+        }
+      }
+
+      //that.statsViews = [];
+
+      //this.$parent.style('width', this.options.width + 'px');
+      //this.$layoutHelper.style('width', this.options.width + 'px');
+
+      //this.layouted();
+
     });
   }
 
@@ -936,7 +962,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     };
 
     var width = this.options.width + this.options.detailWidth;
-    if (this.statsViews.some( (d : any) => { return d.visible == true; } ))
+    if (this.statsViews.some( (d : any) => { if (d == null) { return false; }  return d.visible == true; } ))
     {
       width += this.options.statsWidth;
     }
@@ -1021,69 +1047,55 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       g.push(createToggleStatsCmd(s, cluster, false));
     });
 
-    // try to find vector data
+    var labelList = (<any>this.range.dims[0]).groups[cluster].asList();
+    //console.log(labelList);
 
-    if (cluster >= 0)
+    // request cluster distance data from server
+    var request = { group: JSON.stringify({ labels: labelList }) };
+    var response = ajax.send('/api/gene_clustering/distances/' + this.data.desc.id, request, 'post');
+
+    return response.then( (distanceData: any) =>
     {
-      var r = clusterName.search('K-Means_');
+      if (distanceData === null) { return Promise.resolve([]); }
 
-      if (r)
+      var distances = distanceData.distances;
+      var labels = distanceData.labels;
+      var dividerWidth = this.options.statsWidth - this.options.padding * 2;
+
+      //var divider = clusterDivider.createFromArray(distances, labels, data, <Element>$body.node(), {
+      //  bins: 10,
+      //  scaleTo: [dividerWidth, 60],
+      //  barOffsetRatio: 0.10
+      //});
+
+      this.options.statsWidth = 100;
+      var clusterGrid = $(this.$parent.node()).find('div.gridrow')[cluster];
+      var height = $(clusterGrid).height() - 18 - 10 - 2 * this.options.padding;
+
+      var divider = boxSlider.createRaw(distances, <Element>$body.node(), {
+        scaleTo: [dividerWidth, height]
+      });
+      (<boxSlider.BoxSlider>divider).setLabels(labels);
+
+      this.statsViews[cluster] =
       {
-        var k = parseInt(clusterName[r + 8]);
-        var method = clusterName.slice(r, r + 9);
+        $node: $elem,
+        divider: divider,
+        cluster: cluster,
+        visible: true,
+        column: null,
+        zoom: new behaviors.ZoomLogic((<boxSlider.BoxSlider>divider), null)
+      };
 
-        //var distanceData = this.stratomex.findClusterDistancesByIndex(cluster, this.id);
-        var labelList = (<any>this.range.dims[0]).groups[cluster].asList();
-        //console.log(labelList);
+      var layoutWidth = this.options.statsWidth + this.options.width;
+      if (this.detail) { layoutWidth += this.options.detailWidth; }
 
-        // request cluster distance data from server
-        var request = { group: JSON.stringify({ labels: labelList }) };
-        var response = ajax.send('/api/gene_clustering/distances/' + this.data.desc.id, request, 'post');
+      this.$parent.style('width', layoutWidth + 'px');
+      this.$layoutHelper.style('width', layoutWidth + 'px');
+      $elem.transition().duration(animationTime(within)).style('opacity', 1);
 
-        return response.then( (distanceData: any) =>
-        {
-          if (distanceData === null) { return Promise.resolve([]); }
-
-          var distances = distanceData.distances;
-          var labels = distanceData.labels;
-          var dividerWidth = this.options.statsWidth - this.options.padding * 2;
-
-          //var divider = clusterDivider.createFromArray(distances, labels, data, <Element>$body.node(), {
-          //  bins: 10,
-          //  scaleTo: [dividerWidth, 60],
-          //  barOffsetRatio: 0.10
-          //});
-
-          this.options.statsWidth = 100;
-          var clusterGrid = $(this.$parent.node()).find('div.gridrow')[cluster];
-          var height = $(clusterGrid).height() - 18 - 10 - 2 * this.options.padding;
-
-          var divider = boxSlider.createRaw(distances, <Element>$body.node(), {
-            scaleTo: [this.options.statsWidth - this.options.padding * 2, height]
-          });
-
-          this.statsViews[cluster] =
-          {
-            $node: $elem,
-            divider: divider,
-            cluster: cluster,
-            visible: true,
-            column: null
-          };
-
-          var layoutWidth = this.options.statsWidth + this.options.width;
-          if (this.detail) { layoutWidth += this.options.detailWidth; }
-
-          this.$parent.style('width', layoutWidth + 'px');
-          this.$layoutHelper.style('width', layoutWidth + 'px');
-          $elem.transition().duration(animationTime(within)).style('opacity', 1);
-
-          return this.stratomex.relayout(within);
-        });
-      }
-    }
-
-
+      return this.stratomex.relayout(within);
+    });
   }
 
   hideStats(cluster, within)
@@ -1147,7 +1159,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       var method = clusterName.slice(rStart, rEnd);
 
       // obtain subranges from cluster divider
-      var subRanges = (<clusterDivider.ClusterDivider>divider).getDivisionRanges();
+      var subRanges = (<boxSlider.BoxSlider>divider).getDivisionRanges();
 
       var rangeGroups = [];
       var groups = [];
@@ -1242,7 +1254,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     var numGroups = (<any>this.range.dims[0]).groups.length;
 
-    if (this.statsViews.some( (d : any) => { return d.visible == true; } ))
+    if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return d.visible == true; } ))
     {
       size.x -= this.options.statsWidth;
     }
@@ -1264,74 +1276,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       }
     }
 
-    // go through all stats view and determine their position
-    for (var j = 0; j < numGroups; ++j)
-    {
-      var statsView = this.statsViews[j];
-
-      if (statsView == null) { continue; }
-      if (statsView.visible == false) { continue; }
-
-      var clusterGrid = $(this.$parent.node()).find('div.gridrow')[j];
-      var clusterPosY = $(clusterGrid).position().top;
-      var clusterHeight = $(clusterGrid).height() - 10;
-
-      //if (j > 0 && this.statsViews[j - 1] != null)
-      //{
-      //  var previousNode = this.statsViews[j - 1].$node;
-      //  if (previousNode != null)
-      //  {
-      //    var $prevNode = $(previousNode.node());
-      //    var previousPosY = (this.statsViews[j - 1].visible == true) ? $prevNode.position().top : 0;
-      //    var distPosY = clusterPosY - previousPosY;
-      //
-      //    var statsHeight = 60 + 22;
-      //
-      //    if (distPosY < statsHeight)
-      //    {
-      //      clusterPosY += (statsHeight - distPosY + 6);
-      //    }
-      //  }
-      //}
-
-      this.$summary.style('width', size.x + 'px');
-      statsView.$node.style({
-        width: this.options.statsWidth + 'px',
-        height: clusterHeight + 'px',
-        top: clusterPosY + 'px',
-        left: (size.x + this.options.padding * 2) + 'px'
-      });
-
-      if (this.connectSignal != null && this.connectSignal.cluster == j)
-      {
-        var that = this;
-
-        function refreshColumn(cluster, column : Column)
-        {
-          var statsView = that.statsViews[cluster];
-          //console.log('divider has changed:', statsView.divider.hasChanged());
-          if (statsView.divider.hasChanged())
-          {
-            that.showDivisions(cluster, column);
-          }
-        }
-
-        function onClickSlider(cluster, column)
-        {
-          return function(d) { return refreshColumn(cluster, column); }
-        }
-
-        var newColumn = this.stratomex.getLastColumn();
-        statsView.column = newColumn;
-
-        d3.select((<clusterDivider.ClusterDivider>statsView.divider).node)
-          .on('mouseup', onClickSlider(statsView.cluster, newColumn));
-
-        this.connectSignal = null;
-
-        this.activeDivision.push(newColumn);
-      }
-    }
+    // -----------------------------------------------------------------------------------------------------------------
+    // Resize rest of column
 
     this.summary.actLoader.then(() =>
     {
@@ -1353,6 +1299,61 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         left: shift[0],
         top: shift[1]
       });
+
+      // go through all stats view and determine their position
+      // resize cluster windows since their height should correspond to the heatmap height
+      for (var j = 0; j < numGroups; ++j)
+      {
+        var statsView = this.statsViews[j];
+
+        if (statsView == null) { continue; }
+        if (statsView.visible == false) { continue; }
+
+        var clusterGrid = $(this.$parent.node()).find('div.gridrow')[j];
+        var clusterPosY = $(clusterGrid).position().top;
+        var clusterHeight = $(clusterGrid).height() - 10;
+        var boxChartHeight = $(clusterGrid).height() - 18 - 10 - 2 * this.options.padding;
+
+        statsView.zoom.zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
+
+        this.$summary.style('width', size.x + 'px');
+        statsView.$node.style({
+          width: this.options.statsWidth + 'px',
+          height: clusterHeight + 'px',
+          top: clusterPosY + 'px',
+          left: (size.x + this.options.padding * 2) + 'px'
+        });
+
+        if (this.connectSignal != null && this.connectSignal.cluster == j)
+        {
+          var that = this;
+
+          function refreshColumn(cluster, column : Column)
+          {
+            var statsView = that.statsViews[cluster];
+            if (statsView.divider.hasChanged())
+            {
+              that.showDivisions(cluster, column);
+            }
+          }
+
+          function onClickSlider(cluster, column)
+          {
+            return function(d) { return refreshColumn(cluster, column); }
+          }
+
+          var newColumn = this.stratomex.getLastColumn();
+          statsView.column = newColumn;
+
+          d3.select((<clusterDivider.ClusterDivider>statsView.divider).node)
+            .on('mouseup', onClickSlider(statsView.cluster, newColumn));
+
+          this.connectSignal = null;
+
+          this.activeDivision.push(newColumn);
+        }
+      }
+
     });
 
   }
