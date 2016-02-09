@@ -756,27 +756,33 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       this.$parent.style('width', this.options.width + 'px');
       this.$layoutHelper.style('width', this.options.width + 'px');
 
-      this.layouted();
+      var promise = this.stratomex.relayout();
 
-      // destroy current stats views
-      for (var i = 0; i < 3; ++i)
+      promise.then((_: any) =>
       {
-        var statsView = that.statsViews[i];
-        that.statsViews[i] = null;
-        if (statsView != null)
+        var promises = [];
+        // destroy current stats views
+        for (var i = 0; i < 3; ++i)
         {
-          statsView.divider.destroy();
-          statsView.$node.remove();
-          //that.hideStats(i, null);
+          var statsView = that.statsViews[i];
+          that.statsViews[i] = null;
+          if (statsView != null)
+          {
+            statsView.divider.destroy();
+            statsView.$node.remove();
+            //that.hideStats(i, null);
+            if (statsView.visible)
+            {
+              promises.push(that.showStats(i));
+            }
+          }
         }
-      }
 
-      that.statsViews = [];
-
-      //this.$parent.style('width', this.options.width + 'px');
-      //this.$layoutHelper.style('width', this.options.width + 'px');
-
-      //this.layouted();
+        Promise.all(promises).then((_: any) =>
+        {
+          that.stratomex.relayout();
+        });
+      });
 
     });
   }
@@ -963,7 +969,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     };
 
     var width = this.options.width + this.options.detailWidth;
-    if (this.statsViews.some( (d : any) => { if (d == null) { return false; }  return d.visible == true; } ))
+    if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return d.visible == true; } ))
     {
       width += this.options.statsWidth;
     }
@@ -987,7 +993,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     this.detail = null;
 
     var width = this.options.width;
-    if (this.statsViews.some( (d : any) => { return d.visible == true; } ))
+    if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return d.visible == true; } ))
     {
       width += this.options.statsWidth;
     }
@@ -1134,7 +1140,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     var layoutWidth = this.options.width;
 
-    if (this.statsViews.some( (d : any) => { return d.visible == true; } ))
+    if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return d.visible == true; } ))
     {
       layoutWidth += this.options.statsWidth;
     }
