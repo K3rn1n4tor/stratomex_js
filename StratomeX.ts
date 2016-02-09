@@ -163,41 +163,41 @@ class StratomeX extends views.AView {
     const dataID = data.desc.id;
     var that = this;
 
-    (<any>data).data().then((_: any) =>
+    //(<any>data).data().then((_: any) =>
+    //{
+    if (method === 'k-means')
     {
-      if (method === 'k-means')
+      const k = String(args[0]);
+      const initMethod = args[1];
+
+      var argUrl = [k, initMethod, dataID].join('/');
+      var response = ajax.getAPIJSON('/gene_clustering/kmeans/' + argUrl, {});
+
+      response.then( (result: any) =>
       {
-        const k = String(args[0]);
-        const initMethod = args[1];
+        that.createClusterStratification(data, result,  'K-Means_' + k);
+      });
+    }
 
-        var argUrl = [k, initMethod, dataID].join('/');
-        var response = ajax.getAPIJSON('/gene_clustering/kmeans/' + argUrl, {});
+    else if (method === 'affinity') {
+      const damping = args[0];
+      const factor = args[1];
+      const pref = args[2];
 
-        response.then( (result: any) =>
-        {
-          that.createClusterStratification(data, result,  'K-Means_' + k);
-        });
-      }
+      var argUrl = [damping, factor, pref, dataID].join('/');
+      var response = ajax.getAPIJSON('/gene_clustering/affinity/' + argUrl, {});
 
-      else if (method === 'affinity') {
-        const damping = args[0];
-        const factor = args[1];
-        const pref = args[2];
-
-        var argUrl = [damping, factor, pref, dataID].join('/');
-        var response = ajax.getAPIJSON('/gene_clustering/affinity/' + argUrl, {});
-
-        response.then( (result: any) =>
-        {
-          that.createClusterStratification(data, result,  'Affinity');
-        });
-      }
-
-      else
+      response.then( (result: any) =>
       {
-        // TODO! support more algorithms like hierarchical, ...
-      }
-    });
+        that.createClusterStratification(data, result,  'Affinity');
+      });
+    }
+
+    else
+    {
+      // TODO! support more algorithms like hierarchical, ...
+    }
+    //});
   }
 
   // -------------------------------------------------------------------------------------------------------------------

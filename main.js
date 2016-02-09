@@ -55,6 +55,15 @@ define(function (require) {
     var datavalues;
     var stratomex = stratomeModule.create(document.getElementById('stratomex'), graph);
 
+    function openClusterMenu(row, parent)
+    {
+      var rowData = row._;
+      var rowID = row._id;
+
+      if (clusterPopupHelper != null) { clusterPopupHelper.destroy(); }
+      clusterPopupHelper = utility.createClusterPopup(rowData, parent, stratomex, rowID, {});
+    }
+
     // -----------------------------------------------------------------------------------------------------------------
 
     var lineup = lineupModule.create(document.getElementById('tab_stratifications'), function (rowStrat) {
@@ -88,25 +97,15 @@ define(function (require) {
     // methods called per data tab
 
     var lineupData = lineupModule.createData(document.getElementById('tab_data'),
-      function (vector) { stratomex.addDependentData(vector);}, null);
+      function (vector) { stratomex.addDependentData(vector); }, openClusterMenu);
 
     // -----------------------------------------------------------------------------------------------------------------
     // methods called per Orly's data tab
 
-    function openClusterMenu(row, parent)
-    {
-      var rowData = row._;
-      var rowID = row._id;
 
-      if (clusterPopupHelper != null) { clusterPopupHelper.destroy(); }
-      clusterPopupHelper = utility.createClusterPopup(rowData, parent, stratomex, rowID, {});
-    }
 
     var lineupOrlyData = lineupModule.createData(document.getElementById('tab_orlydata'),
-      function (vector)
-      {
-        stratomex.addDependentOrlyData(vector);
-      }, openClusterMenu);
+      function (vector) { stratomex.addDependentOrlyData(vector); }, openClusterMenu);
 
     // -----------------------------------------------------------------------------------------------------------------
 
@@ -204,6 +203,10 @@ define(function (require) {
           return false;
         }
 
+        if (!desc.fqname.startsWith('TCGA')) {
+          return false;
+        }
+
         if (desc.type === 'matrix' || desc.type === 'vector') {
           return desc.value.type === 'categorical';
         }
@@ -224,6 +227,10 @@ define(function (require) {
         var desc = d.desc;
 
         if (desc.fqname.startsWith('gene_cluster_viewer')) {
+          return false;
+        }
+
+        if (!desc.fqname.startsWith('TCGA')) {
           return false;
         }
 

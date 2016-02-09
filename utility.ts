@@ -85,7 +85,7 @@ export class ClusterPopup
 
     // find the current rows section in lineup
     var $rows = $($parent.node()).find('g.rows')[0];
-    var $currentRow = $($rows).find('g.row')[rowID];
+    var $currentRow = $($rows).find("g.row[data-index='" + String(rowID) + "']")[0];
     var $action = $($currentRow).find("tspan[title='cluster']")[0];
 
     // obtain current position of cluster button
