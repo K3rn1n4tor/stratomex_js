@@ -534,6 +534,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   private statsViews : any[] = [];
   private activeDivision : Column[] = [];
+  private distancesRange : [number, number] = null;
   public destroyed : boolean;
 
   private $layoutHelper:d3.Selection<any>;
@@ -770,7 +771,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         }
       }
 
-      //that.statsViews = [];
+      that.statsViews = [];
 
       //this.$parent.style('width', this.options.width + 'px');
       //this.$layoutHelper.style('width', this.options.width + 'px');
@@ -1015,7 +1016,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       return this.stratomex.relayout(within);
     }
 
-    var that = this;
+    const that = this;
 
     // obtain either full data (if cluster index < 0) or cluster data
     const data = cluster < 0 ? this.data : this.grid.getData(cluster);
@@ -1047,15 +1048,41 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       g.push(createToggleStatsCmd(s, cluster, false));
     });
 
+
+    var responses = [];
+    if (this.distancesRange == null)
+    {
+      var numGroups = (<any>this.range.dims[0]).groups.length;
+
+      for (var j = 0; j < numGroups; ++j)
+      {
+        var labelList = (<any>this.range.dims[0]).groups[j].asList();
+        var request = { group: JSON.stringify({ labels: labelList }) };
+        responses.push(ajax.send('/api/gene_clustering/distances/' + that.data.desc.id, request, 'post'));
+      }
+
+      Promise.all(responses).then((args: any) => {
+        var values = [];
+
+        for (var j = 0; j < numGroups; ++j)
+        {
+          values = values.concat(args[j].distances);
+        }
+
+        that.distancesRange = d3.extent(values);
+      });
+    }
+
     var labelList = (<any>this.range.dims[0]).groups[cluster].asList();
-    //console.log(labelList);
 
     // request cluster distance data from server
     var request = { group: JSON.stringify({ labels: labelList }) };
     var response = ajax.send('/api/gene_clustering/distances/' + this.data.desc.id, request, 'post');
 
-    return response.then( (distanceData: any) =>
+    return Promise.all(responses.concat(response)).then((args: any) =>
     {
+      var distanceData = args[responses.length];
+
       if (distanceData === null) { return Promise.resolve([]); }
 
       var distances = distanceData.distances;
@@ -1073,7 +1100,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       var height = $(clusterGrid).height() - 18 - 10 - 2 * this.options.padding;
 
       var divider = boxSlider.createRaw(distances, <Element>$body.node(), {
-        scaleTo: [dividerWidth, height]
+        scaleTo: [dividerWidth, height], range: that.distancesRange, numAvg: 7
       });
       (<boxSlider.BoxSlider>divider).setLabels(labels);
 
