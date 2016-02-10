@@ -777,11 +777,6 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
             }
           }
         }
-
-        Promise.all(promises).then((_: any) =>
-        {
-          that.stratomex.relayout();
-        });
       });
 
     });
@@ -1040,7 +1035,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     // create new cluster stats command
     $toolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
     {
-      this.showDivisions(cluster);
+      that.showDivisions(cluster);
       // stop propagation to disable further event triggering
       d3.event.stopPropagation();
     });
@@ -1084,6 +1079,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     // request cluster distance data from server
     var request = { group: JSON.stringify({ labels: labelList }) };
     var response = ajax.send('/api/gene_clustering/distances/' + this.data.desc.id, request, 'post');
+    console.log("Requested distances of data set:", this.data.desc.id);
 
     return Promise.all(responses.concat(response)).then((args: any) =>
     {
@@ -1234,7 +1230,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
         if (column === null)
         {
-          that.stratomex.addOrlyData(strati, data, null);
+          that.stratomex.addData(strati, data, null);
           that.connectSignal = { cluster: cluster };
 
         } else {
@@ -1355,6 +1351,34 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
           height: clusterHeight + 'px',
           top: clusterPosY + 'px',
           left: (size.x + this.options.padding * 2) + 'px'
+        });
+
+        // hack to update ribbons
+        //C.resolveIn(1000).then( () =>
+        Promise.resolve(statsView).then( (stats: any) =>
+        {
+          C.resolveIn(1000).then( () => {
+            var linkSVG = d3.select('.link-container svg');
+            //console.log(linkSVG);
+            var colID = this.id;
+            var nextID = stats.column.id;
+
+            var minID = Math.min(colID, nextID);
+            var maxID = Math.max(colID, nextID);
+
+            if (Math.abs(colID - nextID) != 1) { return; }
+
+            var idRequest = "g[data-id='" + String(minID) + '-' + String(maxID) +  "']";
+            //console.log(idRequest);
+            var bandsGroup = linkSVG.selectAll(idRequest);
+            //console.log(bandsGroup);
+            var bands = bandsGroup.selectAll('.rel-group');
+            //console.log(bands);
+            if (bands.length < 1) { return; }
+            d3.select(bands[0][0]).style('fill', 'darkgreen');
+            d3.select(bands[0][1]).style('fill', '#aa8800');
+            d3.select(bands[0][2]).style('fill', 'darkred');
+          });
         });
 
         if (this.connectSignal != null && this.connectSignal.cluster == j)

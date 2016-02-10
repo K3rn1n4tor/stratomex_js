@@ -160,8 +160,17 @@ class StratomeX extends views.AView {
      */
   clusterData(data: datatypes.IDataType, method: string, args: any)
   {
+    if (data.desc.type != 'matrix')
+    {
+      console.log('clustering of data only supported for matrices, by now.');
+      return;
+    }
+
     const dataID = data.desc.id;
+    console.log('Cluster data set:', dataID);
     var that = this;
+    var clusterResponse: Promise<any>;
+    var methodName = '';
 
     //(<any>data).data().then((_: any) =>
     //{
@@ -171,12 +180,8 @@ class StratomeX extends views.AView {
       const initMethod = args[1];
 
       var argUrl = [k, initMethod, dataID].join('/');
-      var response = ajax.getAPIJSON('/gene_clustering/kmeans/' + argUrl, {});
-
-      response.then( (result: any) =>
-      {
-        that.createClusterStratification(data, result,  'K-Means_' + k);
-      });
+      clusterResponse = ajax.getAPIJSON('/gene_clustering/kmeans/' + argUrl, {});
+      methodName = 'K-Means_' + String(k);
     }
 
     else if (method === 'affinity') {
@@ -185,18 +190,24 @@ class StratomeX extends views.AView {
       const pref = args[2];
 
       var argUrl = [damping, factor, pref, dataID].join('/');
-      var response = ajax.getAPIJSON('/gene_clustering/affinity/' + argUrl, {});
-
-      response.then( (result: any) =>
-      {
-        that.createClusterStratification(data, result,  'Affinity');
-      });
+      clusterResponse = ajax.getAPIJSON('/gene_clustering/affinity/' + argUrl, {});
+      methodName = 'Affinity';
     }
 
     else
     {
       // TODO! support more algorithms like hierarchical, ...
     }
+
+    clusterResponse.then( (result: any) =>
+    {
+      that.createClusterStratification(data, result, methodName);
+    }).catch( (e: any) =>
+    {
+      console.log('Could not apply clustering algorithm to data set:', dataID);
+      console.log('Error:', e);
+    });
+
     //});
   }
 
