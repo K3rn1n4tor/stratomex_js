@@ -1353,34 +1353,6 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
           left: (size.x + this.options.padding * 2) + 'px'
         });
 
-        // hack to update ribbons
-        //C.resolveIn(1000).then( () =>
-        Promise.resolve(statsView).then( (stats: any) =>
-        {
-          C.resolveIn(1000).then( () => {
-            var linkSVG = d3.select('.link-container svg');
-            //console.log(linkSVG);
-            var colID = this.id;
-            var nextID = stats.column.id;
-
-            var minID = Math.min(colID, nextID);
-            var maxID = Math.max(colID, nextID);
-
-            if (Math.abs(colID - nextID) != 1) { return; }
-
-            var idRequest = "g[data-id='" + String(minID) + '-' + String(maxID) +  "']";
-            //console.log(idRequest);
-            var bandsGroup = linkSVG.selectAll(idRequest);
-            //console.log(bandsGroup);
-            var bands = bandsGroup.selectAll('.rel-group');
-            //console.log(bands);
-            if (bands.length < 1) { return; }
-            d3.select(bands[0][0]).style('fill', 'darkgreen');
-            d3.select(bands[0][1]).style('fill', '#aa8800');
-            d3.select(bands[0][2]).style('fill', 'darkred');
-          });
-        });
-
         if (this.connectSignal != null && this.connectSignal.cluster == j)
         {
           var that = this;
@@ -1409,6 +1381,36 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
           this.activeDivision.push(newColumn);
         }
+
+        // hack to update ribbons
+        //C.resolveIn(1000).then( () =>
+        Promise.resolve(statsView).then( (stats: any) =>
+        {
+          C.resolveIn(1000).then( () => {
+            var linkSVG = d3.select('.link-container svg');
+            if (stats.column == null) { return; }
+
+            //console.log(linkSVG);
+            var colID = this.id;
+            var nextID = stats.column.id;
+
+            var minID = Math.min(colID, nextID);
+            var maxID = Math.max(colID, nextID);
+
+            if (Math.abs(colID - nextID) != 1) { return; }
+
+            var idRequest = "g[data-id='" + String(minID) + '-' + String(maxID) +  "']";
+            //console.log(idRequest);
+            var bandsGroup = linkSVG.selectAll(idRequest);
+            //console.log(bandsGroup);
+            var bands = bandsGroup.selectAll('.rel-group');
+            //console.log(bands);
+            if (bands.length < 1) { return; }
+            d3.select(bands[0][0]).style('fill', 'darkgreen');
+            d3.select(bands[0][1]).style('fill', '#aa8800');
+            d3.select(bands[0][2]).style('fill', 'darkred');
+          });
+        });
       }
 
     });
