@@ -1336,54 +1336,53 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         var statsView = this.statsViews[j];
 
         if (statsView == null) { continue; }
-        if (statsView.visible == false) { continue; }
-
-        var clusterGrid = $(this.$parent.node()).find('div.gridrow')[j];
-        var clusterPosY = $(clusterGrid).position().top;
-        var clusterHeight = $(clusterGrid).height() - 10;
-        var boxChartHeight = $(clusterGrid).height() - 18 - 10 - 2 * this.options.padding;
-
-        statsView.zoom.zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
-
-        this.$summary.style('width', size.x + 'px');
-        statsView.$node.style({
-          width: this.options.statsWidth + 'px',
-          height: clusterHeight + 'px',
-          top: clusterPosY + 'px',
-          left: (size.x + this.options.padding * 2) + 'px'
-        });
-
-        if (this.connectSignal != null && this.connectSignal.cluster == j)
+        if (statsView.visible == true)
         {
-          var that = this;
 
-          function refreshColumn(cluster, column : Column)
-          {
-            var statsView = that.statsViews[cluster];
-            if (statsView.divider.hasChanged())
-            {
-              that.showDivisions(cluster, column);
+          var clusterGrid = $(this.$parent.node()).find('div.gridrow')[j];
+          var clusterPosY = $(clusterGrid).position().top;
+          var clusterHeight = $(clusterGrid).height() - 10;
+          var boxChartHeight = $(clusterGrid).height() - 18 - 10 - 2 * this.options.padding;
+
+          statsView.zoom.zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
+
+          this.$summary.style('width', size.x + 'px');
+          statsView.$node.style({
+            width: this.options.statsWidth + 'px',
+            height: clusterHeight + 'px',
+            top: clusterPosY + 'px',
+            left: (size.x + this.options.padding * 2) + 'px'
+          });
+
+          if (this.connectSignal != null && this.connectSignal.cluster == j) {
+            var that = this;
+
+            function refreshColumn(cluster, column:Column) {
+              var statsView = that.statsViews[cluster];
+              if (statsView.divider.hasChanged()) {
+                that.showDivisions(cluster, column);
+              }
             }
+
+            function onClickSlider(cluster, column) {
+              return function (d) {
+                return refreshColumn(cluster, column);
+              }
+            }
+
+            var newColumn = this.stratomex.getLastColumn();
+            statsView.column = newColumn;
+
+            d3.select((<clusterDivider.ClusterDivider>statsView.divider).node)
+              .on('mouseup', onClickSlider(statsView.cluster, newColumn));
+
+            this.connectSignal = null;
+
+            this.activeDivision.push(newColumn);
           }
-
-          function onClickSlider(cluster, column)
-          {
-            return function(d) { return refreshColumn(cluster, column); }
-          }
-
-          var newColumn = this.stratomex.getLastColumn();
-          statsView.column = newColumn;
-
-          d3.select((<clusterDivider.ClusterDivider>statsView.divider).node)
-            .on('mouseup', onClickSlider(statsView.cluster, newColumn));
-
-          this.connectSignal = null;
-
-          this.activeDivision.push(newColumn);
         }
 
         // hack to update ribbons
-        //C.resolveIn(1000).then( () =>
         Promise.resolve(statsView).then( (stats: any) =>
         {
           C.resolveIn(1000).then( () => {
@@ -1406,9 +1405,13 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
             var bands = bandsGroup.selectAll('.rel-group');
             //console.log(bands);
             if (bands.length < 1) { return; }
-            d3.select(bands[0][0]).style('fill', 'darkgreen');
-            d3.select(bands[0][1]).style('fill', '#aa8800');
-            d3.select(bands[0][2]).style('fill', 'darkred');
+            var divBands = bands[0];
+
+            divBands.sort( (l: any, r: any) => { return $(l).position().top - $(r).position().top; });
+
+            d3.select(divBands[0]).style('fill', 'darkgreen');
+            d3.select(divBands[1]).style('fill', '#aa8800');
+            d3.select(divBands[2]).style('fill', 'darkred');
           });
         });
       }
