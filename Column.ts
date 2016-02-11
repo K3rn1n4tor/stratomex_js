@@ -1102,7 +1102,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       var height = $(clusterGrid).height() - 18 - 10 - 2 * this.options.padding;
 
       var divider = boxSlider.createRaw(distances, <Element>$body.node(), {
-        scaleTo: [dividerWidth, height], range: that.distancesRange, numAvg: 7
+        scaleTo: [dividerWidth, height], range: that.distancesRange, numAvg: 10
       });
       (<boxSlider.BoxSlider>divider).setLabels(labels);
 
@@ -1385,7 +1385,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         // hack to update ribbons
         Promise.resolve(statsView).then( (stats: any) =>
         {
-          C.resolveIn(500).then( () => {
+          C.resolveIn(1000).then( () => {
             var linkSVG = d3.select('.link-container svg');
             if (stats.column == null) { return; }
 
