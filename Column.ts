@@ -1385,7 +1385,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         // hack to update ribbons
         Promise.resolve(statsView).then( (stats: any) =>
         {
-          C.resolveIn(1000).then( () => {
+          C.resolveIn(500).then( () => {
             var linkSVG = d3.select('.link-container svg');
             if (stats.column == null) { return; }
 
