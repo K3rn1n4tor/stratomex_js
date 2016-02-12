@@ -1091,12 +1091,6 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       var labels = distanceData.labels;
       var dividerWidth = this.options.statsWidth - this.options.padding * 2;
 
-      //var divider = clusterDivider.createFromArray(distances, labels, data, <Element>$body.node(), {
-      //  bins: 10,
-      //  scaleTo: [dividerWidth, 60],
-      //  barOffsetRatio: 0.10
-      //});
-
       this.options.statsWidth = 100;
       var clusterGrid = $(this.$parent.node()).find('div.gridrow')[cluster];
       var height = $(clusterGrid).height() - 18 - 10 - 2 * this.options.padding;
