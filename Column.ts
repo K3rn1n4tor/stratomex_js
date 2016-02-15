@@ -580,7 +580,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       'background-color': data.desc.bgColor || 'lightgray'
     });
     this.$summary.append('div').attr('class', 'title').style('max-width', (that.options.width - this.options.padding * 2) + 'px')
-      .text(this.name).style('background-color', data.desc.bgColor || 'lightgray');
+      .text(this.name).style('background-color', data.desc.bgColor || 'lightgrey');
 
     this.$clusters = this.$parent.append('div').attr('class', 'clusters');
     this.range = partitioning;
@@ -770,6 +770,16 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
           {
             statsView.divider.destroy();
             statsView.$node.remove();
+
+            if (statsView.externNodes.length > 0)
+            {
+              for (var k = 0; k < statsView.externNodes.length; ++k)
+              {
+                statsView.externDividers[k].destroy();
+                statsView.externNodes[k].remove();
+              }
+            }
+
             //that.hideStats(i, null);
             if (statsView.visible)
             {
@@ -1006,13 +1016,23 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     if (statsView != null)
     {
-      var layoutWidth = this.options.statsWidth + this.options.width;
+      const numGroups = (<any>this.range.dims[0]).groups.length;
+
+      var layoutWidth = this.options.statsWidth * numGroups + this.options.width;
       if (this.detail) { layoutWidth += this.options.detailWidth; }
 
       this.$parent.style('width', layoutWidth + 'px');
       this.$layoutHelper.style('width', layoutWidth + 'px');
       statsView.$node.transition().duration(animationTime(within)).style('opacity', 1);
       statsView.visible = true;
+
+      if (statsView.externNodes.length > 0)
+      {
+        for (var k = 0; k < statsView.externNodes.length; ++k)
+        {
+          statsView.externNodes[k].transition().duration(animationTime(within)).style('opacity', 1);
+        }
+      }
 
       return this.stratomex.relayout(within);
     }
@@ -1111,22 +1131,24 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
       var externDividers = [];
       var externZooms = [];
+      var externNodes = [];
       if (externDistances != null)
       {
         for (var j = 0; j < externDistances.length; ++j)
         {
           const $elemNext = this.$parent.append('div').classed('stats', true).style('opacity', 0);
           $elemNext.classed('group', true).datum(data);
-          const $bodyNext = $elemNext.append('div').attr('class', 'body');
           $elemNext.append('div').attr('class', 'title').text('External Distances');
+          const $bodyNext = $elemNext.append('div').attr('class', 'body');
 
           var externDivider = boxSlider.createRaw(externDistances[j], <Element>$bodyNext.node(), {
-            scaleTo: [dividerWidth, height], range: that.distancesRange, numAvg: 1
+            scaleTo: [dividerWidth, height], range: that.distancesRange, numAvg: 1, numSlider: 0
           });
           (<boxSlider.BoxSlider>externDivider).setLabels(labels);
           externDividers.push(externDivider);
-          //$elemNext.transition().duration(animationTime(within)).style('opacity', 1);
+          $elemNext.transition().duration(animationTime(within)).style('opacity', 1);
           externZooms.push(new behaviors.ZoomLogic((<boxSlider.BoxSlider>externDivider), null));
+          externNodes.push($elemNext);
         }
       }
 
@@ -1134,10 +1156,11 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       {
         $node: $elem, divider: divider, externDividers: externDividers,
         cluster: cluster, visible: true, column: null,
-        zoom: new behaviors.ZoomLogic((<boxSlider.BoxSlider>divider), null), externZooms: externZooms
+        zoom: new behaviors.ZoomLogic((<boxSlider.BoxSlider>divider), null), externZooms: externZooms,
+        externNodes: externNodes
       };
 
-      var layoutWidth = this.options.statsWidth + this.options.width;
+      var layoutWidth = this.options.statsWidth * numGroups + this.options.width;
       if (this.detail) { layoutWidth += this.options.detailWidth; }
 
       this.$parent.style('width', layoutWidth + 'px');
@@ -1155,11 +1178,21 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     statsView.visible = false;
     statsView.$node.transition().duration(animationTime(within)).style('opacity', 0); //.remove();
 
+    const numGroups = (<any>this.range.dims[0]).groups.length;
+
+    if (statsView.externNodes.length > 0)
+    {
+      for (var k = 0; k < statsView.externNodes.length; ++k)
+      {
+        statsView.externNodes[k].transition().duration(animationTime(within)).style('opacity', 0);
+      }
+    }
+
     var layoutWidth = this.options.width;
 
     if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return d.visible == true; } ))
     {
-      layoutWidth += this.options.statsWidth;
+      layoutWidth += this.options.statsWidth * numGroups;
     }
 
     if (this.detail) { layoutWidth += this.options.detailWidth; }
@@ -1289,7 +1322,6 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       var clusterPosY = $(clusterGrid).position().top;
 
       size.x -= this.options.detailWidth;
-      this.$summary.style('width', size.x + 'px');
       this.detail.$node.style({
         width: this.options.detailWidth + 'px',
         height: size.y + 'px',
@@ -1302,11 +1334,11 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     // -----------------------------------------------------------------------------------------------------------------
     // Resize if statistics are shown
 
-    var numGroups = (<any>this.range.dims[0]).groups.length;
+    const numGroups = (<any>this.range.dims[0]).groups.length;
 
     if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return d.visible == true; } ))
     {
-      size.x -= this.options.statsWidth;
+      size.x -= this.options.statsWidth * numGroups;
     }
 
     // check if any column was removed and update active divisions
@@ -1328,6 +1360,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     // -----------------------------------------------------------------------------------------------------------------
     // Resize rest of column
+
+    this.$summary.style('width', size.x + 'px');
 
     this.summary.actLoader.then(() =>
     {
@@ -1367,7 +1401,6 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
           statsView.zoom.zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
 
-          this.$summary.style('width', size.x + 'px');
           statsView.$node.style({
             width: this.options.statsWidth + 'px',
             height: clusterHeight + 'px',
@@ -1375,12 +1408,29 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
             left: (size.x + this.options.padding * 2) + 'px'
           });
 
+          if (statsView.externNodes != null)
+          {
+            for (var k = 0; k < statsView.externNodes.length; ++k)
+            {
+              statsView.externZooms[k].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
+              statsView.externNodes[k].style({
+                width: this.options.statsWidth + 'px',
+                height: clusterHeight + 'px',
+                top: clusterPosY + 'px',
+                left: (size.x + this.options.padding * 2 + this.options.statsWidth * (k + 1)) + 'px'
+              });
+            }
+          }
+
           if (this.connectSignal != null && this.connectSignal.cluster == j) {
             var that = this;
 
             function refreshColumn(cluster, column:Column) {
               var statsView = that.statsViews[cluster];
-              if (statsView.divider.hasChanged()) {
+
+              if (column == null) { return; }
+              if (statsView.divider.hasChanged())
+              {
                 that.showDivisions(cluster, column);
               }
             }

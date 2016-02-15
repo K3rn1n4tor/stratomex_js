@@ -260,7 +260,7 @@ class StratomeX extends views.AView {
       id: dataID + 'method', fqname: 'none', name: dataName + '/' + method,
       origin: dataFQ, size: (<any>data).dim[0], ngroups: numClusters,
       type: 'stratification', groups: groupsDesc, // TODO: use this as desc
-      idtype: 'patient', // TODO: figure out what idtypes are important for
+      idtype: 'patient',
       ws: 'random' // TODO: figure out what this parameter is
     };
 
@@ -275,40 +275,77 @@ class StratomeX extends views.AView {
       strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
 
       // add new clustered data with its stratification to StratomeX
-      that.addOrlyData(strati, data, null);
+      that.addData(strati, data, null);
     });
   }
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  addOrlyData(rowStrat: stratification.IStratification,
-              rowMatrix: datatypes.IDataType,
-              colStrat?: stratification.IStratification)
+  private addColumnWithRange(data: datatypes.IDataType, compositeRange: ranges.CompositeRange1D)
   {
     var that = this;
-    var mref = this.provGraph.findOrAddObject(rowMatrix, rowMatrix.desc.name, 'orlydata');
 
-    if (rowStrat === rowMatrix)
+    const dataID = data.desc.id;
+    const dataFQ = data.desc.fqname;
+    const dataName = data.desc.name;
+
+    const numGroups = compositeRange.groups.length;
+
+    // create new stratification with description
+    var descStrati =
     {
-      //both are stratifications
-      rowStrat.range().then((range) =>
-      {
-        that.provGraph.push(columns.createColumnCmd(that.ref, mref, range, toName(toMiddle(rowMatrix.desc.fqname),
-          rowStrat.desc.name)));
-      });
-    } else {
-      Promise.all<ranges.Range1D>([rowStrat.idRange(), colStrat ? colStrat.idRange() : ranges.Range1D.all()])
-        .then((range_list:ranges.Range1D[]) =>
-        {
-          const idRange = ranges.list(range_list);
-          return rowMatrix.fromIdRange(idRange);
+      id: dataID + 'method', fqname: 'none', name: dataName,
+      origin: dataFQ, size: (<any>data).dim[0], ngroups: numGroups,
+      type: 'stratification', groups: compositeRange.groups, // TODO: use this as desc
+      idtype: 'patient',
+      ws: 'random' // TODO: figure out what this parameter is
+    };
 
-        }).then((range) =>
-        {
-          that.provGraph.push(columns.createColumnCmd(that.ref, mref, range, toName(rowMatrix.desc.name, rowStrat.desc.name)));
-        });
-    }
+    Promise.all([(<any>data).rows(), (<any>data).rowIds()]).then((args) =>
+    {
+      // obtain the rows and rowIDs of the data
+      var rows = args[0];
+      var rowIds = args[1];
+
+      // create a new startification of the data
+      var strati : stratification.IStratification;
+      strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
+
+      // add new clustered data with its stratification to StratomeX
+      that.addData(strati, data, null);
+    });
   }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  //addOrlyData(rowStrat: stratification.IStratification,
+  //            rowMatrix: datatypes.IDataType,
+  //            colStrat?: stratification.IStratification)
+  //{
+  //  var that = this;
+  //  var mref = this.provGraph.findOrAddObject(rowMatrix, rowMatrix.desc.name, 'orlydata');
+  //
+  //  if (rowStrat === rowMatrix)
+  //  {
+  //    //both are stratifications
+  //    rowStrat.range().then((range) =>
+  //    {
+  //      that.provGraph.push(columns.createColumnCmd(that.ref, mref, range, toName(toMiddle(rowMatrix.desc.fqname),
+  //        rowStrat.desc.name)));
+  //    });
+  //  } else {
+  //    Promise.all<ranges.Range1D>([rowStrat.idRange(), colStrat ? colStrat.idRange() : ranges.Range1D.all()])
+  //      .then((range_list:ranges.Range1D[]) =>
+  //      {
+  //        const idRange = ranges.list(range_list);
+  //        return rowMatrix.fromIdRange(idRange);
+  //
+  //      }).then((range) =>
+  //      {
+  //        that.provGraph.push(columns.createColumnCmd(that.ref, mref, range, toName(rowMatrix.desc.name, rowStrat.desc.name)));
+  //      });
+  //  }
+  //}
 
   // -------------------------------------------------------------------------------------------------------------------
 
