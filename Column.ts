@@ -1049,12 +1049,11 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       g.push(createToggleStatsCmd(s, cluster, false));
     });
 
+    const numGroups = (<any>this.range.dims[0]).groups.length;
 
     var responses = [];
     if (this.distancesRange == null)
     {
-      var numGroups = (<any>this.range.dims[0]).groups.length;
-
       for (var j = 0; j < numGroups; ++j)
       {
         var labelList = (<any>this.range.dims[0]).groups[j].asList();
@@ -1076,8 +1075,17 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     var labelList = (<any>this.range.dims[0]).groups[cluster].asList();
 
+    // gather all other clusters and their labels
+    var externLabelList = [];
+    for (var j = 0; j < numGroups; ++j)
+    {
+      if (j == cluster) { continue; }
+      externLabelList.push((<any>this.range.dims[0]).groups[j].asList());
+    }
+
+
     // request cluster distance data from server
-    var request = { group: JSON.stringify({ labels: labelList }) };
+    var request = { group: JSON.stringify({ labels: labelList, externLabels: externLabelList }) };
     var response = ajax.send('/api/gene_clustering/distances/' + this.data.desc.id, request, 'post');
     console.log("Requested distances of data set:", this.data.desc.id);
 
@@ -1088,6 +1096,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       if (distanceData === null) { return Promise.resolve([]); }
 
       var distances = distanceData.distances;
+      var externDistances = distanceData.externDistances;
       var labels = distanceData.labels;
       var dividerWidth = this.options.statsWidth - this.options.padding * 2;
 
@@ -1096,18 +1105,36 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       var height = $(clusterGrid).height() - 18 - 10 - 2 * this.options.padding;
 
       var divider = boxSlider.createRaw(distances, <Element>$body.node(), {
-        scaleTo: [dividerWidth, height], range: that.distancesRange, numAvg: 10
+        scaleTo: [dividerWidth, height], range: that.distancesRange, numAvg: 1
       });
       (<boxSlider.BoxSlider>divider).setLabels(labels);
 
+      var externDividers = [];
+      var externZooms = [];
+      if (externDistances != null)
+      {
+        for (var j = 0; j < externDistances.length; ++j)
+        {
+          const $elemNext = this.$parent.append('div').classed('stats', true).style('opacity', 0);
+          $elemNext.classed('group', true).datum(data);
+          const $bodyNext = $elemNext.append('div').attr('class', 'body');
+          $elemNext.append('div').attr('class', 'title').text('External Distances');
+
+          var externDivider = boxSlider.createRaw(externDistances[j], <Element>$bodyNext.node(), {
+            scaleTo: [dividerWidth, height], range: that.distancesRange, numAvg: 1
+          });
+          (<boxSlider.BoxSlider>externDivider).setLabels(labels);
+          externDividers.push(externDivider);
+          //$elemNext.transition().duration(animationTime(within)).style('opacity', 1);
+          externZooms.push(new behaviors.ZoomLogic((<boxSlider.BoxSlider>externDivider), null));
+        }
+      }
+
       this.statsViews[cluster] =
       {
-        $node: $elem,
-        divider: divider,
-        cluster: cluster,
-        visible: true,
-        column: null,
-        zoom: new behaviors.ZoomLogic((<boxSlider.BoxSlider>divider), null)
+        $node: $elem, divider: divider, externDividers: externDividers,
+        cluster: cluster, visible: true, column: null,
+        zoom: new behaviors.ZoomLogic((<boxSlider.BoxSlider>divider), null), externZooms: externZooms
       };
 
       var layoutWidth = this.options.statsWidth + this.options.width;
