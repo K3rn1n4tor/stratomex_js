@@ -1113,6 +1113,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     var response = ajax.send('/api/gene_clustering/distances/' + this.data.desc.id, request, 'post');
     console.log("Requested distances of data set:", this.data.desc.id);
 
+    // resolve all promises, including the promises where the distance range is determined
     return Promise.all(responses.concat(response)).then((args: any) =>
     {
       var distanceData = args[responses.length];
@@ -1136,6 +1137,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       var externDividers = [];
       var externZooms = [];
       var externNodes = [];
+
       if (externDistances != null)
       {
         for (var j = 0; j < externDistances.length; ++j)
@@ -1155,6 +1157,19 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
           externNodes.push($elemNext);
         }
       }
+
+      function mouseOutHandler(divider: vis.AVisInstance, extDividers: vis.AVisInstance[])
+      {
+        return (_: any) =>
+        {
+          var divs = (<boxSlider.BoxSlider>divider).getCurrentDivisions();
+          extDividers.forEach((d: boxSlider.BoxSlider) => { d.setDivisions(divs); });
+        };
+      }
+
+      $elem.on('mouseup', mouseOutHandler(divider, externDividers));
+      // and color each extern distance box chart at the beginning
+      mouseOutHandler(divider, externDividers)({});
 
       this.statsViews[cluster] =
       {
