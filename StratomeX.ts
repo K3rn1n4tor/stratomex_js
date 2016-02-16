@@ -275,7 +275,7 @@ class StratomeX extends views.AView {
       strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
 
       // add new clustered data with its stratification to StratomeX
-      that.addOrlyData(strati, data, null);
+      that.addData(strati, data, null);
     });
   }
 

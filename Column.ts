@@ -974,10 +974,12 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       cluster: cluster
     };
 
+
+    const numGroups = (<any>this.range.dims[0]).groups.length;
     var width = this.options.width + this.options.detailWidth;
     if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return d.visible == true; } ))
     {
-      width += this.options.statsWidth;
+      width += this.options.statsWidth * numGroups;
     }
 
 
@@ -999,9 +1001,10 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     this.detail = null;
 
     var width = this.options.width;
+    const numGroups = (<any>this.range.dims[0]).groups.length;
     if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return d.visible == true; } ))
     {
-      width += this.options.statsWidth;
+      width += this.options.statsWidth * numGroups;
     }
 
     this.$parent.style('width', width + 'px');
@@ -1320,7 +1323,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     if (this.detail)
     {
       var clusterGrid = $(this.$parent.node()).find('div.gridrow')[this.detail.cluster];
-      var clusterPosY = $(clusterGrid).position().top;
+      //var clusterPosY = $(clusterGrid).position().top;
+      var clusterPosY = this.options.summaryHeight + 32;
 
       size.x -= this.options.detailWidth;
       this.detail.$node.style({
