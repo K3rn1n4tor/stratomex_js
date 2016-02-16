@@ -199,7 +199,7 @@ define(function (require) {
       return arr.filter(function (d) {
         var desc = d.desc;
 
-        if (desc.fqname.startsWith('gene_cluster_viewer')) {
+        if (desc.fqname.startsWith('stratomex_js')) {
           return false;
         }
 
@@ -226,7 +226,7 @@ define(function (require) {
       return arr.filter(function (d) {
         var desc = d.desc;
 
-        if (desc.fqname.startsWith('gene_cluster_viewer')) {
+        if (desc.fqname.startsWith('stratomex_js')) {
           return false;
         }
 
@@ -254,7 +254,7 @@ define(function (require) {
       {
         var desc = d.desc;
 
-        if (desc.fqname.startsWith('gene_cluster_viewer')) {
+        if (desc.fqname.startsWith('stratomex_js')) {
           return true;
         }
         else

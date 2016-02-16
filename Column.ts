@@ -16,6 +16,7 @@ import behaviors = require('../caleydo_core/behavior');
 import events = require('../caleydo_core/event');
 import link_m = require('../caleydo_links/link');
 import datatypes = require('../caleydo_core/datatype');
+import datas = require('../caleydo_core/data');
 import prov = require('../caleydo_provenance/main');
 import ranges = require('../caleydo_core/range');
 import stratification = require('../caleydo_core/stratification');
@@ -584,7 +585,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     this.$clusters = this.$parent.append('div').attr('class', 'clusters');
     this.range = partitioning;
-    //console.log("Range  of column:", this.range);
+    console.log("Range  of column:", this.range);
     //console.log("Range Group 0 of column:", (<any>this.range.dims[0]).groups[0].asList());
     //console.log("Range Group 1 of column:", (<any>this.range.dims[0]).groups[1].asList());
 
@@ -1522,6 +1523,28 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       var s = g.findObject(this);
       g.push(createToggleDetailCmd(s, -1, true));
     });
+
+    $t.append('i').attr('class', 'fa fa-arrows').on('click', () =>
+    {
+      const dataID = this.data.desc.id;
+      const dataDiffID = dataID.replace('Mean', 'Difference');
+
+      //var response = ajax.getAPIJSON('/dataset/' + dataDiffID);
+      datas.list().then( (list) =>
+      {
+        for (var i = 0; i < list.length; ++i)
+        {
+          var data = list[i];
+          if (data.desc.id == dataDiffID)
+          {
+            that.stratomex.addColumnWithRange(data, that.range.dim(0));
+          }
+        }
+      });
+
+      //this.stratomex.addColumnWithRange(this.range.dim(0));
+    });
+
     $t.append('i').attr('class', 'fa fa-close').on('click', ()=>
     {
       var g = that.stratomex.provGraph;

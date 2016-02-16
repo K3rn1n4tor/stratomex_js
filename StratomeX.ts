@@ -275,13 +275,13 @@ class StratomeX extends views.AView {
       strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
 
       // add new clustered data with its stratification to StratomeX
-      that.addData(strati, data, null);
+      that.addOrlyData(strati, data, null);
     });
   }
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  private addColumnWithRange(data: datatypes.IDataType, compositeRange: ranges.CompositeRange1D)
+  addColumnWithRange(data: datatypes.IDataType, compositeRange: ranges.CompositeRange1D)
   {
     var that = this;
 
@@ -312,40 +312,40 @@ class StratomeX extends views.AView {
       strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
 
       // add new clustered data with its stratification to StratomeX
-      that.addData(strati, data, null);
+      that.addOrlyData(strati, data, null);
     });
   }
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  //addOrlyData(rowStrat: stratification.IStratification,
-  //            rowMatrix: datatypes.IDataType,
-  //            colStrat?: stratification.IStratification)
-  //{
-  //  var that = this;
-  //  var mref = this.provGraph.findOrAddObject(rowMatrix, rowMatrix.desc.name, 'orlydata');
-  //
-  //  if (rowStrat === rowMatrix)
-  //  {
-  //    //both are stratifications
-  //    rowStrat.range().then((range) =>
-  //    {
-  //      that.provGraph.push(columns.createColumnCmd(that.ref, mref, range, toName(toMiddle(rowMatrix.desc.fqname),
-  //        rowStrat.desc.name)));
-  //    });
-  //  } else {
-  //    Promise.all<ranges.Range1D>([rowStrat.idRange(), colStrat ? colStrat.idRange() : ranges.Range1D.all()])
-  //      .then((range_list:ranges.Range1D[]) =>
-  //      {
-  //        const idRange = ranges.list(range_list);
-  //        return rowMatrix.fromIdRange(idRange);
-  //
-  //      }).then((range) =>
-  //      {
-  //        that.provGraph.push(columns.createColumnCmd(that.ref, mref, range, toName(rowMatrix.desc.name, rowStrat.desc.name)));
-  //      });
-  //  }
-  //}
+  addOrlyData(rowStrat: stratification.IStratification,
+              rowMatrix: datatypes.IDataType,
+              colStrat?: stratification.IStratification)
+  {
+    var that = this;
+    var mref = this.provGraph.findOrAddObject(rowMatrix, rowMatrix.desc.name, 'orlydata');
+
+    if (rowStrat === rowMatrix)
+    {
+      //both are stratifications
+      rowStrat.range().then((range) =>
+      {
+        that.provGraph.push(columns.createColumnCmd(that.ref, mref, range, toName(toMiddle(rowMatrix.desc.fqname),
+          rowStrat.desc.name)));
+      });
+    } else {
+      Promise.all<ranges.Range1D>([rowStrat.idRange(), colStrat ? colStrat.idRange() : ranges.Range1D.all()])
+        .then((range_list:ranges.Range1D[]) =>
+        {
+          const idRange = ranges.list(range_list);
+          return rowMatrix.fromIdRange(idRange);
+
+        }).then((range) =>
+        {
+          that.provGraph.push(columns.createColumnCmd(that.ref, mref, range, toName(rowMatrix.desc.name, rowStrat.desc.name)));
+        });
+    }
+  }
 
   // -------------------------------------------------------------------------------------------------------------------
 
