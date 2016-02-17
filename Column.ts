@@ -801,14 +801,21 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     that.range = ranges.parse(range.toString());
     that.createMultiGrid(that.range, that.data);
 
+    const groupsChanged = compositeRange.groups.length == range.groups.length;
+
+    //var layoutWidth = this.options.width;
+    //if (groupsChanged) { layoutWidth = this.options.width; }
+
     this.$parent.style('width', this.options.width + 'px');
     this.$layoutHelper.style('width', this.options.width + 'px');
 
+    // TODO: kind of a HACK to create a smoother visual change
     var promise = this.stratomex.relayout();
+    //var promise = Promise.resolve([0]);
 
     promise.then((_: any) =>
     {
-      var promises = [];
+      var promises: any[] = [];
       // destroy current stats views
       for (var i = 0; i < numStatsViews; ++i)
       {
@@ -829,12 +836,15 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
           }
 
           //that.hideStats(i, null);
-          if (statsView.visible && compositeRange.groups.length == range.groups.length)
+          if (statsView.visible && groupsChanged)
           {
-            promises.push(that.showStats(i));
+            promises.push(that.showStats(i, -1, false));
           }
         }
       }
+
+      // update grid after all views are recreated
+      Promise.all(promises).then((_) => { that.stratomex.relayout(); });
     });
 
     //});
@@ -1068,7 +1078,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  showStats(cluster, within = -1)
+  showStats(cluster, within = -1, relayout = true)
   {
     var statsView = this.statsViews[cluster];
 
@@ -1092,7 +1102,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         }
       }
 
-      return this.stratomex.relayout(within);
+      return (relayout) ? this.stratomex.relayout(within) : Promise.resolve([]);
     }
 
     const that = this;
@@ -1248,7 +1258,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       this.$layoutHelper.style('width', layoutWidth + 'px');
       $elem.transition().duration(animationTime(within)).style('opacity', 1);
 
-      return this.stratomex.relayout(within);
+      return (relayout) ? this.stratomex.relayout(within) : Promise.resolve([]);
     });
   }
 
