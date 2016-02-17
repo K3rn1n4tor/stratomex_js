@@ -661,6 +661,45 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         d3.event.stopPropagation();
       });
 
+      // recluster column command
+      $toolbar.append('i').attr('class', 'fa fa-refresh').on('click', () =>
+      {
+        var clusterIndex = pos[0];
+
+        var statsView = that.statsViews[clusterIndex];
+        if (statsView == null) { return; }
+
+        var rangeColumn = <ranges.CompositeRange1D>statsView.column.getRange().dim(0);
+        var groupsColumn = rangeColumn.groups;
+        var newGroups = [];
+
+        var compRange = <ranges.CompositeRange1D>that.range.dim(0);
+
+        for (var i = 0; i < compRange.groups.length; ++i)
+        {
+          if (i == clusterIndex) { continue; }
+          var groupIndex = i;
+          if (i > clusterIndex) { groupIndex = i + groupsColumn.length - 1; }
+
+          compRange.groups[i].name = "Group " + String(groupIndex) + '(Custom)';
+          newGroups.push(compRange.groups[i]);
+        }
+
+        for (var k = groupsColumn.length - 1; k >= 0; --k)
+        {
+          groupsColumn[k].name = "Group " + String(k + clusterIndex) + '(Custom)';
+          newGroups.splice(clusterIndex, 0, groupsColumn[k]);
+        }
+
+        const dataName = that.data.desc.name;
+        var compositeRange = ranges.composite(dataName + 'cluster', newGroups);
+
+        that.updateGrid(compositeRange);
+
+        // stop propagation to disable further event triggering
+        d3.event.stopPropagation();
+      });
+
       const toggleSelection = () =>
       {
         var isSelected = $elem.classed('select-selected');
@@ -674,6 +713,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         }
         $elem.classed('select-selected', !isSelected);
       };
+
       $elem.append('div').attr('class', 'title').style('max-width', (that.options.width - that.options.padding * 2) + 'px')
         .text(cluster.dim(0).name).on('click', toggleSelection);
       $elem.append('div').attr('class', 'body').on('click', toggleSelection);
@@ -743,55 +783,61 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  updateGrid(strati: stratification.IStratification)
+  updateGrid(range: ranges.CompositeRange1D)
   {
     d3.select(this.grid.node).transition().duration(animationTime(-1)).style('opacity', '0');
     this.grid.destroy();
 
     var that = this;
 
-    strati.range().then((range) =>
+    //console.log(strati);
+
+    //strati.range().then((range) =>
+    //{
+    //  console.log(range);
+
+    const numStatsViews = that.statsViews.length;
+    var compositeRange = <ranges.CompositeRange1D>that.range.dim(0);
+    that.range = ranges.parse(range.toString());
+    that.createMultiGrid(that.range, that.data);
+
+    this.$parent.style('width', this.options.width + 'px');
+    this.$layoutHelper.style('width', this.options.width + 'px');
+
+    var promise = this.stratomex.relayout();
+
+    promise.then((_: any) =>
     {
-      that.range = ranges.parse(range.toString());
-      that.createMultiGrid(that.range, that.data);
-
-      this.$parent.style('width', this.options.width + 'px');
-      this.$layoutHelper.style('width', this.options.width + 'px');
-
-      var promise = this.stratomex.relayout();
-
-      promise.then((_: any) =>
+      var promises = [];
+      // destroy current stats views
+      for (var i = 0; i < numStatsViews; ++i)
       {
-        var promises = [];
-        // destroy current stats views
-        for (var i = 0; i < 3; ++i)
+        var statsView = that.statsViews[i];
+        that.statsViews[i] = null;
+        if (statsView != null)
         {
-          var statsView = that.statsViews[i];
-          that.statsViews[i] = null;
-          if (statsView != null)
+          statsView.divider.destroy();
+          statsView.$node.remove();
+
+          if (statsView.externNodes.length > 0)
           {
-            statsView.divider.destroy();
-            statsView.$node.remove();
-
-            if (statsView.externNodes.length > 0)
+            for (var k = 0; k < statsView.externNodes.length; ++k)
             {
-              for (var k = 0; k < statsView.externNodes.length; ++k)
-              {
-                statsView.externDividers[k].destroy();
-                statsView.externNodes[k].remove();
-              }
-            }
-
-            //that.hideStats(i, null);
-            if (statsView.visible)
-            {
-              promises.push(that.showStats(i));
+              statsView.externDividers[k].destroy();
+              statsView.externNodes[k].remove();
             }
           }
-        }
-      });
 
+          //that.hideStats(i, null);
+          if (statsView.visible && compositeRange.groups.length == range.groups.length)
+          {
+            promises.push(that.showStats(i));
+          }
+        }
+      }
     });
+
+    //});
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -843,6 +889,13 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
   ids()
   {
     return this.data.ids(this.range);
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  getRange()
+  {
+    return this.range;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -1057,10 +1110,18 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     $elem.append('div').attr('class', 'title')
       .text('Distances');
 
-    // create new cluster stats command
+    // tool to divide current cluster and create new divisions / stratifications displayed in a new column
     $toolbar.append('i').attr('class', 'fa fa-share-alt').on('click', () =>
     {
       that.showDivisions(cluster);
+      // stop propagation to disable further event triggering
+      d3.event.stopPropagation();
+    });
+
+    $toolbar.append('i').attr('class', 'fa fa-refresh').on('click', () =>
+    {
+      that.regroupCluster(cluster);
+
       // stop propagation to disable further event triggering
       d3.event.stopPropagation();
     });
@@ -1308,10 +1369,86 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
           that.connectSignal = { cluster: cluster };
 
         } else {
-          column.updateGrid(strati);
+          column.updateGrid(compositeRange);
         }
       });
     }
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  private regroupCluster(cluster: number)
+  {
+    var statsView = this.statsViews[cluster];
+    var that = this;
+
+    if (statsView == null)
+    {
+      return Promise.resolve([]);
+    }
+
+    const clusterLabels = statsView.divider.getLabels();
+
+    var distanceVec: any[] = [];
+
+    for (var j = 0; j < statsView.externDividers.length; ++j)
+    {
+      distanceVec.push(statsView.externDividers[j].data);
+    }
+
+    // insert cluster into distance vectors
+    distanceVec.splice(cluster, 0, statsView.divider.data);
+
+    var compositeRange = <ranges.CompositeRange1D>this.range.dim(0);
+    const numGroups = compositeRange.groups.length;
+    //compositeRange.groups.splice(cluster, 1);
+
+    var newLabels: any[] = Array.apply(null, Array(numGroups)).map((_, i) => { return []; });
+
+    for (var i = 0; i < distanceVec[0].length; ++i)
+    {
+      var tempArray = [];
+
+      for (var k = 0; k < distanceVec.length; ++k)
+      {
+        tempArray.push(distanceVec[k][i]);
+      }
+
+      var minDist = Math.min.apply(Math, tempArray);
+      var minIndex = tempArray.indexOf(minDist);
+
+      newLabels[minIndex].push(clusterLabels[i]);
+    }
+
+    for (var i = 0; i < numGroups; ++i)
+    {
+      if (i != cluster)
+      {
+        // create new group
+        var labels = compositeRange.groups[i].asList();
+        newLabels[i] = labels.concat(newLabels[i]);
+      }
+    }
+
+    // first from groups
+    var groups = <any>[];
+    var groupsDesc = <any>[];
+    var clusterRanges = <any>[];
+
+    for (var i = 0; i < numGroups; ++i)
+    {
+      clusterRanges.push(ranges.parse(newLabels[i]));
+      groups.push(new ranges.Range1DGroup('Group ' + String(i),
+        'red', clusterRanges[i].dim(0)));
+      groupsDesc.push({name: String(i), size: newLabels[i].length});
+    }
+
+    const dataName = this.data.desc.name;
+
+    var compositeRange = ranges.composite(dataName + 'cluster', groups);
+
+    // update this column
+    this.updateGrid(compositeRange);
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -1477,7 +1614,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         // hack to update ribbons
         Promise.resolve(statsView).then( (stats: any) =>
         {
-          C.resolveIn(1000).then( () => {
+          C.resolveIn(1000).then( () =>
+          {
             var linkSVG = d3.select('.link-container svg');
             if (stats.column == null) { return; }
 
