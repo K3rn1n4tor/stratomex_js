@@ -240,7 +240,7 @@ export function showStats(inputs, parameter, graph, within)
 export function createToggleStatsCmd(column, cluster, show)
 {
   var act = show ? 'Show' : 'Hide';
-  return prov.action(prov.meta(act + ' Statistics of ' + column.toString() + ' Cluster "' + cluster + '"', prov.cat.layout),
+  return prov.action(prov.meta(act + ' Distances of ' + column.toString() + ' Cluster "' + cluster + '"', prov.cat.layout),
     'showStratomeXStats', showStats, [column], {
       cluster: cluster,
       action: show ? 'show' : 'hide'
@@ -649,7 +649,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       });
 
       // create new cluster stats command
-      $toolbar.append('i').attr('class', 'fa fa-arrows').on('click', () =>
+      $toolbar.append('i').attr('class', 'fa fa-sort-amount-asc').on('click', () =>
       {
         // first obtain the provenance graph
         var graph = that.stratomex.provGraph;
@@ -667,7 +667,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         if (isSelected)
         {
           data.select(0, ranges.none());
-        } else
+        }
+        else
         {
           data.select(0, ranges.all());
         }
@@ -1054,10 +1055,10 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     var $toolbar = $elem.append('div').attr('class', 'gtoolbar');
     $elem.append('div').attr('class', 'title')
-      .text('Statistics of ' + clusterName);
+      .text('Distances');
 
     // create new cluster stats command
-    $toolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
+    $toolbar.append('i').attr('class', 'fa fa-share-alt').on('click', () =>
     {
       that.showDivisions(cluster);
       // stop propagation to disable further event triggering
@@ -1543,7 +1544,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       g.push(createToggleDetailCmd(s, -1, true));
     });
 
-    $t.append('i').attr('class', 'fa fa-arrows').on('click', () =>
+    $t.append('i').attr('class', 'fa fa-bars').on('click', () =>
     {
       const dataID = this.data.desc.id;
       const dataDiffID = dataID.replace('Mean', 'Difference');
