@@ -785,36 +785,27 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   updateGrid(range: ranges.CompositeRange1D)
   {
-    d3.select(this.grid.node).transition().duration(animationTime(-1)).style('opacity', '0');
+    //d3.select(this.node).transition().duration(animationTime(-1)).style('opacity', 0);
+    d3.select(this.grid.node).transition().duration(animationTime(-1)).style('opacity', 0);
     this.grid.destroy();
 
     var that = this;
 
-    //console.log(strati);
-
-    //strati.range().then((range) =>
-    //{
-    //  console.log(range);
-
     const numStatsViews = that.statsViews.length;
     var compositeRange = <ranges.CompositeRange1D>that.range.dim(0);
     that.range = ranges.parse(range.toString());
+
+    const groupsChanged = (compositeRange.groups.length != range.groups.length);
+
+    // reset layout of column
+    that.$parent.style('width', this.options.width + 'px');
+    that.$layoutHelper.style('width', this.options.width + 'px');
+
+    // recreate grid and fire changed option
     that.createMultiGrid(that.range, that.data);
 
-    const groupsChanged = compositeRange.groups.length == range.groups.length;
-
-    //var layoutWidth = this.options.width;
-    //if (groupsChanged) { layoutWidth = this.options.width; }
-
-    this.$parent.style('width', this.options.width + 'px');
-    this.$layoutHelper.style('width', this.options.width + 'px');
-
-    // TODO: kind of a HACK to create a smoother visual change
-    var promise = this.stratomex.relayout();
-    //var promise = Promise.resolve([0]);
-
-    promise.then((_: any) =>
-    {
+    //promise.then((_: any) =>
+    //{
       var promises: any[] = [];
       // destroy current stats views
       for (var i = 0; i < numStatsViews; ++i)
@@ -835,8 +826,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
             }
           }
 
-          //that.hideStats(i, null);
-          if (statsView.visible && groupsChanged)
+          if (statsView.visible && !groupsChanged)
           {
             promises.push(that.showStats(i, -1, false));
           }
@@ -844,9 +834,10 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       }
 
       // update grid after all views are recreated
-      Promise.all(promises).then((_) => { that.stratomex.relayout(); });
-    });
-
+      Promise.all(promises).then((_) =>
+      {
+        that.stratomex.relayout();
+      });
     //});
   }
 
