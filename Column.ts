@@ -585,7 +585,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     this.$clusters = this.$parent.append('div').attr('class', 'clusters');
     this.range = partitioning;
-    console.log("Range  of column:", this.range);
+    //console.log("Range  of column:", this.range);
     //console.log("Range Group 0 of column:", (<any>this.range.dims[0]).groups[0].asList());
     //console.log("Range Group 1 of column:", (<any>this.range.dims[0]).groups[1].asList());
 
@@ -1104,8 +1104,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     const $elem = this.$parent.append('div').classed('stats', true).style('opacity', 0);
     $elem.classed('group', true).datum(data);
 
-    var dataClusters = <ranges.CompositeRange1D>this.range.dim(0);
-    var clusterName = cluster < 0 ? this.data.desc.name : dataClusters.groups[cluster].name;
+    //var dataClusters = <ranges.CompositeRange1D>this.range.dim(0);
+    //var clusterName = cluster < 0 ? this.data.desc.name : dataClusters.groups[cluster].name;
 
     var $toolbar = $elem.append('div').attr('class', 'gtoolbar');
     $elem.append('div').attr('class', 'title')
@@ -1119,6 +1119,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       d3.event.stopPropagation();
     });
 
+    // tool to recluster current column
     $toolbar.append('i').attr('class', 'fa fa-refresh').on('click', () =>
     {
       that.regroupCluster(cluster);
@@ -1138,6 +1139,9 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     const numGroups = (<any>this.range.dims[0]).groups.length;
 
+
+    //this.data.rowIds().then((ids) => { console.log(ids.dim(0).asList()); });
+
     var responses = [];
     if (this.distancesRange == null)
     {
@@ -1145,6 +1149,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       {
         var labelList = (<any>this.range.dims[0]).groups[j].asList();
         var request = { group: JSON.stringify({ labels: labelList }) };
+        console.log(labelList);
         responses.push(ajax.send('/api/gene_clustering/distances/' + that.data.desc.id, request, 'post'));
       }
 
@@ -1325,6 +1330,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
       // obtain subranges from cluster divider
       var subRanges = (<boxSlider.BoxSlider>divider).getDivisionRanges();
+
+      console.log(subRanges);
 
       var rangeGroups = [];
       var groups = [];

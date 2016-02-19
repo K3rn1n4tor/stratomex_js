@@ -244,31 +244,43 @@ class StratomeX extends views.AView {
 
     clusterLabels = clusterLabels.sort(compareCluster);
 
-    for (var i = 0; i < numClusters; ++i)
-    {
-      clusterRanges.push(ranges.parse(clusterLabels[i]));
-      groups.push(new ranges.Range1DGroup('Group ' + String(i) + '(' + method + ')',
-        'red', clusterRanges[i].dim(0)));
-      groupsDesc.push({name: String(i), size: clusterLabels[i].length});
-    }
-
-    var compositeRange = ranges.composite(dataName + 'cluster', groups);
-
-    // create new stratification with description
-    var descStrati =
-    {
-      id: dataID + 'method', fqname: 'none', name: dataName + '/' + method,
-      origin: dataFQ, size: (<any>data).dim[0], ngroups: numClusters,
-      type: 'stratification', groups: groupsDesc, // TODO: use this as desc
-      idtype: 'patient',
-      ws: 'random' // TODO: figure out what this parameter is
-    };
-
     Promise.all([(<any>data).rows(), (<any>data).rowIds()]).then((args) =>
     {
       // obtain the rows and rowIDs of the data
       var rows = args[0];
       var rowIds = args[1];
+
+      // rewrite cluster labels since some data sets do not follow a sequential order
+      var rowLabels = rowIds.dim(0).asList();
+
+      for (var i = 0; i < numClusters; ++i)
+      {
+        for (var j = 0; j < clusterLabels[i].length; ++j)
+        {
+          clusterLabels[i][j] = rowLabels[clusterLabels[i][j]];
+        }
+      }
+
+
+      for (var i = 0; i < numClusters; ++i)
+      {
+        clusterRanges.push(ranges.parse(clusterLabels[i]));
+        groups.push(new ranges.Range1DGroup('Group ' + String(i) + '(' + method + ')',
+          'red', clusterRanges[i].dim(0)));
+        groupsDesc.push({name: String(i), size: clusterLabels[i].length});
+      }
+
+      var compositeRange = ranges.composite(dataName + 'cluster', groups);
+
+      // create new stratification with description
+      var descStrati =
+      {
+        id: dataID + 'method', fqname: 'none', name: dataName + '/' + method,
+        origin: dataFQ, size: (<any>data).dim[0], ngroups: numClusters,
+        type: 'stratification', groups: groupsDesc, // TODO: use this as desc
+        idtype: 'patient',
+        ws: 'random' // TODO: figure out what this parameter is
+      };
 
       // create a new startification of the data
       var strati : stratification.IStratification;
