@@ -250,17 +250,27 @@ class StratomeX extends views.AView {
       var rows = args[0];
       var rowIds = args[1];
 
+      var newRows = [];
+      var newRowIds = [];
+
       // rewrite cluster labels since some data sets do not follow a sequential order
       var rowLabels = rowIds.dim(0).asList();
+      var sumLabels = 0;
 
       for (var i = 0; i < numClusters; ++i)
       {
-        for (var j = 0; j < clusterLabels[i].length; ++j)
-        {
-          clusterLabels[i][j] = rowLabels[clusterLabels[i][j]];
-        }
-      }
+        const numLabels = clusterLabels[i].length;
 
+        for (var j = 0; j < numLabels; ++j)
+        {
+          // HINT! have a look at any CNMF clustering file, they rearrange all rows and rowIds instead of the groups
+          newRows.push(rows[clusterLabels[i][j]]);
+          newRowIds.push(rowLabels[clusterLabels[i][j]]);
+        }
+        clusterLabels[i] = '(' + String(sumLabels) + ':' + String(numLabels + sumLabels) + ')';
+
+        sumLabels += numLabels;
+      }
 
       for (var i = 0; i < numClusters; ++i)
       {
@@ -269,8 +279,10 @@ class StratomeX extends views.AView {
           'red', clusterRanges[i].dim(0)));
         groupsDesc.push({name: String(i), size: clusterLabels[i].length});
       }
+      console.log(groups);
 
       var compositeRange = ranges.composite(dataName + 'cluster', groups);
+      console.log(compositeRange);
 
       // create new stratification with description
       var descStrati =
@@ -284,7 +296,8 @@ class StratomeX extends views.AView {
 
       // create a new startification of the data
       var strati : stratification.IStratification;
-      strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
+      // provide newRows as number[] and newRowIds as string[]
+      strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, newRows, newRowIds, <any>compositeRange);
 
       // add new clustered data with its stratification to StratomeX
       that.addData(strati, data, null);

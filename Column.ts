@@ -585,9 +585,6 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     this.$clusters = this.$parent.append('div').attr('class', 'clusters');
     this.range = partitioning;
-    //console.log("Range  of column:", this.range);
-    //console.log("Range Group 0 of column:", (<any>this.range.dims[0]).groups[0].asList());
-    //console.log("Range Group 1 of column:", (<any>this.range.dims[0]).groups[1].asList());
 
     //create summary visualization as a multiform to display all compatible visualization
     this.summary = multiform.create(data.desc.type !== 'stratification' ? data.view(partitioning) : data, <Element>this.$summary.node(), {
@@ -606,7 +603,6 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       manager.select([this.id], idtypes.toSelectOperation(d3.event));
     });
 
-    //console.log("Normal partitioning:", partitioning);
     this.createMultiGrid(partitioning, data);
     this.createToolBar();
 
@@ -1145,15 +1141,20 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     var responses = [];
     if (this.distancesRange == null)
     {
+     // var total = 0;
       for (var j = 0; j < numGroups; ++j)
       {
+        //const len = (<any>this.range.dims[0]).groups[j].length;
+        //var labelList = Array.apply(null, Array(len)).map((_, i) => { return i + total; });
+        //total += len;
         var labelList = (<any>this.range.dims[0]).groups[j].asList();
         var request = { group: JSON.stringify({ labels: labelList }) };
-        console.log(labelList);
+        //console.log(labelList);
         responses.push(ajax.send('/api/gene_clustering/distances/' + that.data.desc.id, request, 'post'));
       }
 
-      Promise.all(responses).then((args: any) => {
+      Promise.all(responses).then((args: any) =>
+      {
         var values = [];
 
         for (var j = 0; j < numGroups; ++j)
@@ -1165,6 +1166,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       });
     }
 
+
     var labelList = (<any>this.range.dims[0]).groups[cluster].asList();
 
     // gather all other clusters and their labels
@@ -1174,7 +1176,6 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       if (j == cluster) { continue; }
       externLabelList.push((<any>this.range.dims[0]).groups[j].asList());
     }
-
 
     // request cluster distance data from server
     var request = { group: JSON.stringify({ labels: labelList, externLabels: externLabelList }) };
@@ -1191,6 +1192,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       var distances = distanceData.distances;
       var externDistances = distanceData.externDistances;
       var labels = distanceData.labels;
+
       var dividerWidth = this.options.statsWidth - this.options.padding * 2;
 
       this.options.statsWidth = 100;
@@ -1331,7 +1333,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       // obtain subranges from cluster divider
       var subRanges = (<boxSlider.BoxSlider>divider).getDivisionRanges();
 
-      console.log(subRanges);
+      //console.log(subRanges);
 
       var rangeGroups = [];
       var groups = [];
@@ -1340,6 +1342,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       for (var i = 0; i < 3; ++i)
       {
         var groupSize = subRanges[i].length;
+        console.log(groupSize);
         stratiSize += groupSize;
 
         rangeGroups.push(ranges.parse(subRanges[i]));
@@ -1351,10 +1354,12 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
       var compositeRange = ranges.composite(dataName + 'divisions', groups);
 
+      const rand = Math.random();
+
       var descStrati =
       {
-        id: dataID + method + String(numClusters) + 'Division' + String(cluster),
-        fqname: 'none', name: dataName + '/' + method + '_' + String(numClusters) + '_Division_' + String(cluster),
+        id: dataID + method + String(numClusters) + 'Division' + String(cluster) + String(rand),
+        fqname: 'none', name: dataName + '/' + method + '_' + String(numClusters) + '_Division_' + String(cluster) + String(rand),
         origin: dataFQ, size: stratiSize, ngroups: 3,
         type: 'stratification', groups: groupsDesc, // TODO: use this as desc
         idtype: 'patient', // TODO: figure out what idtypes are important for
