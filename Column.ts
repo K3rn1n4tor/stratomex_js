@@ -1333,7 +1333,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       // obtain subranges from cluster divider
       var subRanges = (<boxSlider.BoxSlider>divider).getDivisionRanges();
 
-      //console.log(subRanges);
+      console.log(subRanges);
 
       var rangeGroups = [];
       var groups = [];
@@ -1372,9 +1372,24 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         var rows = args[0];
         var rowIds = args[1];
 
+        var rowLabels = rowIds.dim(0).asList();
+        var labels = dataClusters.groups[cluster].asList();
+
+        var newRows = [];
+        var newRowIds = [];
+
+        for (var j = 0; j < labels.length; ++j)
+        {
+          newRows.push(rows[labels[j]]);
+          newRowIds.push(rowLabels[labels[j]]);
+        }
+
+        console.log(rows, rowIds);
+        console.log(newRows, newRowIds);
+
         // create a new startification of the data
         var strati : stratification.IStratification;
-        strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
+        strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, newRows, newRowIds, <any>compositeRange);
 
         if (column === null)
         {
