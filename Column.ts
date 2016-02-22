@@ -690,7 +690,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         const dataName = that.data.desc.name;
         var compositeRange = ranges.composite(dataName + 'cluster', newGroups);
 
-        that.updateGridHelper(compositeRange);
+        that.updateGrid(compositeRange);
 
         // stop propagation to disable further event triggering
         d3.event.stopPropagation();
@@ -779,21 +779,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  updateGridHelper(group: any)
-  {
-    var that = this;
-
-    if (group instanceof ranges.CompositeRange1D)
-    {
-      that.updateGrid(group);
-    }
-    else
-    {
-      group.range().then((range) => { that.updateGrid(range); });
-    }
-  }
-
-  updateGrid(range: ranges.CompositeRange1D)//strati: stratification.IStratification)//range: ranges.CompositeRange1D)
+   updateGrid(range: ranges.CompositeRange1D)//strati: stratification.IStratification)//range: ranges.CompositeRange1D)
   {
     //d3.select(this.node).transition().duration(animationTime(-1)).style('opacity', 0);
     d3.select(this.grid.node).transition().duration(animationTime(-1)).style('opacity', 0);
@@ -1161,12 +1147,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
      // var total = 0;
       for (var j = 0; j < numGroups; ++j)
       {
-        //const len = (<any>this.range.dims[0]).groups[j].length;
-        //var labelList = Array.apply(null, Array(len)).map((_, i) => { return i + total; });
-        //total += len;
         var labelList = (<any>this.range.dims[0]).groups[j].asList();
         var request = { group: JSON.stringify({ labels: labelList }) };
-        //console.log(labelList);
         responses.push(ajax.send('/api/gene_clustering/distances/' + that.data.desc.id, request, 'post'));
       }
 
@@ -1347,10 +1329,10 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       var groupName = (rStart == -1) ? clusterName : clusterName.slice(0, rStart);
       var method = clusterName.slice(rStart, rEnd);
 
-      // obtain subranges from cluster divider
+      // obtain sub-ranges from cluster divider, either real labels or ranges (min:max) if there's no column
       var subRanges = (<boxSlider.BoxSlider>divider).getDivisionRanges(column == null);
 
-      console.log(subRanges);
+      //console.log(subRanges);
 
       var rangeGroups = [];
       var groups = [];
@@ -1359,7 +1341,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       for (var i = 0; i < 3; ++i)
       {
         var groupSize = subRanges[i].length;
-        console.log(groupSize);
+        //console.log(groupSize);
         stratiSize += groupSize;
 
         rangeGroups.push(ranges.parse(subRanges[i]));
@@ -1378,8 +1360,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         id: dataID + method + String(numClusters) + 'Division' + String(cluster) + String(rand),
         fqname: 'none', name: dataName + '/' + method + '_' + String(numClusters) + '_Division_' + String(cluster) + String(rand),
         origin: dataFQ, size: stratiSize, ngroups: 3,
-        type: 'stratification', groups: groupsDesc, // TODO: use this as desc
-        idtype: 'patient', // TODO: figure out what idtypes are important for
+        type: 'stratification', groups: groupsDesc,
+        idtype: 'patient',
         ws: 'random' // TODO: figure out what this parameter is
       };
 
@@ -1392,31 +1374,30 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         var rowLabels = rowIds.dim(0).asList();
         var labels = dataClusters.groups[cluster].asList();
 
-        var newRows = [];
-        var newRowIds = [];
-
-        for (var j = 0; j < labels.length; ++j)
-        {
-          newRows.push(rows[labels[j]]);
-          newRowIds.push(rowLabels[labels[j]]);
-        }
-
-        console.log(rows, rowIds);
-        console.log(newRows, newRowIds);
-
         // create a new startification of the data
         var strati : stratification.IStratification;
 
-
         if (column == null)
         {
+          // It is important to rearrange the rows and rowIds since we create a new column since matrix is resolved
+          // by means of these ids (rowMatrix.fromIds()), otherwise clusters are not displayed correctly
+          var newRows = [];
+          var newRowIds = [];
+
+          for (var j = 0; j < labels.length; ++j)
+          {
+            newRows.push(rows[labels[j]]);
+            newRowIds.push(rowLabels[labels[j]]);
+          }
+
+          // create the new stratification and add the column to StratomeX
           strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, newRows, newRowIds, <any>compositeRange);
           that.stratomex.addData(strati, data, null);
           that.connectSignal = { cluster: cluster };
 
         } else {
-          strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
-          column.updateGridHelper(strati);
+          //strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
+          column.updateGrid(compositeRange);
         }
       });
     }
@@ -1495,7 +1476,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     var compositeRange = ranges.composite(dataName + 'cluster', groups);
 
     // update this column
-    this.updateGridHelper(compositeRange);
+    this.updateGrid(compositeRange);
   }
 
   // -------------------------------------------------------------------------------------------------------------------
