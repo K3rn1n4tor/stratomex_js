@@ -690,7 +690,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         const dataName = that.data.desc.name;
         var compositeRange = ranges.composite(dataName + 'cluster', newGroups);
 
-        that.updateGrid(compositeRange);
+        that.updateGridHelper(compositeRange);
 
         // stop propagation to disable further event triggering
         d3.event.stopPropagation();
@@ -779,7 +779,21 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  updateGrid(range: ranges.CompositeRange1D)
+  updateGridHelper(group: any)
+  {
+    var that = this;
+
+    if (group instanceof ranges.CompositeRange1D)
+    {
+      that.updateGrid(group);
+    }
+    else
+    {
+      group.range().then((range) => { that.updateGrid(range); });
+    }
+  }
+
+  updateGrid(range: ranges.CompositeRange1D)//strati: stratification.IStratification)//range: ranges.CompositeRange1D)
   {
     //d3.select(this.node).transition().duration(animationTime(-1)).style('opacity', 0);
     d3.select(this.grid.node).transition().duration(animationTime(-1)).style('opacity', 0);
@@ -787,21 +801,24 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     var that = this;
 
-    const numStatsViews = that.statsViews.length;
-    var compositeRange = <ranges.CompositeRange1D>that.range.dim(0);
-    that.range = ranges.parse(range.toString());
-
-    const groupsChanged = (compositeRange.groups.length != range.groups.length);
-
-    // reset layout of column
-    that.$parent.style('width', this.options.width + 'px');
-    that.$layoutHelper.style('width', this.options.width + 'px');
-
-    // recreate grid and fire changed option
-    that.createMultiGrid(that.range, that.data);
-
-    //promise.then((_: any) =>
+    //strati.range().then((range) =>
     //{
+      const numStatsViews = that.statsViews.length;
+      var compositeRange = <ranges.CompositeRange1D>that.range.dim(0);
+      console.log(range);
+      that.range = ranges.parse(range.toString());
+
+      const groupsChanged = (compositeRange.groups.length != range.groups.length);
+
+      // reset layout of column
+      that.$parent.style('width', this.options.width + 'px');
+      that.$layoutHelper.style('width', this.options.width + 'px');
+
+      // recreate grid and fire changed option
+      that.createMultiGrid(that.range, that.data);
+
+      //promise.then((_: any) =>
+      //{
       var promises: any[] = [];
       // destroy current stats views
       for (var i = 0; i < numStatsViews; ++i)
@@ -1331,7 +1348,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       var method = clusterName.slice(rStart, rEnd);
 
       // obtain subranges from cluster divider
-      var subRanges = (<boxSlider.BoxSlider>divider).getDivisionRanges();
+      var subRanges = (<boxSlider.BoxSlider>divider).getDivisionRanges(column == null);
 
       console.log(subRanges);
 
@@ -1389,15 +1406,17 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
         // create a new startification of the data
         var strati : stratification.IStratification;
-        strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, newRows, newRowIds, <any>compositeRange);
 
-        if (column === null)
+
+        if (column == null)
         {
+          strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, newRows, newRowIds, <any>compositeRange);
           that.stratomex.addData(strati, data, null);
           that.connectSignal = { cluster: cluster };
 
         } else {
-          column.updateGrid(compositeRange);
+          strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
+          column.updateGridHelper(strati);
         }
       });
     }
@@ -1476,7 +1495,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     var compositeRange = ranges.composite(dataName + 'cluster', groups);
 
     // update this column
-    this.updateGrid(compositeRange);
+    this.updateGridHelper(compositeRange);
   }
 
   // -------------------------------------------------------------------------------------------------------------------
