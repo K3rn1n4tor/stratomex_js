@@ -180,7 +180,7 @@ class StratomeX extends views.AView {
       const initMethod = args[1];
 
       var argUrl = [k, initMethod, dataID].join('/');
-      clusterResponse = ajax.getAPIJSON('/gene_clustering/kmeans/' + argUrl, {});
+      clusterResponse = ajax.getAPIJSON('/clustering/kmeans/' + argUrl, {});
       methodName = 'K-Means_' + String(k);
     }
 
@@ -190,7 +190,7 @@ class StratomeX extends views.AView {
       const pref = args[2];
 
       var argUrl = [damping, factor, pref, dataID].join('/');
-      clusterResponse = ajax.getAPIJSON('/gene_clustering/affinity/' + argUrl, {});
+      clusterResponse = ajax.getAPIJSON('/clustering/affinity/' + argUrl, {});
       methodName = 'Affinity';
     }
 

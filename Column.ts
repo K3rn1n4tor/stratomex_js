@@ -1149,7 +1149,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       {
         var labelList = (<any>this.range.dims[0]).groups[j].asList();
         var request = { group: JSON.stringify({ labels: labelList }) };
-        responses.push(ajax.send('/api/gene_clustering/distances/' + that.data.desc.id, request, 'post'));
+        responses.push(ajax.send('/api/clustering/distances/' + that.data.desc.id, request, 'post'));
       }
 
       Promise.all(responses).then((args: any) =>
@@ -1178,7 +1178,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     // request cluster distance data from server
     var request = { group: JSON.stringify({ labels: labelList, externLabels: externLabelList }) };
-    var response = ajax.send('/api/gene_clustering/distances/' + this.data.desc.id, request, 'post');
+    var response = ajax.send('/api/clustering/distances/' + this.data.desc.id, request, 'post');
     console.log("Requested distances of data set:", this.data.desc.id);
 
     // resolve all promises, including the promises where the distance range is determined
