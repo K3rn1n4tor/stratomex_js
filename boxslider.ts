@@ -691,7 +691,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
     var descs: any[] = [];
     // TODO! implement custom interpolator for colors
     const redColor = '#AA4040';
-    const greenColor = '#50AA60';
+    const greenColor = '#45AA55';
     const yellowColor = '#AAAA40';
 
     var colors = (numDivs == 1) ? [greenColor, redColor] : [greenColor, yellowColor, redColor];
