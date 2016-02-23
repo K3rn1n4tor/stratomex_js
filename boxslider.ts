@@ -308,6 +308,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
   private _mouseHandler(type: string, $root: d3.Selection<any>, args: any)
   {
     var that = this;
+    const tooltipHeight = 17;
 
     if (type == 'mouseover' || type == 'mousemove')
     {
@@ -328,7 +329,9 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
         var value = d3.round(that.boxValues[index], 2);
 
         index = Math.min(that.numBars - 1, Math.max(0, index));
-        var absPosY = $(that.$node.select('.bar' + index).node()).position().top;
+        var $bar = $(that.$node.select('.bar' + index).node());
+        // HINT! use this technique to compute relative distance to parent, works for both Firefox and Chrome!
+        var absPosY = $bar.offset().top - $bar.parent().parent().offset().top + 18 - tooltipHeight / 2;
 
         if (type == 'mousemove') {  that.colorizeBars(); }
 
@@ -345,6 +348,9 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
     {
       return function(_: any)
       {
+        // prevent removing tooltip when dragging is active
+        if (that.isDragging) { return; }
+
         that.$tooltip.style('opacity', 0);
         that.colorizeBars();
       }
@@ -457,6 +463,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
 
         var mousePos = d3.mouse($root.node());
         var posY = mousePos[1];
+        //console.log('AbsoluteMousePos', posY);
 
         // new index
         var newIndex = d3.round(scaleY.invert(posY));
@@ -489,7 +496,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
 
           if (newIndex != index)
           {
-            that.sliders[number].transition().duration(that.options.duration)
+            that.sliders[number]//.transition().duration(that.options.duration)
               .attr('transform', 'translate(0,' + (scaleY(newIndex) - barCover / 2) + ')');
 
             that.divisions[number] = newIndex;
@@ -502,7 +509,13 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
 
 
         const value = d3.round((that.boxValues[minIndex] + that.boxValues[maxIndex]) / 2, 2);
-        const sliderPosY = $(that.sliders[number].node()).position().top;
+        //const sliderPosY = $(that.sliders[number].node()).position().top;
+        //console.log('SliderPosY', sliderPosY);
+
+        var $slider = $(that.sliders[number].node());
+        var sliderPosY = $slider.offset().top - $slider.parent().offset().top + 18;
+        //console.log(posYTest);
+
         const sliderHeight = barHeight * scaling[1];
 
         that.$tooltip.style('opacity', 1);
@@ -532,8 +545,6 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
             .attr('fill', that.options.sliderColor);
       }
     }
-
-    d3.event.stopPropagation();
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -552,11 +563,11 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
     if (this.options.numSlider > 1)
     {
       const Q1 = d3.quantile(vec, 0.5);
-      const Q3 = d3.quantile(vec, 0.75);
+      const Q2 = d3.quantile(vec, 0.75);
       //const Q2 = d3.quantile(vec, 0.5);
       //const IQR = 1.5 * (Q3 - Q1);
       const minValue = Q1;
-      const maxValue = Q3;
+      const maxValue = Q2;
       const stepSize =  (maxValue - minValue) / (this.options.numSlider - 1);
 
       for (var j = 0; j < this.options.numSlider; ++j)

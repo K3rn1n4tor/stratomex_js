@@ -183,7 +183,7 @@ export class StratomeXLineUp extends views.AView
 
     // define the icons for the actions
     var addIcon = '\uf067';
-    var clusterIcon = (this.onCluster === null) ? '' : '\u2756'; //'\u26d5';
+    var clusterIcon = (this.onCluster === null) ? '' : '\uf085'; // gears //'\uf013'; // gear
 
     // load the plugin and define the description
     lineup.load().then((plugin) =>
@@ -222,7 +222,7 @@ export class StratomeXLineUp extends views.AView
             // define columns layout
             primary:
             [
-              { type: 'actions', width: 60, label: 'Actions'},
+              { type: 'actions', width: 50, label: 'Actions'},
               { type: 'rank', width: 40 },
               col('Package', 150),
               col('Dataset', 220),

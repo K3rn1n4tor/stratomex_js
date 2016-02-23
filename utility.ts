@@ -89,25 +89,32 @@ export class ClusterPopup
     var $action = $($currentRow).find("tspan[title='cluster']")[0];
 
     // obtain current position of cluster button
-    var position = $($action).position();
+    // TODO: this does not work for Firefox
+    //var position = $($action).offset();
+    //var parentPosition = $($rows).offset();
 
     // compute offsets
-    var offsetX = 15;
-    var windowHeight = 80; // 2 * 35px row height + title_height / 2
+    const offsetX = 5;
+    const offsetY = 10;
+    const windowHeight = 80; // 2 * 35px row height + title_height / 2
 
+    // this works for both Firefox and Chrome
+    var mousePos = d3.mouse($parent.node());
 
     // move window to cluster button
     var $root = $parent.append('div').classed('clusterPopup', true);
     $root.style({
-      'opacity': 0, left: String(position.left + offsetX) + 'px',
-      top: String(position.top - windowHeight) + 'px'
+      'opacity': 0, left: String(mousePos[0] - offsetX) + 'px',
+      top: String(mousePos[1] - windowHeight - offsetY) + 'px'
     });
 
     // start animation of popup
     $root.transition().duration(this.options.animationTime).style('opacity', 0.5);
 
     // create title
-    $root.append('div').classed('title', true).text('\u2756 Apply Clustering Algorithm');
+    var $titleBar = $root.append('div').classed('title', true);
+    $titleBar.append('i').classed('fa fa-gears', true);
+    $titleBar.append('text').text("Apply Clustering (" + this.data.desc.name + ')').style('margin-left', '5px');
 
     // create toolbar
     var $toolbar = $root.append('div').classed('toolbar', true);
