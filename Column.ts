@@ -24,8 +24,7 @@ import stratification_impl = require('../caleydo_core/stratification_impl');
 import vis = require('../caleydo_core/vis');
 
 // my own libraries
-import clusterDivider = require('../gene_vis/clusterdivider');
-import boxSlider = require('../gene_vis/boxslider');
+import boxSlider = require('./boxslider');
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Column utility functions
@@ -508,7 +507,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     summaryHeight: 90,
     width: 180,
     detailWidth: 500,
-    statsWidth: 200,
+    statsWidth: 50, // this is the default width for the distance view TODO: rename to distanceWidth
     padding: 2,
     name: null
   };
@@ -533,8 +532,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     cluster : number;
   };
 
-  private statsViews : any[] = [];
-  private activeDivision : Column[] = [];
+  private statsViews : any[] = []; // array of all distance views for this column TODO: rename to distanceViews
+  private activeDivision : Column[] = []; // TODO!: check if we still need the tracking of active divisions
   private distancesRange : [number, number] = null;
   public destroyed : boolean;
 
@@ -1194,7 +1193,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
       var dividerWidth = this.options.statsWidth - this.options.padding * 2;
 
-      this.options.statsWidth = 100;
+      //this.options.statsWidth = 50;
       var clusterGrid = $(this.$parent.node()).find('div.gridrow')[cluster];
       var height = $(clusterGrid).height() - 18 - 10 - 2 * this.options.padding;
 
@@ -1332,8 +1331,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       // obtain sub-ranges from cluster divider, either real labels or ranges (min:max) if there's no column
       var subRanges = (<boxSlider.BoxSlider>divider).getDivisionRanges(column == null);
 
-      //console.log(subRanges);
-
+      // create new range groups
       var rangeGroups = [];
       var groups = [];
       var groupsDesc = [];
@@ -1341,7 +1339,6 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       for (var i = 0; i < 3; ++i)
       {
         var groupSize = subRanges[i].length;
-        //console.log(groupSize);
         stratiSize += groupSize;
 
         rangeGroups.push(ranges.parse(subRanges[i]));
@@ -1353,14 +1350,12 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
       var compositeRange = ranges.composite(dataName + 'divisions', groups);
 
-      const rand = Math.random();
-
+      // create a new stratification description
       var descStrati =
       {
-        id: dataID + method + String(numClusters) + 'Division' + String(cluster) + String(rand),
-        fqname: 'none', name: dataName + '/' + method + '_' + String(numClusters) + '_Division_' + String(cluster) + String(rand),
-        origin: dataFQ, size: stratiSize, ngroups: 3,
-        type: 'stratification', groups: groupsDesc,
+        id: dataID + method + String(numClusters) + 'Division' + String(cluster),
+        fqname: 'none', name: dataName + '/' + method + '_' + String(numClusters) + '_Division_' + String(cluster),
+        origin: dataFQ, size: stratiSize, ngroups: 3, type: 'stratification', groups: groupsDesc,
         idtype: 'patient',
         ws: 'random' // TODO: figure out what this parameter is
       };
@@ -1630,7 +1625,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
             var newColumn = this.stratomex.getLastColumn();
             statsView.column = newColumn;
 
-            d3.select((<clusterDivider.ClusterDivider>statsView.divider).node)
+            d3.select((<boxSlider.BoxSlider>statsView.divider).node)
               .on('mouseup', onClickSlider(statsView.cluster, newColumn));
 
             this.connectSignal = null;
@@ -1642,12 +1637,11 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         // hack to update ribbons
         Promise.resolve(statsView).then( (stats: any) =>
         {
-          C.resolveIn(1000).then( () =>
+          C.resolveIn(1500).then( () =>
           {
             var linkSVG = d3.select('.link-container svg');
             if (stats.column == null) { return; }
 
-            //console.log(linkSVG);
             var colID = this.id;
             var nextID = stats.column.id;
 
@@ -1656,15 +1650,15 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
             if (Math.abs(colID - nextID) != 1) { return; }
 
+            // get current links between column minID and maxID and look for the bands
             var idRequest = "g[data-id='" + String(minID) + '-' + String(maxID) +  "']";
-            //console.log(idRequest);
             var bandsGroup = linkSVG.selectAll(idRequest);
-            //console.log(bandsGroup);
             var bands = bandsGroup.selectAll('.rel-group');
-            //console.log(bands);
             if (bands.length < 1) { return; }
             var divBands = bands[0];
 
+            if (divBands.length != 3) { return; }
+            // sort bands by means of their y-position
             divBands.sort( (l: any, r: any) => { return $(l).position().top - $(r).position().top; });
 
             d3.select(divBands[0]).style('fill', 'darkgreen');
@@ -1780,7 +1774,7 @@ export class DetailView
 export class StatsView
 {
   private $node : d3.Selection<any>;
-  private divider : clusterDivider.ClusterDivider;
+  private divider : boxSlider.BoxSlider;
 
   constructor($parent: d3.Selection<any>, private cluster: number, private data : datatypes.IDataType)
   {

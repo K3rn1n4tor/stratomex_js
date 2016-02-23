@@ -42,7 +42,7 @@
           "id": "stratomex-column",
           "file": "Column",
           "factory": "createCmd",
-          "creates": "(createStratomeXColumn|removeStratomeXColumn|swapStratomeXColumns|setStratomeXColumnOption|changeStratomeXColumnVis|showStratomeXInDetail)"
+          "creates": "(createStratomeXColumn|removeStratomeXColumn|swapStratomeXColumns|setStratomeXColumnOption|changeStratomeXColumnVis|showStratomeXInDetail|showStratomeXStats)"
         },
         {
           "type": "actionCompressor",
@@ -61,6 +61,14 @@
           "id": "stratomex-compressHideShowDetail",
           "file": "Column",
           "factory": "compressHideShowDetail"
+        },
+        {
+          "type": "vis",
+          "id": "caleydo-vis-boxslider",
+          "name": "Box Divider",
+          "file": "boxslider",
+          "filter": "vector",
+          "icon": "icon.svg"
         },
         {
           "type": "app",
