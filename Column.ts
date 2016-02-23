@@ -790,7 +790,6 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     //{
       const numStatsViews = that.statsViews.length;
       var compositeRange = <ranges.CompositeRange1D>that.range.dim(0);
-      console.log(range);
       that.range = ranges.parse(range.toString());
 
       const groupsChanged = (compositeRange.groups.length != range.groups.length);
