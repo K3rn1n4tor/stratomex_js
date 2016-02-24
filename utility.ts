@@ -48,18 +48,18 @@ export class ClusterPopup
           inits: ['forgy', 'uniform', 'random', 'kmeans++'], // initialization method for k-means
           initSelect: 3
         },
+        'hierarchical':
+        {
+          range: [2, 20, 2],
+          methods: ['single', 'complete', 'weighted', 'median', 'average', 'centroid'], // linkage method for k-means
+          methodSelect: 1
+        },
         'affinity':
         {
           rangeDamping: [0, 1, 0.5], // damping avoids oscillations of algorithm [min, max, value]
           rangeFactor: [0.1, 10, 1.0], // influences the preference value (influences number of clusters)
           prefs: ['median', 'minimum'], // median produces moderate number, minimum a small number of clusters
           prefSelect: 1
-        },
-        'hierarchical':
-        {
-          range: [2, 20, 2],
-          methods: ['single', 'complete', 'weighted', 'median'], // linkage method for k-means
-          methodSelect: 1
         }
       }, options);
     this.$node = this._build(d3.select(parent), rowID);

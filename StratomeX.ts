@@ -203,6 +203,7 @@ class StratomeX extends views.AView {
       const method = args[1];
       // TODO! support more algorithms like hierarchical, ...
       var argUrl = [k, method, dataID].join('/');
+      console.log(argUrl);
       clusterResponse = ajax.getAPIJSON('/clustering/hierarchical/' + argUrl, {});
       methodName = 'Hierarchical';
     }
