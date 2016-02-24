@@ -86,13 +86,18 @@ class StratomeX extends views.AView {
   relayout(within = -1) {
     var that = this;
     that._links.hide();
-    return C.resolveIn(5).then(() => {
-        that._columns.forEach((d) => d.layouted(within));
-        if (that.relayoutTimer >= 0) {
-          clearTimeout(that.relayoutTimer);
-        }
-        that.relayoutTimer = setTimeout(that._links.update.bind(that._links), within + 400);
-        return C.resolveIn(within);
+    return C.resolveIn(5).then(() =>
+    {
+      that._columns.forEach((d) => { d.layouted(within); });
+
+      if (that.relayoutTimer >= 0)
+      {
+        clearTimeout(that.relayoutTimer);
+      }
+
+      that.relayoutTimer = setTimeout(that._links.update.bind(that._links), within + 400);
+      that._columns.forEach((d) => { d.fire('relayouted'); });
+      return C.resolveIn(within);
       });
   }
 
@@ -180,7 +185,7 @@ class StratomeX extends views.AView {
       const initMethod = args[1];
 
       var argUrl = [k, initMethod, dataID].join('/');
-      clusterResponse = ajax.getAPIJSON('/gene_clustering/kmeans/' + argUrl, {});
+      clusterResponse = ajax.getAPIJSON('/clustering/kmeans/' + argUrl, {});
       methodName = 'K-Means_' + String(k);
     }
 
@@ -190,7 +195,7 @@ class StratomeX extends views.AView {
       const pref = args[2];
 
       var argUrl = [damping, factor, pref, dataID].join('/');
-      clusterResponse = ajax.getAPIJSON('/gene_clustering/affinity/' + argUrl, {});
+      clusterResponse = ajax.getAPIJSON('/clustering/affinity/' + argUrl, {});
       methodName = 'Affinity';
     }
 
@@ -244,23 +249,85 @@ class StratomeX extends views.AView {
 
     clusterLabels = clusterLabels.sort(compareCluster);
 
-    for (var i = 0; i < numClusters; ++i)
+    Promise.all([(<any>data).rows(), (<any>data).rowIds()]).then((args) =>
     {
-      clusterRanges.push(ranges.parse(clusterLabels[i]));
-      groups.push(new ranges.Range1DGroup('Group ' + String(i) + '(' + method + ')',
-        'red', clusterRanges[i].dim(0)));
-      groupsDesc.push({name: String(i), size: clusterLabels[i].length});
-    }
+      // obtain the rows and rowIDs of the data
+      var rows = args[0];
+      var rowIds = args[1];
 
-    var compositeRange = ranges.composite(dataName + 'cluster', groups);
+      var newRows = [];
+      var newRowIds = [];
+
+      // rewrite cluster labels since some data sets do not follow a sequential order
+      var rowLabels = rowIds.dim(0).asList();
+      var sumLabels = 0;
+
+      for (var i = 0; i < numClusters; ++i)
+      {
+        const numLabels = clusterLabels[i].length;
+
+        for (var j = 0; j < numLabels; ++j)
+        {
+          // HINT! have a look at any CNMF clustering file, they rearrange all rows and rowIds instead of the groups
+          newRows.push(rows[clusterLabels[i][j]]);
+          newRowIds.push(rowLabels[clusterLabels[i][j]]);
+        }
+        clusterLabels[i] = '(' + String(sumLabels) + ':' + String(numLabels + sumLabels) + ')';
+
+        sumLabels += numLabels;
+      }
+
+      for (var i = 0; i < numClusters; ++i)
+      {
+        clusterRanges.push(ranges.parse(clusterLabels[i]));
+        groups.push(new ranges.Range1DGroup('Group ' + String(i) + '(' + method + ')',
+          'red', clusterRanges[i].dim(0)));
+        groupsDesc.push({name: String(i), size: clusterLabels[i].length});
+      }
+      console.log(groups);
+
+      var compositeRange = ranges.composite(dataName + 'cluster', groups);
+      console.log(compositeRange);
+
+      // create new stratification with description
+      var descStrati =
+      {
+        id: dataID + 'method', fqname: 'none', name: dataName + '/' + method,
+        origin: dataFQ, size: (<any>data).dim[0], ngroups: numClusters,
+        type: 'stratification', groups: groupsDesc, // TODO: use this as desc
+        idtype: 'patient',
+        ws: 'random' // TODO: figure out what this parameter is
+      };
+
+      // create a new startification of the data
+      var strati : stratification.IStratification;
+      // provide newRows as number[] and newRowIds as string[]
+      strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, newRows, newRowIds, <any>compositeRange);
+
+      // add new clustered data with its stratification to StratomeX
+      that.addData(strati, data, null);
+    });
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  addColumnWithRange(data: datatypes.IDataType, compositeRange: ranges.CompositeRange1D)
+  {
+    var that = this;
+
+    const dataID = data.desc.id;
+    const dataFQ = data.desc.fqname;
+    const dataName = data.desc.name;
+
+    const numGroups = compositeRange.groups.length;
 
     // create new stratification with description
     var descStrati =
     {
-      id: dataID + 'method', fqname: 'none', name: dataName + '/' + method,
-      origin: dataFQ, size: (<any>data).dim[0], ngroups: numClusters,
-      type: 'stratification', groups: groupsDesc, // TODO: use this as desc
-      idtype: 'patient', // TODO: figure out what idtypes are important for
+      id: dataID + 'method', fqname: 'none', name: dataName,
+      origin: dataFQ, size: (<any>data).dim[0], ngroups: numGroups,
+      type: 'stratification', groups: compositeRange.groups, // TODO: use this as desc
+      idtype: 'patient',
       ws: 'random' // TODO: figure out what this parameter is
     };
 

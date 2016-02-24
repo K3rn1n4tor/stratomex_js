@@ -16,6 +16,7 @@ import behaviors = require('../caleydo_core/behavior');
 import events = require('../caleydo_core/event');
 import link_m = require('../caleydo_links/link');
 import datatypes = require('../caleydo_core/datatype');
+import datas = require('../caleydo_core/data');
 import prov = require('../caleydo_provenance/main');
 import ranges = require('../caleydo_core/range');
 import stratification = require('../caleydo_core/stratification');
@@ -23,8 +24,7 @@ import stratification_impl = require('../caleydo_core/stratification_impl');
 import vis = require('../caleydo_core/vis');
 
 // my own libraries
-import clusterDivider = require('../gene_vis/clusterdivider');
-import boxSlider = require('../gene_vis/boxslider');
+import boxSlider = require('./boxslider');
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Column utility functions
@@ -235,11 +235,10 @@ export function showStats(inputs, parameter, graph, within)
   });
 }
 
-// TODO create stats cmd
 export function createToggleStatsCmd(column, cluster, show)
 {
   var act = show ? 'Show' : 'Hide';
-  return prov.action(prov.meta(act + ' Statistics of ' + column.toString() + ' Cluster "' + cluster + '"', prov.cat.layout),
+  return prov.action(prov.meta(act + ' Distances of ' + column.toString() + ' Cluster "' + cluster + '"', prov.cat.layout),
     'showStratomeXStats', showStats, [column], {
       cluster: cluster,
       action: show ? 'show' : 'hide'
@@ -368,7 +367,7 @@ export function compressCreateRemove(path:prov.ActionNode[])
             to_remove.push(j, i); //remove both
             break;
           }
-        } else if (q.f_id.match(/(changeStratomeXColumnVis|showStratomeXInDetail|setStratomeXColumnOption|swapStratomeXColumns)/))
+        } else if (q.f_id.match(/(changeStratomeXColumnVis|showStratomeXInDetail|setStratomeXColumnOption|swapStratomeXColumns|showStratomeXStats)/))
         {
           if (q.requires.some((d) => d === col))
           {
@@ -507,42 +506,43 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     summaryHeight: 90,
     width: 180,
     detailWidth: 500,
-    statsWidth: 200,
+    statsWidth: 50, // this is the default width for the distance view TODO: rename to distanceWidth
     padding: 2,
     name: null
   };
 
-  private $parent : d3.Selection<any>;
-  private $toolbar : d3.Selection<any>;
-  private $summary : d3.Selection<any>;
-  private $clusters : d3.Selection<any>;
+  private $parent: d3.Selection<any>;
+  private $toolbar: d3.Selection<any>;
+  private $summary: d3.Selection<any>;
+  private $clusters: d3.Selection<any>;
 
-  range : ranges.Range;
-  private summary : multiform.MultiForm;
-  private grid : multiform.MultiFormGrid;
+  range: ranges.Range;
+  private summary: multiform.MultiForm;
+  private grid: multiform.MultiFormGrid;
 
-  private grid_zoom:behaviors.ZoomLogic;
-  private summary_zoom:behaviors.ZoomLogic;
+  private grid_zoom: behaviors.ZoomLogic;
+  private summary_zoom: behaviors.ZoomLogic;
 
   private detail:
   {
-    $node : d3.Selection<any>;
-    multi : multiform.IMultiForm;
-    zoom : behaviors.ZoomBehavior;
-    cluster : number;
+    $node: d3.Selection<any>;
+    multi: multiform.IMultiForm;
+    zoom: behaviors.ZoomBehavior;
+    cluster: number;
   };
 
-  private statsViews : any[] = [];
-  private activeDivision : Column[] = [];
-  private distancesRange : [number, number] = null;
-  public destroyed : boolean;
+  private statsViews: any[] = []; // array of all distance views for this column TODO: rename to distanceViews
+  private activeDivision: Column[] = []; // TODO!: check if we still need the tracking of active divisions
+  private distancesRange: [number, number] = null;
+  public destroyed: boolean; // signals if this column was destroyed
+  public busy: boolean = true; // signals if this column is busy
 
-  private $layoutHelper:d3.Selection<any>;
+  private $layoutHelper: d3.Selection<any>;
 
   changeHandler:any;
   optionHandler:any;
 
-  private connectSignal : any = null;
+  private connectSignal: any = null;
 
   // -------------------------------------------------------------------------------------------------------------------
 
@@ -580,13 +580,10 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       'background-color': data.desc.bgColor || 'lightgray'
     });
     this.$summary.append('div').attr('class', 'title').style('max-width', (that.options.width - this.options.padding * 2) + 'px')
-      .text(this.name).style('background-color', data.desc.bgColor || 'lightgray');
+      .text(this.name).style('background-color', data.desc.bgColor || 'lightgrey');
 
     this.$clusters = this.$parent.append('div').attr('class', 'clusters');
     this.range = partitioning;
-    //console.log("Range  of column:", this.range);
-    //console.log("Range Group 0 of column:", (<any>this.range.dims[0]).groups[0].asList());
-    //console.log("Range Group 1 of column:", (<any>this.range.dims[0]).groups[1].asList());
 
     //create summary visualization as a multiform to display all compatible visualization
     this.summary = multiform.create(data.desc.type !== 'stratification' ? data.view(partitioning) : data, <Element>this.$summary.node(), {
@@ -605,7 +602,6 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       manager.select([this.id], idtypes.toSelectOperation(d3.event));
     });
 
-    //console.log("Normal partitioning:", partitioning);
     this.createMultiGrid(partitioning, data);
     this.createToolBar();
 
@@ -616,6 +612,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     this.destroyed = false;
 
     this.$parent.transition().duration(animationTime(within)).style('opacity', 1);
+
+    this.on('relayouted', this.relayoutAfterHandler);
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -648,7 +646,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       });
 
       // create new cluster stats command
-      $toolbar.append('i').attr('class', 'fa fa-arrows').on('click', () =>
+      $toolbar.append('i').attr('class', 'fa fa-sort-amount-asc').on('click', () =>
       {
         // first obtain the provenance graph
         var graph = that.stratomex.provGraph;
@@ -660,18 +658,59 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         d3.event.stopPropagation();
       });
 
+      // re-cluster column command
+      $toolbar.append('i').attr('class', 'fa fa-refresh').on('click', () =>
+      {
+        var clusterIndex = pos[0];
+
+        var statsView = that.statsViews[clusterIndex];
+        if (statsView == null) { return; }
+
+        var rangeColumn = <ranges.CompositeRange1D>statsView.column.getRange().dim(0);
+        var groupsColumn = rangeColumn.groups;
+        var newGroups = [];
+
+        var compRange = <ranges.CompositeRange1D>that.range.dim(0);
+
+        for (var i = 0; i < compRange.groups.length; ++i)
+        {
+          if (i == clusterIndex) { continue; }
+          var groupIndex = i;
+          if (i > clusterIndex) { groupIndex = i + groupsColumn.length - 1; }
+
+          compRange.groups[i].name = "Group " + String(groupIndex) + '(Custom)';
+          newGroups.push(compRange.groups[i]);
+        }
+
+        for (var k = groupsColumn.length - 1; k >= 0; --k)
+        {
+          groupsColumn[k].name = "Group " + String(k + clusterIndex) + '(Custom)';
+          newGroups.splice(clusterIndex, 0, groupsColumn[k]);
+        }
+
+        const dataName = that.data.desc.name;
+        var compositeRange = ranges.composite(dataName + 'cluster', newGroups);
+
+        that.updateGrid(compositeRange);
+
+        // stop propagation to disable further event triggering
+        d3.event.stopPropagation();
+      });
+
       const toggleSelection = () =>
       {
         var isSelected = $elem.classed('select-selected');
         if (isSelected)
         {
           data.select(0, ranges.none());
-        } else
+        }
+        else
         {
           data.select(0, ranges.all());
         }
         $elem.classed('select-selected', !isSelected);
       };
+
       $elem.append('div').attr('class', 'title').style('max-width', (that.options.width - that.options.padding * 2) + 'px')
         .text(cluster.dim(0).name).on('click', toggleSelection);
       $elem.append('div').attr('class', 'body').on('click', toggleSelection);
@@ -741,45 +780,64 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  updateGrid(strati: stratification.IStratification)
+   updateGrid(range: ranges.CompositeRange1D)//strati: stratification.IStratification)//range: ranges.CompositeRange1D)
   {
-    d3.select(this.grid.node).transition().duration(animationTime(-1)).style('opacity', '0');
+    //d3.select(this.node).transition().duration(animationTime(-1)).style('opacity', 0);
+    d3.select(this.grid.node).transition().duration(animationTime(-1)).style('opacity', 0);
     this.grid.destroy();
 
     var that = this;
 
-    strati.range().then((range) =>
-    {
+    //strati.range().then((range) =>
+    //{
+      const numStatsViews = that.statsViews.length;
+      var compositeRange = <ranges.CompositeRange1D>that.range.dim(0);
       that.range = ranges.parse(range.toString());
+
+      const groupsChanged = (compositeRange.groups.length != range.groups.length);
+
+      // reset layout of column
+      that.$parent.style('width', this.options.width + 'px');
+      that.$layoutHelper.style('width', this.options.width + 'px');
+
+      // recreate grid and fire changed option
       that.createMultiGrid(that.range, that.data);
 
-      this.$parent.style('width', this.options.width + 'px');
-      this.$layoutHelper.style('width', this.options.width + 'px');
-
-      var promise = this.stratomex.relayout();
-
-      promise.then((_: any) =>
+      //promise.then((_: any) =>
+      //{
+      var promises: any[] = [];
+      // destroy current stats views
+      for (var i = 0; i < numStatsViews; ++i)
       {
-        var promises = [];
-        // destroy current stats views
-        for (var i = 0; i < 3; ++i)
+        var statsView = that.statsViews[i];
+        that.statsViews[i] = null;
+        if (statsView != null)
         {
-          var statsView = that.statsViews[i];
-          that.statsViews[i] = null;
-          if (statsView != null)
+          statsView.divider.destroy();
+          statsView.$node.remove();
+
+          if (statsView.externNodes.length > 0)
           {
-            statsView.divider.destroy();
-            statsView.$node.remove();
-            //that.hideStats(i, null);
-            if (statsView.visible)
+            for (var k = 0; k < statsView.externNodes.length; ++k)
             {
-              promises.push(that.showStats(i));
+              statsView.externDividers[k].destroy();
+              statsView.externNodes[k].remove();
             }
           }
-        }
-      });
 
-    });
+          if (statsView.visible && !groupsChanged)
+          {
+            promises.push(that.showStats(i, -1, false));
+          }
+        }
+      }
+
+      // update grid after all views are recreated
+      Promise.all(promises).then((_) =>
+      {
+        that.stratomex.relayout();
+      });
+    //});
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -831,6 +889,13 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
   ids()
   {
     return this.data.ids(this.range);
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  getRange()
+  {
+    return this.range;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -963,10 +1028,12 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       cluster: cluster
     };
 
+
+    const numGroups = (<any>this.range.dims[0]).groups.length;
     var width = this.options.width + this.options.detailWidth;
     if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return d.visible == true; } ))
     {
-      width += this.options.statsWidth;
+      width += this.options.statsWidth * numGroups;
     }
 
 
@@ -988,9 +1055,10 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     this.detail = null;
 
     var width = this.options.width;
+    const numGroups = (<any>this.range.dims[0]).groups.length;
     if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return d.visible == true; } ))
     {
-      width += this.options.statsWidth;
+      width += this.options.statsWidth * numGroups;
     }
 
     this.$parent.style('width', width + 'px');
@@ -1000,13 +1068,15 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  showStats(cluster, within = -1)
+  showStats(cluster, within = -1, relayout = true)
   {
     var statsView = this.statsViews[cluster];
 
     if (statsView != null)
     {
-      var layoutWidth = this.options.statsWidth + this.options.width;
+      const numGroups = (<any>this.range.dims[0]).groups.length;
+
+      var layoutWidth = this.options.statsWidth * numGroups + this.options.width;
       if (this.detail) { layoutWidth += this.options.detailWidth; }
 
       this.$parent.style('width', layoutWidth + 'px');
@@ -1014,7 +1084,15 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       statsView.$node.transition().duration(animationTime(within)).style('opacity', 1);
       statsView.visible = true;
 
-      return this.stratomex.relayout(within);
+      if (statsView.externNodes.length > 0)
+      {
+        for (var k = 0; k < statsView.externNodes.length; ++k)
+        {
+          statsView.externNodes[k].transition().duration(animationTime(within)).style('opacity', 1);
+        }
+      }
+
+      return (relayout) ? this.stratomex.relayout(within) : Promise.resolve([]);
     }
 
     const that = this;
@@ -1025,17 +1103,26 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     const $elem = this.$parent.append('div').classed('stats', true).style('opacity', 0);
     $elem.classed('group', true).datum(data);
 
-    var dataClusters = <ranges.CompositeRange1D>this.range.dim(0);
-    var clusterName = cluster < 0 ? this.data.desc.name : dataClusters.groups[cluster].name;
+    //var dataClusters = <ranges.CompositeRange1D>this.range.dim(0);
+    //var clusterName = cluster < 0 ? this.data.desc.name : dataClusters.groups[cluster].name;
 
     var $toolbar = $elem.append('div').attr('class', 'gtoolbar');
     $elem.append('div').attr('class', 'title')
-      .text('Statistics of ' + clusterName);
+      .text('Distances');
 
-    // create new cluster stats command
-    $toolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
+    // tool to divide current cluster and create new divisions / stratifications displayed in a new column
+    $toolbar.append('i').attr('class', 'fa fa-share-alt').on('click', () =>
     {
       that.showDivisions(cluster);
+      // stop propagation to disable further event triggering
+      d3.event.stopPropagation();
+    });
+
+    // tool to recluster current column
+    $toolbar.append('i').attr('class', 'fa fa-refresh').on('click', () =>
+    {
+      that.regroupCluster(cluster);
+
       // stop propagation to disable further event triggering
       d3.event.stopPropagation();
     });
@@ -1051,17 +1138,22 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     const numGroups = (<any>this.range.dims[0]).groups.length;
 
+
+    //this.data.rowIds().then((ids) => { console.log(ids.dim(0).asList()); });
+
     var responses = [];
     if (this.distancesRange == null)
     {
+     // var total = 0;
       for (var j = 0; j < numGroups; ++j)
       {
         var labelList = (<any>this.range.dims[0]).groups[j].asList();
         var request = { group: JSON.stringify({ labels: labelList }) };
-        responses.push(ajax.send('/api/gene_clustering/distances/' + that.data.desc.id, request, 'post'));
+        responses.push(ajax.send('/api/clustering/distances/' + that.data.desc.id, request, 'post'));
       }
 
-      Promise.all(responses).then((args: any) => {
+      Promise.all(responses).then((args: any) =>
+      {
         var values = [];
 
         for (var j = 0; j < numGroups; ++j)
@@ -1073,6 +1165,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       });
     }
 
+
     var labelList = (<any>this.range.dims[0]).groups[cluster].asList();
 
     // gather all other clusters and their labels
@@ -1083,12 +1176,12 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       externLabelList.push((<any>this.range.dims[0]).groups[j].asList());
     }
 
-
     // request cluster distance data from server
     var request = { group: JSON.stringify({ labels: labelList, externLabels: externLabelList }) };
-    var response = ajax.send('/api/gene_clustering/distances/' + this.data.desc.id, request, 'post');
+    var response = ajax.send('/api/clustering/distances/' + this.data.desc.id, request, 'post');
     console.log("Requested distances of data set:", this.data.desc.id);
 
+    // resolve all promises, including the promises where the distance range is determined
     return Promise.all(responses.concat(response)).then((args: any) =>
     {
       var distanceData = args[responses.length];
@@ -1098,9 +1191,10 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       var distances = distanceData.distances;
       var externDistances = distanceData.externDistances;
       var labels = distanceData.labels;
+
       var dividerWidth = this.options.statsWidth - this.options.padding * 2;
 
-      this.options.statsWidth = 100;
+      //this.options.statsWidth = 50;
       var clusterGrid = $(this.$parent.node()).find('div.gridrow')[cluster];
       var height = $(clusterGrid).height() - 18 - 10 - 2 * this.options.padding;
 
@@ -1111,40 +1205,57 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
       var externDividers = [];
       var externZooms = [];
+      var externNodes = [];
+
       if (externDistances != null)
       {
         for (var j = 0; j < externDistances.length; ++j)
         {
           const $elemNext = this.$parent.append('div').classed('stats', true).style('opacity', 0);
           $elemNext.classed('group', true).datum(data);
-          const $bodyNext = $elemNext.append('div').attr('class', 'body');
           $elemNext.append('div').attr('class', 'title').text('External Distances');
+          const $bodyNext = $elemNext.append('div').attr('class', 'body');
 
           var externDivider = boxSlider.createRaw(externDistances[j], <Element>$bodyNext.node(), {
-            scaleTo: [dividerWidth, height], range: that.distancesRange, numAvg: 1
+            scaleTo: [dividerWidth, height], range: that.distancesRange, numAvg: 1, numSlider: 0
           });
           (<boxSlider.BoxSlider>externDivider).setLabels(labels);
           externDividers.push(externDivider);
-          //$elemNext.transition().duration(animationTime(within)).style('opacity', 1);
+          $elemNext.transition().duration(animationTime(within)).style('opacity', 1);
           externZooms.push(new behaviors.ZoomLogic((<boxSlider.BoxSlider>externDivider), null));
+          externNodes.push($elemNext);
         }
       }
+
+      function mouseOutHandler(divider: vis.AVisInstance, extDividers: vis.AVisInstance[])
+      {
+        return (_: any) =>
+        {
+          var divs = (<boxSlider.BoxSlider>divider).getCurrentDivisions();
+          extDividers.forEach((d: boxSlider.BoxSlider) => { d.setDivisions(divs); });
+        };
+      }
+
+      $elem.on('mouseup', mouseOutHandler(divider, externDividers));
+      // and color each extern distance box chart at the beginning
+      mouseOutHandler(divider, externDividers)({});
 
       this.statsViews[cluster] =
       {
         $node: $elem, divider: divider, externDividers: externDividers,
         cluster: cluster, visible: true, column: null,
-        zoom: new behaviors.ZoomLogic((<boxSlider.BoxSlider>divider), null), externZooms: externZooms
+        zoom: new behaviors.ZoomLogic((<boxSlider.BoxSlider>divider), null), externZooms: externZooms,
+        externNodes: externNodes
       };
 
-      var layoutWidth = this.options.statsWidth + this.options.width;
+      var layoutWidth = this.options.statsWidth * numGroups + this.options.width;
       if (this.detail) { layoutWidth += this.options.detailWidth; }
 
       this.$parent.style('width', layoutWidth + 'px');
       this.$layoutHelper.style('width', layoutWidth + 'px');
       $elem.transition().duration(animationTime(within)).style('opacity', 1);
 
-      return this.stratomex.relayout(within);
+      return (relayout) ? this.stratomex.relayout(within) : Promise.resolve([]);
     });
   }
 
@@ -1155,11 +1266,21 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     statsView.visible = false;
     statsView.$node.transition().duration(animationTime(within)).style('opacity', 0); //.remove();
 
+    const numGroups = (<any>this.range.dims[0]).groups.length;
+
+    if (statsView.externNodes.length > 0)
+    {
+      for (var k = 0; k < statsView.externNodes.length; ++k)
+      {
+        statsView.externNodes[k].transition().duration(animationTime(within)).style('opacity', 0);
+      }
+    }
+
     var layoutWidth = this.options.width;
 
     if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return d.visible == true; } ))
     {
-      layoutWidth += this.options.statsWidth;
+      layoutWidth += this.options.statsWidth * numGroups;
     }
 
     if (this.detail) { layoutWidth += this.options.detailWidth; }
@@ -1208,9 +1329,10 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       var groupName = (rStart == -1) ? clusterName : clusterName.slice(0, rStart);
       var method = clusterName.slice(rStart, rEnd);
 
-      // obtain subranges from cluster divider
-      var subRanges = (<boxSlider.BoxSlider>divider).getDivisionRanges();
+      // obtain sub-ranges from cluster divider, either real labels or ranges (min:max) if there's no column
+      var subRanges = (<boxSlider.BoxSlider>divider).getDivisionRanges(column == null);
 
+      // create new range groups
       var rangeGroups = [];
       var groups = [];
       var groupsDesc = [];
@@ -1229,13 +1351,13 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
       var compositeRange = ranges.composite(dataName + 'divisions', groups);
 
+      // create a new stratification description
       var descStrati =
       {
         id: dataID + method + String(numClusters) + 'Division' + String(cluster),
         fqname: 'none', name: dataName + '/' + method + '_' + String(numClusters) + '_Division_' + String(cluster),
-        origin: dataFQ, size: stratiSize, ngroups: 3,
-        type: 'stratification', groups: groupsDesc, // TODO: use this as desc
-        idtype: 'patient', // TODO: figure out what idtypes are important for
+        origin: dataFQ, size: stratiSize, ngroups: 3, type: 'stratification', groups: groupsDesc,
+        idtype: 'patient',
         ws: 'random' // TODO: figure out what this parameter is
       };
 
@@ -1245,20 +1367,112 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         var rows = args[0];
         var rowIds = args[1];
 
+        var rowLabels = rowIds.dim(0).asList();
+        var labels = dataClusters.groups[cluster].asList();
+
         // create a new startification of the data
         var strati : stratification.IStratification;
-        strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
 
-        if (column === null)
+        if (column == null)
         {
+          // It is important to rearrange the rows and rowIds since we create a new column since matrix is resolved
+          // by means of these ids (rowMatrix.fromIds()), otherwise clusters are not displayed correctly
+          var newRows = [];
+          var newRowIds = [];
+
+          for (var j = 0; j < labels.length; ++j)
+          {
+            newRows.push(rows[labels[j]]);
+            newRowIds.push(rowLabels[labels[j]]);
+          }
+
+          // create the new stratification and add the column to StratomeX
+          strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, newRows, newRowIds, <any>compositeRange);
           that.stratomex.addData(strati, data, null);
           that.connectSignal = { cluster: cluster };
 
         } else {
-          column.updateGrid(strati);
+          //strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
+          column.updateGrid(compositeRange);
         }
       });
     }
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  private regroupCluster(cluster: number)
+  {
+    var statsView = this.statsViews[cluster];
+    var that = this;
+
+    if (statsView == null)
+    {
+      return Promise.resolve([]);
+    }
+
+    const clusterLabels = statsView.divider.getLabels();
+
+    var distanceVec: any[] = [];
+
+    for (var j = 0; j < statsView.externDividers.length; ++j)
+    {
+      distanceVec.push(statsView.externDividers[j].data);
+    }
+
+    // insert cluster into distance vectors
+    distanceVec.splice(cluster, 0, statsView.divider.data);
+
+    var compositeRange = <ranges.CompositeRange1D>this.range.dim(0);
+    const numGroups = compositeRange.groups.length;
+    //compositeRange.groups.splice(cluster, 1);
+
+    var newLabels: any[] = Array.apply(null, Array(numGroups)).map((_, i) => { return []; });
+
+    for (var i = 0; i < distanceVec[0].length; ++i)
+    {
+      var tempArray = [];
+
+      for (var k = 0; k < distanceVec.length; ++k)
+      {
+        tempArray.push(distanceVec[k][i]);
+      }
+
+      var minDist = Math.min.apply(Math, tempArray);
+      var minIndex = tempArray.indexOf(minDist);
+
+      newLabels[minIndex].push(clusterLabels[i]);
+    }
+
+    for (var i = 0; i < numGroups; ++i)
+    {
+      if (i != cluster)
+      {
+        // create new group
+        var labels = compositeRange.groups[i].asList();
+        newLabels[i] = labels.concat(newLabels[i]);
+      }
+    }
+
+    // first from groups
+    var groups = <any>[];
+    var groupsDesc = <any>[];
+    var clusterRanges = <any>[];
+
+    for (var i = 0; i < numGroups; ++i)
+    {
+      clusterRanges.push(ranges.parse(newLabels[i]));
+      groups.push(new ranges.Range1DGroup('Group ' + String(i),
+        'red', clusterRanges[i].dim(0)));
+      groupsDesc.push({name: String(i), size: newLabels[i].length});
+    }
+
+    const dataName = this.data.desc.name;
+
+    var compositeRange = ranges.composite(dataName + 'cluster', groups);
+
+    // update this column
+    this.updateGrid(compositeRange);
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -1286,10 +1500,10 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     if (this.detail)
     {
       var clusterGrid = $(this.$parent.node()).find('div.gridrow')[this.detail.cluster];
-      var clusterPosY = $(clusterGrid).position().top;
+      //var clusterPosY = $(clusterGrid).position().top;
+      var clusterPosY = this.options.summaryHeight + 32;
 
       size.x -= this.options.detailWidth;
-      this.$summary.style('width', size.x + 'px');
       this.detail.$node.style({
         width: this.options.detailWidth + 'px',
         height: size.y + 'px',
@@ -1302,11 +1516,11 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     // -----------------------------------------------------------------------------------------------------------------
     // Resize if statistics are shown
 
-    var numGroups = (<any>this.range.dims[0]).groups.length;
+    const numGroups = (<any>this.range.dims[0]).groups.length;
 
     if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return d.visible == true; } ))
     {
-      size.x -= this.options.statsWidth;
+      size.x -= this.options.statsWidth * numGroups;
     }
 
     // check if any column was removed and update active divisions
@@ -1328,6 +1542,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     // -----------------------------------------------------------------------------------------------------------------
     // Resize rest of column
+
+    this.$summary.style('width', size.x + 'px');
 
     this.summary.actLoader.then(() =>
     {
@@ -1367,7 +1583,6 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
           statsView.zoom.zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
 
-          this.$summary.style('width', size.x + 'px');
           statsView.$node.style({
             width: this.options.statsWidth + 'px',
             height: clusterHeight + 'px',
@@ -1375,12 +1590,29 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
             left: (size.x + this.options.padding * 2) + 'px'
           });
 
+          if (statsView.externNodes != null)
+          {
+            for (var k = 0; k < statsView.externNodes.length; ++k)
+            {
+              statsView.externZooms[k].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
+              statsView.externNodes[k].style({
+                width: this.options.statsWidth + 'px',
+                height: clusterHeight + 'px',
+                top: clusterPosY + 'px',
+                left: (size.x + this.options.padding * 2 + this.options.statsWidth * (k + 1)) + 'px'
+              });
+            }
+          }
+
           if (this.connectSignal != null && this.connectSignal.cluster == j) {
             var that = this;
 
             function refreshColumn(cluster, column:Column) {
               var statsView = that.statsViews[cluster];
-              if (statsView.divider.hasChanged()) {
+
+              if (column == null) { return; }
+              if (statsView.divider.hasChanged())
+              {
                 that.showDivisions(cluster, column);
               }
             }
@@ -1394,7 +1626,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
             var newColumn = this.stratomex.getLastColumn();
             statsView.column = newColumn;
 
-            d3.select((<clusterDivider.ClusterDivider>statsView.divider).node)
+            d3.select((<boxSlider.BoxSlider>statsView.divider).node)
               .on('mouseup', onClickSlider(statsView.cluster, newColumn));
 
             this.connectSignal = null;
@@ -1402,32 +1634,66 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
             this.activeDivision.push(newColumn);
           }
         }
+      }
 
-        // hack to update ribbons
+    });
+  }
+
+  relayoutAfterHandler(event)
+  {
+    var that = event.target;
+
+    const numGroups = (<any>that.range.dims[0]).groups.length;
+    if (that.statsViews.length == 0) { return; }
+
+    for (var j = 0; j < numGroups; ++j)
+    {
+      var statsView = that.statsViews[j];
+
+      if (statsView == null) { continue; }
+      if (statsView.visible == true)
+      {
         Promise.resolve(statsView).then( (stats: any) =>
         {
-          C.resolveIn(1000).then( () => {
-            var linkSVG = d3.select('.link-container svg');
+          // 500ms is chosen as it takes time to switch column IDs
+          C.resolveIn(500).then( () =>
+          {
             if (stats.column == null) { return; }
 
-            //console.log(linkSVG);
-            var colID = this.id;
+            //var linkSVG = d3.select('.link-container svg');
+
+            var colID = that.id;
             var nextID = stats.column.id;
 
             var minID = Math.min(colID, nextID);
             var maxID = Math.max(colID, nextID);
+            //console.log('column:',minID, maxID);
 
             if (Math.abs(colID - nextID) != 1) { return; }
 
-            var idRequest = "g[data-id='" + String(minID) + '-' + String(maxID) +  "']";
-            //console.log(idRequest);
-            var bandsGroup = linkSVG.selectAll(idRequest);
+            // get current links between column minID and maxID and look for the bands
+            var idRequest = "g[data-id=\"" + String(minID) + '-' + String(maxID) +  "\"]";
+            //var bandsGroup = linkSVG.selectAll(idRequest);
+            var bandsGroup = d3.select($(idRequest).get(0));
             //console.log(bandsGroup);
             var bands = bandsGroup.selectAll('.rel-group');
-            //console.log(bands);
-            if (bands.length < 1) { return; }
+
+            if (bands.length < 1) {
+              //console.log('no bands found --> restarting again');
+              that.fire('relayouted');
+              return;
+            }
+
             var divBands = bands[0];
 
+            if (divBands.length != 3)
+            {
+              //console.log('three bands not found --> restarting again');
+              that.fire('relayouted');
+              return;
+            }
+
+            // sort bands by means of their y-position
             divBands.sort( (l: any, r: any) => { return $(l).position().top - $(r).position().top; });
 
             d3.select(divBands[0]).style('fill', 'darkgreen');
@@ -1436,8 +1702,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
           });
         });
       }
+    }
 
-    });
 
   }
 
@@ -1472,6 +1738,28 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       var s = g.findObject(this);
       g.push(createToggleDetailCmd(s, -1, true));
     });
+
+    $t.append('i').attr('class', 'fa fa-bars').on('click', () =>
+    {
+      const dataID = this.data.desc.id;
+      const dataDiffID = dataID.replace('Mean', 'Difference');
+
+      //var response = ajax.getAPIJSON('/dataset/' + dataDiffID);
+      datas.list().then( (list) =>
+      {
+        for (var i = 0; i < list.length; ++i)
+        {
+          var data = list[i];
+          if (data.desc.id == dataDiffID)
+          {
+            that.stratomex.addColumnWithRange(data, that.range.dim(0));
+          }
+        }
+      });
+
+      //this.stratomex.addColumnWithRange(this.range.dim(0));
+    });
+
     $t.append('i').attr('class', 'fa fa-close').on('click', ()=>
     {
       var g = that.stratomex.provGraph;
@@ -1521,7 +1809,7 @@ export class DetailView
 export class StatsView
 {
   private $node : d3.Selection<any>;
-  private divider : clusterDivider.ClusterDivider;
+  private divider : boxSlider.BoxSlider;
 
   constructor($parent: d3.Selection<any>, private cluster: number, private data : datatypes.IDataType)
   {

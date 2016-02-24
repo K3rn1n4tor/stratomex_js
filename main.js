@@ -199,13 +199,15 @@ define(function (require) {
       return arr.filter(function (d) {
         var desc = d.desc;
 
-        if (desc.fqname.startsWith('gene_cluster_viewer')) {
+        if (desc.type === 'matrix' && desc.fqname.startsWith('stratomex_js')) {
           return false;
         }
 
-        if (!desc.fqname.startsWith('TCGA')) {
+        if (!desc.fqname.startsWith('TCGA') && !desc.fqname.startsWith('stratomex_js')) {
           return false;
         }
+
+        //if (desc.fqname.startsWith('TCGA')) { return false; }
 
         if (desc.type === 'matrix' || desc.type === 'vector') {
           return desc.value.type === 'categorical';
@@ -226,7 +228,7 @@ define(function (require) {
       return arr.filter(function (d) {
         var desc = d.desc;
 
-        if (desc.fqname.startsWith('gene_cluster_viewer')) {
+        if (desc.fqname.startsWith('stratomex_js')) {
           return false;
         }
 
@@ -254,7 +256,7 @@ define(function (require) {
       {
         var desc = d.desc;
 
-        if (desc.fqname.startsWith('gene_cluster_viewer')) {
+        if (desc.fqname.startsWith(desc.type === 'matrix' && 'stratomex_js')) {
           return true;
         }
         else

@@ -42,7 +42,7 @@
           "id": "stratomex-column",
           "file": "Column",
           "factory": "createCmd",
-          "creates": "(createStratomeXColumn|removeStratomeXColumn|swapStratomeXColumns|setStratomeXColumnOption|changeStratomeXColumnVis|showStratomeXInDetail)"
+          "creates": "(createStratomeXColumn|removeStratomeXColumn|swapStratomeXColumns|setStratomeXColumnOption|changeStratomeXColumnVis|showStratomeXInDetail|showStratomeXStats)"
         },
         {
           "type": "actionCompressor",
@@ -63,6 +63,14 @@
           "factory": "compressHideShowDetail"
         },
         {
+          "type": "vis",
+          "id": "caleydo-vis-boxslider",
+          "name": "Box Divider",
+          "file": "boxslider",
+          "filter": "vector",
+          "icon": "icon.svg"
+        },
+        {
           "type": "app",
           "name": "Stratomex.js"
         }
@@ -70,7 +78,8 @@
     },
     "dependencies": {
       "web": {
-        "d3": "~3.5.5"
+        "d3": "~3.5.5",
+        "jquery": "*"
       }
     },
     "products": [
