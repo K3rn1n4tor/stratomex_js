@@ -177,8 +177,6 @@ class StratomeX extends views.AView {
     var clusterResponse: Promise<any>;
     var methodName = '';
 
-    //(<any>data).data().then((_: any) =>
-    //{
     if (method === 'k-means')
     {
       const k = String(args[0]);
@@ -189,7 +187,7 @@ class StratomeX extends views.AView {
       methodName = 'K-Means_' + String(k);
     }
 
-    else if (method === 'affinity') {
+    if (method === 'affinity') {
       const damping = args[0];
       const factor = args[1];
       const pref = args[2];
@@ -199,9 +197,14 @@ class StratomeX extends views.AView {
       methodName = 'Affinity';
     }
 
-    else
+    else if (method === 'hierarchical')
     {
+      const k = String(args[0]);
+      const method = args[1];
       // TODO! support more algorithms like hierarchical, ...
+      var argUrl = [k, method, dataID].join('/');
+      clusterResponse = ajax.getAPIJSON('/clustering/hierarchical/' + argUrl, {});
+      methodName = 'Hierarchical';
     }
 
     clusterResponse.then( (result: any) =>

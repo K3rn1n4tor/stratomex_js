@@ -54,6 +54,12 @@ export class ClusterPopup
           rangeFactor: [0.1, 10, 1.0], // influences the preference value (influences number of clusters)
           prefs: ['median', 'minimum'], // median produces moderate number, minimum a small number of clusters
           prefSelect: 1
+        },
+        'hierarchical':
+        {
+          range: [2, 20, 2],
+          methods: ['single', 'complete', 'weighted', 'median'], // linkage method for k-means
+          methodSelect: 1
         }
       }, options);
     this.$node = this._build(d3.select(parent), rowID);
@@ -96,7 +102,7 @@ export class ClusterPopup
     // compute offsets
     const offsetX = 5;
     const offsetY = 10;
-    const windowHeight = 80; // 2 * 35px row height + title_height / 2
+    const windowHeight = 115; // 2 * 35px row height + title_height / 2
 
     // this works for both Firefox and Chrome
     var mousePos = d3.mouse($parent.node());
@@ -127,6 +133,9 @@ export class ClusterPopup
 
     // create k-means row
     this._buildKMeansRow($body);
+
+    // create hierarchical row
+    this._buildHierarchicalRow($body);
 
     // create affinity row
     this._buildAffinityRow($body);
@@ -162,6 +171,37 @@ export class ClusterPopup
       const initMethod = $(select).val();
 
       that.stratomex.clusterData(that.data, 'k-means', [k, initMethod]);
+    });
+  }
+
+   // -------------------------------------------------------------------------------------------------------------------
+
+  private _buildHierarchicalRow($body: d3.Selection<any>)
+  {
+    var that = this;
+
+    var row = $body.append('div').classed('method', true);
+    var button = row.append('button').text('Hierarchical');
+    var input = row.append('input').attr({
+      class: 'k-number', type: 'number',
+      min: this.options.hierarchical.range[0], max: this.options.hierarchical.range[1],
+      value: this.options.hierarchical.range[2], step: 1, title: "Number of Clusters"
+    });
+
+    var select= row.append('select').attr({ title: 'Linkage Method' });
+    select.selectAll('option').data(this.options.hierarchical.methods)
+      .enter().append('option').attr('value', (d: any) => { return d; })
+      .text( (d: string) => { return d });
+
+    select.property('value', this.options.hierarchical.methods[this.options.hierarchical.methodSelect]);
+
+    button.on('mouseup', (_ : any) => {
+      var input = $(row.node()).find('input');
+      var select = $(row.node()).find('select');
+      const k = parseInt($(input).val());
+      const method = $(select).val();
+
+      that.stratomex.clusterData(that.data, 'hierarchical', [k, method]);
     });
   }
 
