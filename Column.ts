@@ -235,7 +235,6 @@ export function showStats(inputs, parameter, graph, within)
   });
 }
 
-// TODO create stats cmd
 export function createToggleStatsCmd(column, cluster, show)
 {
   var act = show ? 'Show' : 'Hide';
@@ -368,7 +367,7 @@ export function compressCreateRemove(path:prov.ActionNode[])
             to_remove.push(j, i); //remove both
             break;
           }
-        } else if (q.f_id.match(/(changeStratomeXColumnVis|showStratomeXInDetail|setStratomeXColumnOption|swapStratomeXColumns)/))
+        } else if (q.f_id.match(/(changeStratomeXColumnVis|showStratomeXInDetail|setStratomeXColumnOption|swapStratomeXColumns|showStratomeXStats)/))
         {
           if (q.requires.some((d) => d === col))
           {
@@ -512,37 +511,38 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     name: null
   };
 
-  private $parent : d3.Selection<any>;
-  private $toolbar : d3.Selection<any>;
-  private $summary : d3.Selection<any>;
-  private $clusters : d3.Selection<any>;
+  private $parent: d3.Selection<any>;
+  private $toolbar: d3.Selection<any>;
+  private $summary: d3.Selection<any>;
+  private $clusters: d3.Selection<any>;
 
-  range : ranges.Range;
-  private summary : multiform.MultiForm;
-  private grid : multiform.MultiFormGrid;
+  range: ranges.Range;
+  private summary: multiform.MultiForm;
+  private grid: multiform.MultiFormGrid;
 
-  private grid_zoom:behaviors.ZoomLogic;
-  private summary_zoom:behaviors.ZoomLogic;
+  private grid_zoom: behaviors.ZoomLogic;
+  private summary_zoom: behaviors.ZoomLogic;
 
   private detail:
   {
-    $node : d3.Selection<any>;
-    multi : multiform.IMultiForm;
-    zoom : behaviors.ZoomBehavior;
-    cluster : number;
+    $node: d3.Selection<any>;
+    multi: multiform.IMultiForm;
+    zoom: behaviors.ZoomBehavior;
+    cluster: number;
   };
 
-  private statsViews : any[] = []; // array of all distance views for this column TODO: rename to distanceViews
-  private activeDivision : Column[] = []; // TODO!: check if we still need the tracking of active divisions
-  private distancesRange : [number, number] = null;
-  public destroyed : boolean;
+  private statsViews: any[] = []; // array of all distance views for this column TODO: rename to distanceViews
+  private activeDivision: Column[] = []; // TODO!: check if we still need the tracking of active divisions
+  private distancesRange: [number, number] = null;
+  public destroyed: boolean; // signals if this column was destroyed
+  public busy: boolean = true; // signals if this column is busy
 
-  private $layoutHelper:d3.Selection<any>;
+  private $layoutHelper: d3.Selection<any>;
 
   changeHandler:any;
   optionHandler:any;
 
-  private connectSignal : any = null;
+  private connectSignal: any = null;
 
   // -------------------------------------------------------------------------------------------------------------------
 
@@ -612,6 +612,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     this.destroyed = false;
 
     this.$parent.transition().duration(animationTime(within)).style('opacity', 1);
+
+    this.on('relayouted', this.relayoutAfterHandler);
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -656,7 +658,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         d3.event.stopPropagation();
       });
 
-      // recluster column command
+      // re-cluster column command
       $toolbar.append('i').attr('class', 'fa fa-refresh').on('click', () =>
       {
         var clusterIndex = pos[0];
@@ -1632,31 +1634,65 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
             this.activeDivision.push(newColumn);
           }
         }
+      }
 
-        // hack to update ribbons
+    });
+  }
+
+  relayoutAfterHandler(event)
+  {
+    var that = event.target;
+
+    const numGroups = (<any>that.range.dims[0]).groups.length;
+    if (that.statsViews.length == 0) { return; }
+
+    for (var j = 0; j < numGroups; ++j)
+    {
+      var statsView = that.statsViews[j];
+
+      if (statsView == null) { continue; }
+      if (statsView.visible == true)
+      {
         Promise.resolve(statsView).then( (stats: any) =>
         {
-          C.resolveIn(1500).then( () =>
+          // 500ms is chosen as it takes time to switch column IDs
+          C.resolveIn(500).then( () =>
           {
-            var linkSVG = d3.select('.link-container svg');
             if (stats.column == null) { return; }
 
-            var colID = this.id;
+            //var linkSVG = d3.select('.link-container svg');
+
+            var colID = that.id;
             var nextID = stats.column.id;
 
             var minID = Math.min(colID, nextID);
             var maxID = Math.max(colID, nextID);
+            //console.log('column:',minID, maxID);
 
             if (Math.abs(colID - nextID) != 1) { return; }
 
             // get current links between column minID and maxID and look for the bands
-            var idRequest = "g[data-id='" + String(minID) + '-' + String(maxID) +  "']";
-            var bandsGroup = linkSVG.selectAll(idRequest);
+            var idRequest = "g[data-id=\"" + String(minID) + '-' + String(maxID) +  "\"]";
+            //var bandsGroup = linkSVG.selectAll(idRequest);
+            var bandsGroup = d3.select($(idRequest).get(0));
+            //console.log(bandsGroup);
             var bands = bandsGroup.selectAll('.rel-group');
-            if (bands.length < 1) { return; }
+
+            if (bands.length < 1) {
+              //console.log('no bands found --> restarting again');
+              that.fire('relayouted');
+              return;
+            }
+
             var divBands = bands[0];
 
-            if (divBands.length != 3) { return; }
+            if (divBands.length != 3)
+            {
+              //console.log('three bands not found --> restarting again');
+              that.fire('relayouted');
+              return;
+            }
+
             // sort bands by means of their y-position
             divBands.sort( (l: any, r: any) => { return $(l).position().top - $(r).position().top; });
 
@@ -1666,8 +1702,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
           });
         });
       }
+    }
 
-    });
 
   }
 

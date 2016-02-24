@@ -86,13 +86,18 @@ class StratomeX extends views.AView {
   relayout(within = -1) {
     var that = this;
     that._links.hide();
-    return C.resolveIn(5).then(() => {
-        that._columns.forEach((d) => d.layouted(within));
-        if (that.relayoutTimer >= 0) {
-          clearTimeout(that.relayoutTimer);
-        }
-        that.relayoutTimer = setTimeout(that._links.update.bind(that._links), within + 400);
-        return C.resolveIn(within);
+    return C.resolveIn(5).then(() =>
+    {
+      that._columns.forEach((d) => { d.layouted(within); });
+
+      if (that.relayoutTimer >= 0)
+      {
+        clearTimeout(that.relayoutTimer);
+      }
+
+      that.relayoutTimer = setTimeout(that._links.update.bind(that._links), within + 400);
+      that._columns.forEach((d) => { d.fire('relayouted'); });
+      return C.resolveIn(within);
       });
   }
 
