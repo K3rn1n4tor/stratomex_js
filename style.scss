@@ -17,6 +17,13 @@ body, html {
   -webkit-font-smoothing: subpixel-antialiased;
 }
 
+// show waiting cursor while waiting for cluster result
+// * is necessary to overwrite cursor for all elements
+body.waiting, body.waiting *
+{
+  cursor: wait !important;
+}
+
 .selectioninfo {
   .no-selection-selected.no-selection-hovered {
     display: none;

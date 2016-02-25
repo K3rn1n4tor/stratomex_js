@@ -177,6 +177,8 @@ class StratomeX extends views.AView {
     var clusterResponse: Promise<any>;
     var methodName = '';
 
+    $('body').addClass('waiting');
+
     if (method === 'k-means')
     {
       const k = String(args[0]);
@@ -211,10 +213,12 @@ class StratomeX extends views.AView {
     clusterResponse.then( (result: any) =>
     {
       that.createClusterStratification(data, result, methodName);
+      $('body').removeClass('waiting');
     }).catch( (e: any) =>
     {
       console.log('Could not apply clustering algorithm to data set:', dataID);
       console.log('Error:', e);
+      $('body').removeClass('waiting');
     });
 
     //});

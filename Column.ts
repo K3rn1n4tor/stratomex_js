@@ -1142,8 +1142,11 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     //this.data.rowIds().then((ids) => { console.log(ids.dim(0).asList()); });
 
     var responses = [];
+
     if (this.distancesRange == null)
     {
+      $('body').addClass('waiting');
+
      // var total = 0;
       for (var j = 0; j < numGroups; ++j)
       {
@@ -1177,6 +1180,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     }
 
     // request cluster distance data from server
+    $('body').addClass('waiting');
     var request = { group: JSON.stringify({ labels: labelList, externLabels: externLabelList }) };
     var response = ajax.send('/api/clustering/distances/' + this.data.desc.id, request, 'post');
     console.log("Requested distances of data set:", this.data.desc.id);
@@ -1254,6 +1258,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       this.$parent.style('width', layoutWidth + 'px');
       this.$layoutHelper.style('width', layoutWidth + 'px');
       $elem.transition().duration(animationTime(within)).style('opacity', 1);
+
+      $('body').removeClass('waiting');
 
       return (relayout) ? this.stratomex.relayout(within) : Promise.resolve([]);
     });
