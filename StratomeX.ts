@@ -179,7 +179,7 @@ class StratomeX extends views.AView {
 
     $('body').addClass('waiting');
 
-    if (method === 'k-means')
+    if (method == 'k-means')
     {
       const k = String(args[0]);
       const initMethod = args[1];
@@ -189,7 +189,7 @@ class StratomeX extends views.AView {
       methodName = 'K-Means_' + String(k);
     }
 
-    if (method === 'affinity') {
+    if (method == 'affinity') {
       const damping = args[0];
       const factor = args[1];
       const pref = args[2];
@@ -199,7 +199,7 @@ class StratomeX extends views.AView {
       methodName = 'Affinity';
     }
 
-    else if (method === 'hierarchical')
+    else if (method == 'hierarchical')
     {
       const k = String(args[0]);
       const method = args[1];
@@ -208,6 +208,16 @@ class StratomeX extends views.AView {
       console.log(argUrl);
       clusterResponse = ajax.getAPIJSON('/clustering/hierarchical/' + argUrl, {});
       methodName = 'Hierarchical';
+    }
+
+    else if (method == 'fuzzy')
+    {
+      const c = String(args[0]);
+      const m = String(args[1]);
+
+      var argUrl = [c, m, dataID].join('/');
+      clusterResponse = ajax.getAPIJSON('/clustering/fuzzy/' + argUrl, {});
+      methodName = 'Fuzzy_' + String(c);
     }
 
     clusterResponse.then( (result: any) =>
