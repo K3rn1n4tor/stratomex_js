@@ -34,6 +34,8 @@ export function createCmd(id:string)
   {
     case 'createStratomeXClusterColumn':
       return createClusterColumn;
+    case 'createStratomeXHierarchicalClusterColumn':
+      return createHierarchicalClusterColumn;
     case 'showStratomeXStats' :
       return showStats;
   }
@@ -88,10 +90,69 @@ function createClusterColumn(inputs, parameter, graph, within)
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+function createHierarchicalClusterColumn(inputs, parameter, graph, within)
+{
+  var stratomex = inputs[0].value,
+    partitioning = ranges.parse(parameter.partitioning),
+    index = parameter.hasOwnProperty('index') ? parameter.index : -1,
+    name = parameter.name || inputs[1].name,
+    dendrogram = inputs[2].value;
+
+  //console.log(ranges.parse(parameter.partitioning));
+
+  return inputs[1].v.then(function (data)
+  {
+    //console.log(new Date(), 'create column', data.desc.name, index);
+    var c = new HierarchicalClusterColumn(stratomex, data, partitioning, dendrogram, inputs[1], {
+      width: (data.desc.type === 'stratification') ? 60 : (data.desc.name.toLowerCase().indexOf('death') >= 0 ? 110 : 160),
+      name: name
+    }, within);
+    var r = prov.ref(c, c.name, prov.cat.visual, c.hashString);
+    c.changeHandler = function (event, to, from)
+    {
+      if (from)
+      { //have a previous one so not the default
+        graph.push(columns.createChangeVis(r, to.id, from ? from.id : null));
+      }
+    };
+    c.optionHandler = function (event, name, value, bak)
+    {
+      graph.push(columns.createSetOption(r, name, value, bak));
+    };
+    c.on('changed', c.changeHandler);
+    c.on('option', c.optionHandler);
+
+    //console.log(new Date(), 'add column', data.desc.name, index);
+    return stratomex.addColumn(c, index, within).then(() =>
+    {
+      //console.log(new Date(), 'added column', data.desc.name, index);
+      return {
+        created: [r],
+        inverse: (inputs, created) => columns.createRemoveCmd(inputs[0], created[0]),
+        consumed: within
+      };
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 export function createClusterColumnCmd(stratomex, data, partitioning, name:string, index:number = -1)
 {
   return prov.action(prov.meta(name, prov.cat.data, prov.op.create),
     'createStratomeXClusterColumn', createClusterColumn, [stratomex, data], {
+    partitioning: partitioning.toString(),
+    name: name,
+    index: index
+  });
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export function createHierarchicalClusterColumnCmd(stratomex, data, partitioning, dendrogram, name:string, index:number = -1)
+{
+  return prov.action(prov.meta(name, prov.cat.data, prov.op.create),
+    'createStratomeXHierarchicalClusterColumn', createHierarchicalClusterColumn, [stratomex, data, dendrogram], {
     partitioning: partitioning.toString(),
     name: name,
     index: index
@@ -106,7 +167,7 @@ function showStats(inputs, parameter, graph, within)
   var cluster = parameter.cluster;
   var show = parameter.action === 'show';
 
-  var r:Promise<any>;
+  var r: Promise<any>;
   if (show)
   {
     r = column.showStats(cluster, within);
@@ -125,7 +186,7 @@ function showStats(inputs, parameter, graph, within)
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function createToggleStatsCmd(column: ClusterColumn, cluster, show)
+export function createToggleStatsCmd(column, cluster, show)
 {
   var act = show ? 'Show' : 'Hide';
   return prov.action(prov.meta(act + ' Distances of ' + column.toString() + ' Cluster "' + cluster + '"', prov.cat.layout),
@@ -140,6 +201,15 @@ export function createToggleStatsCmd(column: ClusterColumn, cluster, show)
 
 export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueId, link_m.IDataVis
 {
+  protected options = {
+    summaryHeight: 90,
+    width: 160,
+    detailWidth: 500,
+    statsWidth: 50, // this is the default width for the distance view TODO: rename to distanceWidth
+    padding: 2,
+    name: null
+  };
+
   protected statsViews: any[] = []; // array of all distance views for this column TODO: rename to distanceViews
   protected activeDivision: ClusterColumn[] = []; // TODO!: check if we still need the tracking of active divisions
   protected distancesRange: [number, number] = null;
@@ -158,7 +228,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
     super.createToolBar();
 
-    $t.append('i').attr('class', 'fa fa-bars').on('click', () =>
+    $t.insert('i', '.fa-close').attr('class', 'fa fa-bars').on('click', () =>
     {
       const dataID = this.data.desc.id;
       const dataDiffID = dataID.replace('Mean', 'Difference');
@@ -1016,4 +1086,34 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     }
   }
 
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export class HierarchicalClusterColumn extends ClusterColumn implements idtypes.IHasUniqueId, link_m.IDataVis
+{
+  constructor(protected stratomex, public data, partitioning:ranges.Range, protected dendrogram: any, public dataRef,
+              options:any = {}, within = -1)
+  {
+    super(stratomex, data, partitioning, dataRef, options, within);
+  }
+
+  createToolBar()
+  {
+    const that = this;
+    var $t = this.$toolbar;
+
+    super.createToolBar();
+
+    $t.append('i').attr('class', 'fa fa-angle-double-up').on('click', () =>
+    {
+      const dendrogram = that.dendrogram;
+    });
+
+    $t.append('i').attr('class', 'fa fa-angle-double-down').on('click', () =>
+    {
+      const dendrogram = that.dendrogram;
+    });
+
+  }
 }

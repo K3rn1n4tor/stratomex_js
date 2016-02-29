@@ -475,9 +475,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   protected options = {
     summaryHeight: 90,
-    width: 180,
+    width: 160,
     detailWidth: 500,
-    statsWidth: 50, // this is the default width for the distance view TODO: rename to distanceWidth
     padding: 2,
     name: null
   };

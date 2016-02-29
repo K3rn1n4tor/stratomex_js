@@ -622,6 +622,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
     const rawSize = this.rawSize;
     const scaling = this.options.scale;
 
+    if (scaling[1] == 0) { scaling[1] = 1; }
     const barHeight = this.options.sliderHeight / scaling[1];
     const barCover = 3 * barHeight;
 

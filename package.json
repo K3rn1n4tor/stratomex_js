@@ -49,7 +49,7 @@
           "id": "stratomex-clustercolumn",
           "file": "ClusterColumn",
           "factory": "createCmd",
-          "creates": "(createStratomeXClusterColumn|showStratomeXStats)"
+          "creates": "(createStratomeXClusterColumn|showStratomeXStats|createStratomeXHierarchicalClusterColumn)"
         },
         {
           "type": "actionCompressor",

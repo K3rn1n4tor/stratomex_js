@@ -301,7 +301,7 @@ class StratomeX extends views.AView {
       for (var i = 0; i < numClusters; ++i)
       {
         clusterRanges.push(ranges.parse(clusterLabels[i]));
-        groups.push(new ranges.Range1DGroup('Group ' + String(i) + '(' + method + ')',
+        groups.push(new ranges.Range1DGroup('Group ' + String(i),
           'red', clusterRanges[i].dim(0)));
         groupsDesc.push({name: String(i), size: clusterLabels[i].length});
       }
@@ -326,7 +326,14 @@ class StratomeX extends views.AView {
       strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, newRows, newRowIds, <any>compositeRange);
 
       // add new clustered data with its stratification to StratomeX
-      that.addClusterData(strati, data, null);
+      if (method == 'Hierarchical')
+      {
+        that.addHierarchicalClusterData(strati, data, result.dendrogram, null);
+      }
+      else
+      {
+        that.addClusterData(strati, data, null);
+      }
     });
   }
 
@@ -369,6 +376,12 @@ class StratomeX extends views.AView {
 
   // -------------------------------------------------------------------------------------------------------------------
 
+  /**
+   * Add new (custom) cluster column
+   * @param rowStrat
+   * @param rowMatrix
+   * @param colStrat
+     */
   addClusterData(rowStrat: stratification.IStratification,
               rowMatrix: datatypes.IDataType,
               colStrat?: stratification.IStratification)
@@ -394,6 +407,47 @@ class StratomeX extends views.AView {
         }).then((range) =>
         {
           that.provGraph.push(clustercolumns.createClusterColumnCmd(that.ref, mref, range,
+            toName(rowMatrix.desc.name, rowStrat.desc.name)));
+        });
+    }
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Add new (custom) cluster column
+   * @param rowStrat
+   * @param rowMatrix
+   * @param colStrat
+     */
+  addHierarchicalClusterData(rowStrat: stratification.IStratification,
+              rowMatrix: datatypes.IDataType,
+              dendrogram: any,
+              colStrat?: stratification.IStratification)
+  {
+    var that = this;
+    var mref = this.provGraph.findOrAddObject(rowMatrix, rowMatrix.desc.name, 'orlydata');
+
+    if (rowStrat === rowMatrix)
+    {
+      //both are stratifications
+      rowStrat.range().then((range) =>
+      {
+        that.provGraph.push(clustercolumns.createClusterColumnCmd(that.ref, mref, range,
+          toName(toMiddle(rowMatrix.desc.fqname), rowStrat.desc.name)));
+      });
+    } else {
+      Promise.all<ranges.Range1D>([rowStrat.idRange(), colStrat ? colStrat.idRange() : ranges.Range1D.all()])
+        .then((range_list:ranges.Range1D[]) =>
+        {
+          const idRange = ranges.list(range_list);
+          return rowMatrix.fromIdRange(idRange);
+
+        }).then((range) =>
+        {
+          var test = {id: 1000, tree: dendrogram};
+
+          that.provGraph.push(clustercolumns.createHierarchicalClusterColumnCmd(that.ref, mref, range, test,
             toName(rowMatrix.desc.name, rowStrat.desc.name)));
         });
     }
