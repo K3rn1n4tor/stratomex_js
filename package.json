@@ -42,7 +42,14 @@
           "id": "stratomex-column",
           "file": "Column",
           "factory": "createCmd",
-          "creates": "(createStratomeXColumn|removeStratomeXColumn|swapStratomeXColumns|setStratomeXColumnOption|changeStratomeXColumnVis|showStratomeXInDetail|showStratomeXStats)"
+          "creates": "(createStratomeXColumn|removeStratomeXColumn|swapStratomeXColumns|setStratomeXColumnOption|changeStratomeXColumnVis|showStratomeXInDetail)"
+        },
+        {
+          "type": "actionFactory",
+          "id": "stratomex-clustercolumn",
+          "file": "ClusterColumn",
+          "factory": "createCmd",
+          "creates": "(createStratomeXClusterColumn|showStratomeXStats)"
         },
         {
           "type": "actionCompressor",

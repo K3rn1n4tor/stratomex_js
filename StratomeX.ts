@@ -15,6 +15,7 @@ import prov = require('../caleydo_provenance/main');
 import ajax = require('../caleydo_core/ajax');
 
 import columns = require('./Column');
+import clustercolumns = require('./ClusterColumn');
 import {getFirstByFQName} from "../caleydo_core/data";
 
 //type ColumnRef = prov.IObjectRef<columns.Column>;
@@ -325,7 +326,7 @@ class StratomeX extends views.AView {
       strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, newRows, newRowIds, <any>compositeRange);
 
       // add new clustered data with its stratification to StratomeX
-      that.addData(strati, data, null);
+      that.addClusterData(strati, data, null);
     });
   }
 
@@ -362,13 +363,13 @@ class StratomeX extends views.AView {
       strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
 
       // add new clustered data with its stratification to StratomeX
-      that.addOrlyData(strati, data, null);
+      that.addClusterData(strati, data, null);
     });
   }
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  addOrlyData(rowStrat: stratification.IStratification,
+  addClusterData(rowStrat: stratification.IStratification,
               rowMatrix: datatypes.IDataType,
               colStrat?: stratification.IStratification)
   {
@@ -380,8 +381,8 @@ class StratomeX extends views.AView {
       //both are stratifications
       rowStrat.range().then((range) =>
       {
-        that.provGraph.push(columns.createColumnCmd(that.ref, mref, range, toName(toMiddle(rowMatrix.desc.fqname),
-          rowStrat.desc.name)));
+        that.provGraph.push(clustercolumns.createClusterColumnCmd(that.ref, mref, range,
+          toName(toMiddle(rowMatrix.desc.fqname), rowStrat.desc.name)));
       });
     } else {
       Promise.all<ranges.Range1D>([rowStrat.idRange(), colStrat ? colStrat.idRange() : ranges.Range1D.all()])
@@ -392,7 +393,8 @@ class StratomeX extends views.AView {
 
         }).then((range) =>
         {
-          that.provGraph.push(columns.createColumnCmd(that.ref, mref, range, toName(rowMatrix.desc.name, rowStrat.desc.name)));
+          that.provGraph.push(clustercolumns.createClusterColumnCmd(that.ref, mref, range,
+            toName(rowMatrix.desc.name, rowStrat.desc.name)));
         });
     }
   }
