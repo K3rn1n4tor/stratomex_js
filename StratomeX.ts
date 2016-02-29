@@ -193,8 +193,9 @@ class StratomeX extends views.AView {
       const damping = args[0];
       const factor = args[1];
       const pref = args[2];
+      const distance = args[3];
 
-      var argUrl = [damping, factor, pref, dataID].join('/');
+      var argUrl = [damping, factor, pref, distance, dataID].join('/');
       clusterResponse = ajax.getAPIJSON('/clustering/affinity/' + argUrl, {});
       methodName = 'Affinity';
     }
@@ -203,8 +204,9 @@ class StratomeX extends views.AView {
     {
       const k = String(args[0]);
       const method = args[1];
-      // TODO! support more algorithms like hierarchical, ...
-      var argUrl = [k, method, dataID].join('/');
+      const distance = args[2];
+
+      var argUrl = [k, method, distance, dataID].join('/');
       console.log(argUrl);
       clusterResponse = ajax.getAPIJSON('/clustering/hierarchical/' + argUrl, {});
       methodName = 'Hierarchical';

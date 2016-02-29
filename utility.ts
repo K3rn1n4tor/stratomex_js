@@ -40,26 +40,33 @@ export class ClusterPopup
   {
     this.options = C.mixin(
       {
-        width: 420,
+        width: 580,
         animationTime: 200,
         'kmeans':
         {
-          range: [2, 20, 2],
+          range: [2, 10, 2],
           inits: ['forgy', 'uniform', 'random', 'kmeans++'], // initialization method for k-means
           initSelect: 3
         },
         'hierarchical':
         {
-          range: [2, 20, 2],
+          range: [2, 10, 2],
           methods: ['single', 'complete', 'weighted', 'median', 'average', 'centroid'], // linkage method for k-means
-          methodSelect: 1
+          methodSelect: 1,
+          distSelect: 0
         },
         'affinity':
         {
           rangeDamping: [0, 1, 0.5], // damping avoids oscillations of algorithm [min, max, value]
           rangeFactor: [0.1, 10, 1.0], // influences the preference value (influences number of clusters)
           prefs: ['median', 'minimum'], // median produces moderate number, minimum a small number of clusters
-          prefSelect: 1
+          prefSelect: 1,
+          distSelect: 1
+        },
+        'general':
+        {
+          distances: ['euclidean', 'sqeuclidean', 'cityblock', 'chebyshev', 'canberra', 'correlation', 'hamming',
+                      'mahalanobis', 'correlation', 'pearson', 'spearman', 'kendall'],
         }
       }, options);
     this.$node = this._build(d3.select(parent), rowID);
@@ -149,24 +156,24 @@ export class ClusterPopup
   {
     var that = this;
 
-    var rowKMeans = $body.append('div').classed('method', true);
-    var buttonKMeans = rowKMeans.append('button').text('k-Means');
-    var inputKMeans = rowKMeans.append('input').attr({
+    var row = $body.append('div').classed('method', true);
+    var button = row.append('button').text('k-Means');
+    var input = row.append('input').attr({
       class: 'k-number', type: 'number',
       min: this.options.kmeans.range[0], max: this.options.kmeans.range[1],
       value: this.options.kmeans.range[2], step: 1, title: "Number of Clusters"
     });
 
-    var selectKMeans = rowKMeans.append('select').attr({ title: 'Initialization Method' });
-    selectKMeans.selectAll('option').data(this.options.kmeans.inits)
+    var select = row.append('select').attr({ title: 'Initialization Method' });
+    select.selectAll('option').data(this.options.kmeans.inits)
       .enter().append('option').attr('value', (d: any) => { return d; })
       .text( (d: string) => { return d });
 
-    selectKMeans.property('value', this.options.kmeans.inits[this.options.kmeans.initSelect]);
+    select.property('value', this.options.kmeans.inits[this.options.kmeans.initSelect]);
 
-    buttonKMeans.on('mouseup', (_ : any) => {
-      var input = $(rowKMeans.node()).find('input');
-      var select = $(rowKMeans.node()).find('select');
+    button.on('mouseup', (_ : any) => {
+      var input = $(row.node()).find('input');
+      var select = $(row.node()).find('select');
       const k = parseInt($(input).val());
       const initMethod = $(select).val();
 
@@ -188,20 +195,30 @@ export class ClusterPopup
       value: this.options.hierarchical.range[2], step: 1, title: "Number of Clusters"
     });
 
-    var select= row.append('select').attr({ title: 'Linkage Method' });
+    var select = row.append('select').attr({ title: 'Linkage Method' }).classed('linkage', true);
     select.selectAll('option').data(this.options.hierarchical.methods)
       .enter().append('option').attr('value', (d: any) => { return d; })
       .text( (d: string) => { return d });
 
     select.property('value', this.options.hierarchical.methods[this.options.hierarchical.methodSelect]);
 
+    var selectDists = row.append('select').attr({ title: 'Distance Measurement' }).classed('dist', true);
+    selectDists.selectAll('option').data(this.options.general.distances)
+      .enter().append('option').attr('value', (d: any) => { return d; })
+      .text( (d: string) => { return d });
+
+    selectDists.property('value', this.options.general.distances[this.options.hierarchical.distSelect]);
+
     button.on('mouseup', (_ : any) => {
       var input = $(row.node()).find('input');
-      var select = $(row.node()).find('select');
-      const k = parseInt($(input).val());
-      const method = $(select).val();
+      var inputSelect = $(row.node()).find('select.linkage');
+      var inputDistance = $(row.node()).find('select.dist');
 
-      that.stratomex.clusterData(that.data, 'hierarchical', [k, method]);
+      const k = parseInt($(input).val());
+      const method = $(inputSelect).val();
+      const dist = $(inputDistance).val();
+
+      that.stratomex.clusterData(that.data, 'hierarchical', [k, method, dist]);
     });
   }
 
@@ -211,37 +228,46 @@ export class ClusterPopup
   {
     var that = this;
 
-    var rowAffinity = $body.append('div').classed('method', true);
-    var buttonAffinity = rowAffinity.append('button').text('Affinity');
-    var inputDamping = rowAffinity.append('input').attr({
+    var row = $body.append('div').classed('method', true);
+    var button = row.append('button').text('Affinity');
+    var inputDamping = row.append('input').attr({
       class: 'aff-number', type: 'number', name: 'damping',
       min: this.options.affinity.rangeDamping[0], max: this.options.affinity.rangeDamping[1],
       value: 0.5, step: 0.05, title: "Damping Value"
     });
-    var inputFactor = rowAffinity.append('input').attr({
+    var inputFactor = row.append('input').attr({
       class: 'aff-number', type: 'number', name: 'factor',
       min: this.options.affinity.rangeFactor[0], max: this.options.affinity.rangeFactor[1],
       value: this.options.affinity.rangeFactor[2], step: 0.05, title: "Factor Value"
     });
 
-    var selectAffinity = rowAffinity.append('select').attr({ title: 'Initial Preference' });
-    selectAffinity.selectAll('option').data(this.options.affinity.prefs)
+    var select = row.append('select').attr({ title: 'Initial Preference' }).classed('init', true);
+    select.selectAll('option').data(this.options.affinity.prefs)
       .enter().append('option').attr('value', (d: any) => { return d; })
       .text( (d: string) => { return d });
 
-    selectAffinity.property('value', this.options.affinity.prefs[this.options.affinity.prefSelect]);
+    select.property('value', this.options.affinity.prefs[this.options.affinity.prefSelect]);
 
-    buttonAffinity.on('mouseup', (_ : any) =>
+    var selectDists = row.append('select').attr({ title: 'Distance Measurement' }).classed('dist', true);
+    selectDists.selectAll('option').data(this.options.general.distances)
+      .enter().append('option').attr('value', (d: any) => { return d; })
+      .text( (d: string) => { return d });
+
+    selectDists.property('value', this.options.general.distances[this.options.affinity.distSelect]);
+
+    button.on('mouseup', (_ : any) =>
     {
-      var inputDamping = $(rowAffinity.node()).find("input[name='damping']");
-      var inputFactor = $(rowAffinity.node()).find("input[name='factor']");
-      var inputSelect = $(rowAffinity.node()).find("select");
+      var inputDamping = $(row.node()).find("input[name='damping']");
+      var inputFactor = $(row.node()).find("input[name='factor']");
+      var inputSelect = $(row.node()).find("select.init");
+      var inputDistance = $(row.node()).find("select.dist");
 
       const affDamping = parseFloat($(inputDamping).val());
       const affFactor = parseFloat($(inputFactor).val());
       const affPref = $(inputSelect).val();
+      const dist = $(inputDistance).val();
 
-      that.stratomex.clusterData(that.data, 'affinity', [affDamping, affFactor, affPref]);
+      that.stratomex.clusterData(that.data, 'affinity', [affDamping, affFactor, affPref, dist]);
     });
   }
 
