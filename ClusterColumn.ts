@@ -20,7 +20,9 @@ import prov = require('../caleydo_provenance/main');
 import ranges = require('../caleydo_core/range');
 import stratification = require('../caleydo_core/stratification');
 import stratification_impl = require('../caleydo_core/stratification_impl');
+import parser = require('../caleydo_d3/parser');
 import vis = require('../caleydo_core/vis');
+import heatmap = require('../caleydo_vis/heatmap');
 
 // my own libraries
 import columns = require('./Column');
@@ -640,6 +642,34 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
         scaleTo: [dividerWidth, height], range: that.distancesRange, numAvg: 1
       });
       (<boxSlider.BoxSlider>divider).setLabels(labels);
+
+      // create a new matrix view
+      // 1) create matrix data
+      var rawDistMatrix = [];
+
+      var header = ['ID'];
+      for (var j = 0; j < numGroups; ++j)
+      {
+        header.push(String(j));
+      }
+      rawDistMatrix.push(header);
+
+      for (var i = 0; i < distances.length; ++i)
+      {
+        var row = [String(i), distances[i]];
+
+        for (var j = 0; j < externDistances.length; ++j)
+        {
+          row.push(externDistances[j][i])
+        }
+
+        rawDistMatrix.push(row);
+      }
+      // 2) parse matrix
+      var distMatrix = parser.parseMatrix(rawDistMatrix);
+
+      // 3) create heatmap
+      var distHeatmap = heatmap.create(distMatrix, <Element>$body.node(), {});
 
       var externDividers = [];
       var externZooms = [];
