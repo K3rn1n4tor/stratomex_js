@@ -96,7 +96,7 @@ function createHierarchicalClusterColumn(inputs, parameter, graph, within)
     partitioning = ranges.parse(parameter.partitioning),
     index = parameter.hasOwnProperty('index') ? parameter.index : -1,
     name = parameter.name || inputs[1].name,
-    dendrogram = inputs[2].value;
+    dendrogram = inputs[2]._v.value;
 
   //console.log(ranges.parse(parameter.partitioning));
 
@@ -1100,20 +1100,113 @@ export class HierarchicalClusterColumn extends ClusterColumn implements idtypes.
 
   createToolBar()
   {
-    const that = this;
+    var that = this;
     var $t = this.$toolbar;
 
     super.createToolBar();
 
-    $t.append('i').attr('class', 'fa fa-angle-double-up').on('click', () =>
+    $t.insert('i', '.fa-close').attr('class', 'fa fa-angle-double-up').on('click', () =>
     {
-      const dendrogram = that.dendrogram;
+      const oldNumGroups = (<any>that.range.dims[0]).groups.length;
+      const numGroups = Math.min(oldNumGroups + 1, 10);
+
+      if (oldNumGroups == numGroups) { return; }
+
+      that.createNewStratification(numGroups);
     });
 
-    $t.append('i').attr('class', 'fa fa-angle-double-down').on('click', () =>
+    $t.insert('i', '.fa-close').attr('class', 'fa fa-angle-double-down').on('click', () =>
     {
-      const dendrogram = that.dendrogram;
+      const oldNumGroups = (<any>that.range.dims[0]).groups.length;
+      const numGroups = Math.max(oldNumGroups - 1, 1);
+
+      if (oldNumGroups == numGroups) { return; }
+
+      that.createNewStratification(numGroups);
     });
 
+  }
+
+  private cutDendrogramToClusters(k: number)
+  {
+    const dendrogram = this.dendrogram;
+
+    var queue = [dendrogram];
+    var clusters = [];
+
+    while (queue.length < k)
+    {
+      var node = queue.shift();
+      queue.push(node.children[0]);
+      queue.push(node.children[1]);
+
+      function sortFunc(a: any, b: any)
+      {
+        const valueA = (a.children == null) ? 0 : -a.value;
+        const valueB = (b.children == null) ? 0 : -b.value;
+
+        return valueA - valueB;
+      }
+
+      queue.sort(sortFunc);
+    }
+
+    var responses = [];
+
+    for (var ii = 0; ii < k; ++ii)
+    {
+      clusters.push(queue[ii].indices);
+
+      var request = { group: JSON.stringify({ labels: queue[ii].indices }) };
+      responses.push(ajax.send('/api/clustering/distances/' + this.data.desc.id, request, 'post'));
+    }
+
+    return Promise.all(responses).then( (args: any) =>
+    {
+      for (var ii = 0; ii < k; ++ii)
+      {
+        clusters[ii] = args[ii].labels;
+      }
+
+      function compareCluster(a, b)
+      {
+        return (a.length < b.length) ? -1 : (a.length > b.length) ? 1 : 0;
+      }
+
+      clusters = clusters.sort(compareCluster);
+      return clusters;
+
+    });
+  }
+
+  private createNewStratification(numGroups)
+  {
+    const that = this;
+
+    var response = that.cutDendrogramToClusters(numGroups);
+
+    const dataName = that.data.desc.name;
+
+    response.then( (result: any) =>
+    {
+      const clusterLabels = result;
+
+      var rangeGroups = [];
+      var groups = [];
+      var groupsDesc = [];
+      for (var i = 0; i < numGroups; ++i)
+      {
+        var groupSize = clusterLabels[i].length;
+
+        rangeGroups.push(ranges.parse(clusterLabels[i]));
+        groups.push(new ranges.Range1DGroup('Group ' + String(i),
+          'grey', rangeGroups[i].dim(0)));
+
+        groupsDesc.push({ name: 'Division ' + String(i), size: groupSize});
+      }
+
+      var compositeRange = ranges.composite(dataName + 'groups', groups);
+      that.updateGrid(compositeRange);
+    });
   }
 }

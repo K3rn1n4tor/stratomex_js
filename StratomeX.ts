@@ -268,7 +268,7 @@ class StratomeX extends views.AView {
       return (a.length < b.length) ? -1 : (a.length > b.length) ? 1 : 0;
     }
 
-    clusterLabels = clusterLabels.sort(compareCluster);
+    clusterLabels.sort(compareCluster);
 
     Promise.all([(<any>data).rows(), (<any>data).rowIds()]).then((args) =>
     {
@@ -445,9 +445,11 @@ class StratomeX extends views.AView {
 
         }).then((range) =>
         {
-          var test = {id: 1000, tree: dendrogram};
+          var dendrogramData = {value: dendrogram};
 
-          that.provGraph.push(clustercolumns.createHierarchicalClusterColumnCmd(that.ref, mref, range, test,
+          var dendrogramRef = this.provGraph.findOrAddObject(dendrogramData, 'dendrogram', 'data');
+
+          that.provGraph.push(clustercolumns.createHierarchicalClusterColumnCmd(that.ref, mref, range, dendrogramRef,
             toName(rowMatrix.desc.name, rowStrat.desc.name)));
         });
     }
