@@ -310,6 +310,8 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
               }
             }
 
+            if (groupsChanged) { that.distancesRange = null; }
+
             if (statsView.visible && !groupsChanged)
             {
               promises.push(that.showStats(i, -1, false));
