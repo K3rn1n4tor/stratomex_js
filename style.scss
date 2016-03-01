@@ -416,6 +416,13 @@ div.clusterPopup
     {
       //pointer-events: all !important;
       position: absolute;
+
+      div.gtoolbar
+      {
+        top: -1.2em;
+        right: -1.2em;
+        //text-align: center;
+      }
     }
 
     div.divisions

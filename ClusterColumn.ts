@@ -270,7 +270,11 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
       const groupsChanged = (newNumGroups != oldNumGroups);
 
       // reset layout of column
-      var layoutWidth = (!noStatsUpdate) ? that.options.width : that.options.width + newNumGroups * that.options.statsWidth;
+      var layoutWidth = that.options.width;
+      if (noStatsUpdate)
+      {
+        layoutWidth = that.computeColumnWidth();
+      }
 
       that.$parent.style('width', layoutWidth + 'px');
       that.$layoutHelper.style('width', layoutWidth + 'px');
@@ -433,20 +437,38 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
   protected resizeDetail(within, hide=false)
   {
-    const numGroups = (<any>this.range.dims[0]).groups.length;
-    var width = (hide) ? this.options.width : this.options.width + this.options.detailWidth;
+    var layoutWidth = this.computeColumnWidth();
 
-    if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return d.visible == true; } ))
-    {
-      width += this.options.statsWidth * numGroups;
-    }
-
-    this.$parent.style('width', width + 'px');
-    this.$layoutHelper.style('width', width + 'px');
+    this.$parent.style('width', layoutWidth + 'px');
+    this.$layoutHelper.style('width', layoutWidth + 'px');
     return this.stratomex.relayout(within);
   }
 
   // -------------------------------------------------------------------------------------------------------------------
+
+  private computeColumnWidth()
+  {
+    var layoutWidth = this.options.width;
+    if (this.detail) { layoutWidth += this.options.detailWidth; }
+
+    var numVisibleGroups = 0;
+    const numGroups = (<any>this.range.dims[0]).groups.length;
+
+    if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return d.visible; } ))
+    {
+      numVisibleGroups = 1;
+
+      if (this.statsViews.some( (d: any) =>
+        { if (d == null) { return false; } return d.visible && d.externVisible; } ))
+      {
+        numVisibleGroups = numGroups;
+      }
+    }
+
+    layoutWidth += this.options.statsWidth * numVisibleGroups;
+
+    return layoutWidth;
+  }
 
   showStats(cluster, within = -1, relayout = true)
   {
@@ -456,7 +478,9 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     {
       const numGroups = (<any>this.range.dims[0]).groups.length;
 
-      var layoutWidth = this.options.statsWidth * numGroups + this.options.width;
+      var layoutWidth = this.options.statsWidth + this.options.width;
+      if (statsView.externVisible) { layoutWidth += (numGroups - 1) * this.options.statsWidth; }
+
       if (this.detail) { layoutWidth += this.options.detailWidth; }
 
       this.$parent.style('width', layoutWidth + 'px');
@@ -464,7 +488,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
       statsView.$node.transition().duration(columns.animationTime(within)).style('opacity', 1);
       statsView.visible = true;
 
-      if (statsView.externNodes.length > 0)
+      if (statsView.externNodes.length > 0 && statsView.externVisible)
       {
         for (var k = 0; k < statsView.externNodes.length; ++k)
         {
@@ -483,10 +507,8 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     const $elem = this.$parent.append('div').classed('stats', true).style('opacity', 0);
     $elem.classed('group', true).datum(data);
 
-    //var dataClusters = <ranges.CompositeRange1D>this.range.dim(0);
-    //var clusterName = cluster < 0 ? this.data.desc.name : dataClusters.groups[cluster].name;
-
     var $toolbar = $elem.append('div').attr('class', 'gtoolbar');
+
     $elem.append('div').attr('class', 'title')
       .text('Distances');
 
@@ -505,6 +527,34 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
       // stop propagation to disable further event triggering
       d3.event.stopPropagation();
+    });
+
+    $toolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
+    {
+      var statsView = that.statsViews[cluster];
+      const numGroups = (<any>that.range.dims[0]).groups.length;
+
+      statsView.externVisible = !statsView.externVisible;
+
+      var layoutWidth = that.computeColumnWidth();
+
+      that.$parent.style('width', layoutWidth + 'px');
+      that.$layoutHelper.style('width', layoutWidth + 'px');
+
+      for (var jj = 0; jj < numGroups - 1; ++jj)
+      {
+        var externNode = statsView.externNodes[jj];
+        if (statsView.externVisible)
+        {
+          externNode.transition().duration(columns.animationTime(within)).style('opacity', 1);
+        }
+        else
+        {
+          externNode.transition().duration(columns.animationTime(within)).style('opacity', 0);
+        }
+      }
+
+      that.stratomex.relayout();
     });
 
     const $body = $elem.append('div').attr('class', 'body');
@@ -553,10 +603,12 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
     // gather all other clusters and their labels
     var externLabelList = [];
+    var externLabelIDs = [];
     for (var j = 0; j < numGroups; ++j)
     {
       if (j == cluster) { continue; }
       externLabelList.push((<any>this.range.dims[0]).groups[j].asList());
+      externLabelIDs.push(j);
     }
 
     // request cluster distance data from server
@@ -597,7 +649,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
         {
           const $elemNext = this.$parent.append('div').classed('stats', true).style('opacity', 0);
           $elemNext.classed('group', true).datum(data);
-          $elemNext.append('div').attr('class', 'title').text('External Distances');
+          $elemNext.append('div').attr('class', 'title').text('Ext ' + String(externLabelIDs[j]));
           const $bodyNext = $elemNext.append('div').attr('class', 'body');
 
           var externDivider = boxSlider.createRaw(externDistances[j], <Element>$bodyNext.node(), {
@@ -605,7 +657,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
           });
           (<boxSlider.BoxSlider>externDivider).setLabels(labels);
           externDividers.push(externDivider);
-          $elemNext.transition().duration(columns.animationTime(within)).style('opacity', 1);
+          //$elemNext.transition().duration(columns.animationTime(within)).style('opacity', 1);
           externZooms.push(new behaviors.ZoomLogic((<boxSlider.BoxSlider>externDivider), null));
           externNodes.push($elemNext);
         }
@@ -626,14 +678,13 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
       this.statsViews[cluster] =
       {
-        $node: $elem, divider: divider, externDividers: externDividers,
-        cluster: cluster, visible: true, column: null,
-        zoom: new behaviors.ZoomLogic((<boxSlider.BoxSlider>divider), null), externZooms: externZooms,
-        externNodes: externNodes
+        $node: $elem, externNodes: externNodes,
+        divider: divider, externDividers: externDividers,
+        cluster: cluster, visible: true, externVisible: false, column: null,
+        zoom: new behaviors.ZoomLogic((<boxSlider.BoxSlider>divider), null), externZooms: externZooms
       };
 
-      var layoutWidth = this.options.statsWidth * numGroups + this.options.width;
-      if (this.detail) { layoutWidth += this.options.detailWidth; }
+      var layoutWidth = that.computeColumnWidth();
 
       this.$parent.style('width', layoutWidth + 'px');
       this.$layoutHelper.style('width', layoutWidth + 'px');
@@ -670,8 +721,6 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     statsView.visible = false;
     statsView.$node.transition().duration(columns.animationTime(within)).style('opacity', 0); //.remove();
 
-    const numGroups = (<any>this.range.dims[0]).groups.length;
-
     if (statsView.externNodes.length > 0)
     {
       for (var k = 0; k < statsView.externNodes.length; ++k)
@@ -680,14 +729,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
       }
     }
 
-    var layoutWidth = this.options.width;
-
-    if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return d.visible == true; } ))
-    {
-      layoutWidth += this.options.statsWidth * numGroups;
-    }
-
-    if (this.detail) { layoutWidth += this.options.detailWidth; }
+    var layoutWidth = this.computeColumnWidth();
 
     this.$parent.style('width', layoutWidth + 'px');
     this.$layoutHelper.style('width', layoutWidth + 'px');
@@ -922,9 +964,16 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
     const numGroups = (<any>this.range.dims[0]).groups.length;
 
-    if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return d.visible == true; } ))
+    if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return d.visible; } ))
     {
-      size.x -= this.options.statsWidth * numGroups;
+      var numVisibleGroups = 1;
+
+      if (this.statsViews.some( (d: any) => { if (d == null) { return false; } return d.visible && d.externVisible; } ))
+      {
+        numVisibleGroups = numGroups;
+      }
+
+      size.x -= this.options.statsWidth * numVisibleGroups;
     }
 
     // check if any column was removed and update active divisions
