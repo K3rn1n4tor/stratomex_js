@@ -96,8 +96,9 @@ function createHierarchicalClusterColumn(inputs, parameter, graph, within)
     partitioning = ranges.parse(parameter.partitioning),
     index = parameter.hasOwnProperty('index') ? parameter.index : -1,
     name = parameter.name || inputs[1].name,
-    dendrogram = inputs[2]._v.value;
+    dendrogram = inputs[2].value.tree;
 
+  console.log(dendrogram);
   //console.log(ranges.parse(parameter.partitioning));
 
   return inputs[1].v.then(function (data)
@@ -250,7 +251,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  updateGrid(range: ranges.CompositeRange1D)//strati: stratification.IStratification)//range: ranges.CompositeRange1D)
+  updateGrid(range: ranges.CompositeRange1D, noStatsUpdate=false)//strati: stratification.IStratification)//range: ranges.CompositeRange1D)
   {
     //d3.select(this.node).transition().duration(animationTime(-1)).style('opacity', 0);
     d3.select(this.grid.node).transition().duration(columns.animationTime(-1)).style('opacity', 0);
@@ -264,51 +265,59 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
       var compositeRange = <ranges.CompositeRange1D>that.range.dim(0);
       that.range = ranges.parse(range.toString());
 
-      const groupsChanged = (compositeRange.groups.length != range.groups.length);
+      const oldNumGroups = range.groups.length;
+      const newNumGroups = compositeRange.groups.length;
+      const groupsChanged = (newNumGroups != oldNumGroups);
 
       // reset layout of column
-      that.$parent.style('width', this.options.width + 'px');
-      that.$layoutHelper.style('width', this.options.width + 'px');
+      var layoutWidth = (!noStatsUpdate) ? that.options.width : that.options.width + newNumGroups * that.options.statsWidth;
+
+      that.$parent.style('width', layoutWidth + 'px');
+      that.$layoutHelper.style('width', layoutWidth + 'px');
 
       var promise = that.stratomex.relayout();
 
       // recreate grid and fire changed option
       that.createMultiGrid(that.range, that.data);
 
-      promise.then((_: any) =>
+      return promise.then((_: any) =>
       {
-      var promises: any[] = [];
-      // destroy current stats views
-      for (var i = 0; i < numStatsViews; ++i)
-      {
-        var statsView = that.statsViews[i];
-        that.statsViews[i] = null;
-        if (statsView != null)
-        {
-          statsView.divider.destroy();
-          statsView.$node.remove();
+        var promises: any[] = [];
+        // destroy current stats views
 
-          if (statsView.externNodes.length > 0)
+        for (var i = 0; i < numStatsViews; ++i)
+        {
+          // do not update if showStats has been invoked before
+          if (noStatsUpdate) { break; }
+
+          var statsView = that.statsViews[i];
+          that.statsViews[i] = null;
+          if (statsView != null)
           {
-            for (var k = 0; k < statsView.externNodes.length; ++k)
+            statsView.divider.destroy();
+            statsView.$node.remove();
+
+            if (statsView.externNodes.length > 0)
             {
-              statsView.externDividers[k].destroy();
-              statsView.externNodes[k].remove();
+              for (var k = 0; k < statsView.externNodes.length; ++k)
+              {
+                statsView.externDividers[k].destroy();
+                statsView.externNodes[k].remove();
+              }
+            }
+
+            if (statsView.visible && !groupsChanged)
+            {
+              promises.push(that.showStats(i, -1, false));
             }
           }
-
-          if (statsView.visible && !groupsChanged)
-          {
-            promises.push(that.showStats(i, -1, false));
-          }
         }
-      }
 
-      // update grid after all views are recreated
-      Promise.all(promises).then((_) =>
-      {
-        that.stratomex.relayout();
-      });
+        // update grid after all views are recreated
+        return Promise.all(promises).then((_) =>
+        {
+          return that.stratomex.relayout();
+        });
     });
   }
 
@@ -526,7 +535,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
         responses.push(ajax.send('/api/clustering/distances/' + that.data.desc.id, request, 'post'));
       }
 
-      Promise.all(responses).then((args: any) =>
+      Promise.all(responses).then( (args: any) =>
       {
         var values = [];
 
@@ -557,7 +566,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     console.log("Requested distances of data set:", this.data.desc.id);
 
     // resolve all promises, including the promises where the distance range is determined
-    return Promise.all(responses.concat(response)).then((args: any) =>
+    return Promise.all(responses.concat(response)).then( (args: any) =>
     {
       var distanceData = args[responses.length];
 
@@ -632,7 +641,23 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
       $('body').removeClass('waiting');
 
-      return (relayout) ? this.stratomex.relayout(within) : Promise.resolve([]);
+      // re-sort labels only on demand
+      var rangeGroup = ranges.parse(labels);
+      var newGroups = (<any>that.range.dims[0]).groups;
+      newGroups.splice(cluster, 1, new ranges.Range1DGroup('Group ' + String(cluster), 'grey', rangeGroup.dim(0)));
+      console.log(newGroups.length);
+
+      const dataName = that.data.desc.name;
+      const compositeRange = ranges.composite(dataName + 'groups', newGroups);
+
+      return (relayout) ? that.updateGrid(compositeRange, true) : Promise.resolve([]);
+
+      //return prom.then( () =>
+      //{
+      //
+      //
+      //  return that.updateGrid(compositeRange, true);
+      //});
     });
   }
 
@@ -1127,6 +1152,8 @@ export class HierarchicalClusterColumn extends ClusterColumn implements idtypes.
 
   }
 
+  // -------------------------------------------------------------------------------------------------------------------
+
   private cutDendrogramToClusters(k: number)
   {
     const dendrogram = this.dendrogram;
@@ -1157,27 +1184,37 @@ export class HierarchicalClusterColumn extends ClusterColumn implements idtypes.
     {
       clusters.push(queue[ii].indices);
 
-      var request = { group: JSON.stringify({ labels: queue[ii].indices }) };
-      responses.push(ajax.send('/api/clustering/distances/' + this.data.desc.id, request, 'post'));
+      //var request = { group: JSON.stringify({ labels: queue[ii].indices }) };
+      //responses.push(ajax.send('/api/clustering/distances/' + this.data.desc.id, request, 'post'));
     }
+
+    function compareCluster(a, b)
+    {
+      return (a.length < b.length) ? -1 : (a.length > b.length) ? 1 : 0;
+    }
+
+    clusters = clusters.sort(compareCluster);
 
     return Promise.all(responses).then( (args: any) =>
     {
-      for (var ii = 0; ii < k; ++ii)
-      {
-        clusters[ii] = args[ii].labels;
-      }
-
-      function compareCluster(a, b)
-      {
-        return (a.length < b.length) ? -1 : (a.length > b.length) ? 1 : 0;
-      }
-
-      clusters = clusters.sort(compareCluster);
       return clusters;
-
+    //  for (var ii = 0; ii < k; ++ii)
+    //  {
+    //    clusters[ii] = args[ii].labels;
+    //  }
+    //
+    //  function compareCluster(a, b)
+    //  {
+    //    return (a.length < b.length) ? -1 : (a.length > b.length) ? 1 : 0;
+    //  }
+    //
+    //  clusters = clusters.sort(compareCluster);
+    //  return clusters;
+    //
     });
   }
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   private createNewStratification(numGroups)
   {
@@ -1210,3 +1247,32 @@ export class HierarchicalClusterColumn extends ClusterColumn implements idtypes.
     });
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// TODO! To support provenance graph --> dendrogram needs to be added to server for api/dataset request
+export interface IDendrogram extends C.IPersistable
+{
+  desc: datatypes.IDataDescription;
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+
+export class Dendrogram implements IDendrogram
+{
+  constructor(public tree: any, public desc: datatypes.IDataDescription)
+  {
+  }
+
+  persist() : any
+  {
+    return this.desc.id;
+  }
+
+  restore(persisted: any)
+  {
+    return this;
+  }
+}
+
+// --------------------------------------------------------------------------------------------------------------------

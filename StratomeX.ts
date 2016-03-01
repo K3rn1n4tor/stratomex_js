@@ -445,9 +445,12 @@ class StratomeX extends views.AView {
 
         }).then((range) =>
         {
-          var dendrogramData = {value: dendrogram};
+          const newID = rowMatrix.desc.id + 'Dendrogram';
+          const dendrogramName = rowMatrix.desc.name + '_Dendrogram';
+          var dendrogramDesc = { id: newID, name: 'dendrogramName', 'fqname': 'null', type: 'tree' };
+          var dendrogramData = new clustercolumns.Dendrogram(dendrogram, dendrogramDesc);
 
-          var dendrogramRef = this.provGraph.findOrAddObject(dendrogramData, 'dendrogram', 'data');
+          var dendrogramRef = that.provGraph.findOrAddObject(dendrogramData, dendrogramName, 'data');
 
           that.provGraph.push(clustercolumns.createHierarchicalClusterColumnCmd(that.ref, mref, range, dendrogramRef,
             toName(rowMatrix.desc.name, rowStrat.desc.name)));
