@@ -481,6 +481,101 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     return layoutWidth;
   }
 
+  private buildStatsToolbar(cluster: number, $toolbar: d3.Selection<any>, matrixMode: boolean, within)
+  {
+    const that = this;
+
+    // first remove all old icons
+    $toolbar.selectAll('i').remove();
+
+    // then build new icons
+    var icon = (matrixMode) ? 'fa fa-bar-chart' : 'fa fa-th';
+
+    $toolbar.append('i').attr('class', icon).on('click', () =>
+    {
+      var statsView = that.statsViews[cluster];
+      var distHeatmap = statsView.heatmap;
+
+      statsView.matrixMode = !statsView.matrixMode;
+
+      d3.select(distHeatmap.node).classed('hidden', !statsView.matrixMode);
+
+      d3.select(statsView.divider.node).classed('hidden', statsView.matrixMode);
+      for (var j = 0; j < statsView.externNodes.length; ++j)
+      {
+        statsView.externNodes[j].classed('hidden', statsView.matrixMode);
+      }
+
+      var layoutWidth = that.computeColumnWidth();
+      that.$parent.style('width', layoutWidth + 'px');
+      that.$layoutHelper.style('width', layoutWidth + 'px');
+
+      that.stratomex.relayout();
+
+      that.buildStatsToolbar(cluster, $toolbar, statsView.matrixMode, within);
+    });
+
+    if (!matrixMode)
+    {
+
+      // tool to divide current cluster and create new divisions / stratifications displayed in a new column
+      $toolbar.append('i').attr('class', 'fa fa-share-alt').on('click', () =>
+      {
+        that.showDivisions(cluster);
+        // stop propagation to disable further event triggering
+        d3.event.stopPropagation();
+      });
+
+      // tool to recluster current column
+      $toolbar.append('i').attr('class', 'fa fa-refresh').on('click', () =>
+      {
+        that.regroupCluster(cluster);
+
+        // stop propagation to disable further event triggering
+        d3.event.stopPropagation();
+      });
+
+      // tool to show external distances
+      $toolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
+      {
+        var statsView = that.statsViews[cluster];
+        const numGroups = (<any>that.range.dims[0]).groups.length;
+
+        statsView.externVisible = !statsView.externVisible;
+
+        for (var jj = 0; jj < numGroups - 1; ++jj)
+        {
+          var externNode = statsView.externNodes[jj];
+          if (statsView.externVisible)
+          {
+            externNode.classed('hidden', false);
+            externNode.transition().duration(columns.animationTime(within)).style('opacity', 1);
+          }
+          else
+          {
+            externNode.classed('hidden', true);
+            externNode.transition().duration(columns.animationTime(within)).style('opacity', 0);
+          }
+        }
+
+        var layoutWidth = that.computeColumnWidth();
+
+        that.$parent.style('width', layoutWidth + 'px');
+        that.$layoutHelper.style('width', layoutWidth + 'px');
+
+        that.stratomex.relayout();
+      });
+    }
+
+    // close / hide statistics views
+    $toolbar.append('i').attr('class', 'fa fa-close').on('click', () =>
+    {
+      var g = that.stratomex.provGraph;
+      var s = g.findObject(that);
+      g.push(createToggleStatsCmd(s, cluster, false));
+    });
+  }
+
   showStats(cluster, within = -1, relayout = true)
   {
     var statsView = this.statsViews[cluster];
@@ -521,93 +616,13 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
     var $toolbar = $elem.append('div').attr('class', 'gtoolbar');
 
-    $elem.append('div').attr('class', 'title')
-      .text('Distances');
+    $elem.append('div').attr('class', 'title').text('Distances');
 
-    $toolbar.append('i').attr('class', 'fa fa-arrows').on('click', () =>
-    {
-      var statsView = that.statsViews[cluster];
-      var distHeatmap = statsView.heatmap;
-
-      statsView.matrixMode = !statsView.matrixMode;
-
-      d3.select(distHeatmap.node).classed('hidden', !statsView.matrixMode);
-
-      d3.select(statsView.divider.node).classed('hidden', statsView.matrixMode);
-      for (var j = 0; j < statsView.externNodes.length; ++j)
-      {
-        statsView.externNodes[j].classed('hidden', statsView.matrixMode);
-      }
-
-      var layoutWidth = that.computeColumnWidth();
-      that.$parent.style('width', layoutWidth + 'px');
-      that.$layoutHelper.style('width', layoutWidth + 'px');
-
-      that.stratomex.relayout();
-    });
-
-    // tool to divide current cluster and create new divisions / stratifications displayed in a new column
-    $toolbar.append('i').attr('class', 'fa fa-share-alt').on('click', () =>
-    {
-      that.showDivisions(cluster);
-      // stop propagation to disable further event triggering
-      d3.event.stopPropagation();
-    });
-
-    // tool to recluster current column
-    $toolbar.append('i').attr('class', 'fa fa-refresh').on('click', () =>
-    {
-      that.regroupCluster(cluster);
-
-      // stop propagation to disable further event triggering
-      d3.event.stopPropagation();
-    });
-
-    // tool to show external distances
-    $toolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
-    {
-      var statsView = that.statsViews[cluster];
-      const numGroups = (<any>that.range.dims[0]).groups.length;
-
-      statsView.externVisible = !statsView.externVisible;
-
-      for (var jj = 0; jj < numGroups - 1; ++jj)
-      {
-        var externNode = statsView.externNodes[jj];
-        if (statsView.externVisible)
-        {
-          externNode.classed('hidden', false);
-          externNode.transition().duration(columns.animationTime(within)).style('opacity', 1);
-        }
-        else
-        {
-          externNode.classed('hidden', true);
-          externNode.transition().duration(columns.animationTime(within)).style('opacity', 0);
-        }
-      }
-
-      var layoutWidth = that.computeColumnWidth();
-
-      that.$parent.style('width', layoutWidth + 'px');
-      that.$layoutHelper.style('width', layoutWidth + 'px');
-
-      that.stratomex.relayout();
-    });
+    this.buildStatsToolbar(cluster, $toolbar, false, within);
 
     const $body = $elem.append('div').attr('class', 'body');
 
-    // close / hide statistics views
-    $toolbar.append('i').attr('class', 'fa fa-close').on('click', () =>
-    {
-      var g = that.stratomex.provGraph;
-      var s = g.findObject(that);
-      g.push(createToggleStatsCmd(s, cluster, false));
-    });
-
     const numGroups = (<any>this.range.dims[0]).groups.length;
-
-
-    //this.data.rowIds().then((ids) => { console.log(ids.dim(0).asList()); });
 
     var responses = [];
 
