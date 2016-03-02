@@ -209,6 +209,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     width: 160,
     detailWidth: 500,
     statsWidth: 50, // this is the default width for the distance view TODO: rename to distanceWidth
+    matrixWidth: 100,
     padding: 2,
     name: null
   };
@@ -456,20 +457,26 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     if (this.detail) { layoutWidth += this.options.detailWidth; }
 
     var numVisibleGroups = 0;
+    var matrixWidth = 0;
     const numGroups = (<any>this.range.dims[0]).groups.length;
 
-    if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return d.visible; } ))
+    if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return !d.matrixMode && d.visible; } ))
     {
       numVisibleGroups = 1;
 
       if (this.statsViews.some( (d: any) =>
-        { if (d == null) { return false; } return d.visible && d.externVisible; } ))
+        { if (d == null) { return false; } return !d.matrixMode && d.visible && d.externVisible; } ))
       {
         numVisibleGroups = numGroups;
       }
     }
 
-    layoutWidth += this.options.statsWidth * numVisibleGroups;
+    if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return d.matrixMode && d.visible; } ))
+    {
+      matrixWidth = this.options.matrixWidth;
+    }
+
+    layoutWidth += Math.max(this.options.statsWidth * numVisibleGroups, matrixWidth);
 
     return layoutWidth;
   }
@@ -480,25 +487,26 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
     if (statsView != null)
     {
-      const numGroups = (<any>this.range.dims[0]).groups.length;
-
-      var layoutWidth = this.options.statsWidth + this.options.width;
-      if (statsView.externVisible) { layoutWidth += (numGroups - 1) * this.options.statsWidth; }
-
-      if (this.detail) { layoutWidth += this.options.detailWidth; }
-
-      this.$parent.style('width', layoutWidth + 'px');
-      this.$layoutHelper.style('width', layoutWidth + 'px');
+      statsView.$node.classed('hidden', false);
       statsView.$node.transition().duration(columns.animationTime(within)).style('opacity', 1);
       statsView.visible = true;
+
+      d3.select(statsView.divider.node).classed('hidden', statsView.matrixMode);
+      d3.select(statsView.heatmap.node).classed('hidden', !statsView.matrixMode);
 
       if (statsView.externNodes.length > 0 && statsView.externVisible)
       {
         for (var k = 0; k < statsView.externNodes.length; ++k)
         {
           statsView.externNodes[k].transition().duration(columns.animationTime(within)).style('opacity', 1);
+          statsView.externNodes[k].classed('hidden', statsView.matrixMode);
         }
       }
+
+      var layoutWidth = this.computeColumnWidth();
+
+      this.$parent.style('width', layoutWidth + 'px');
+      this.$layoutHelper.style('width', layoutWidth + 'px');
 
       return (relayout) ? this.stratomex.relayout(within) : Promise.resolve([]);
     }
@@ -515,6 +523,28 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
     $elem.append('div').attr('class', 'title')
       .text('Distances');
+
+    $toolbar.append('i').attr('class', 'fa fa-arrows').on('click', () =>
+    {
+      var statsView = that.statsViews[cluster];
+      var distHeatmap = statsView.heatmap;
+
+      statsView.matrixMode = !statsView.matrixMode;
+
+      d3.select(distHeatmap.node).classed('hidden', !statsView.matrixMode);
+
+      d3.select(statsView.divider.node).classed('hidden', statsView.matrixMode);
+      for (var j = 0; j < statsView.externNodes.length; ++j)
+      {
+        statsView.externNodes[j].classed('hidden', statsView.matrixMode);
+      }
+
+      var layoutWidth = that.computeColumnWidth();
+      that.$parent.style('width', layoutWidth + 'px');
+      that.$layoutHelper.style('width', layoutWidth + 'px');
+
+      that.stratomex.relayout();
+    });
 
     // tool to divide current cluster and create new divisions / stratifications displayed in a new column
     $toolbar.append('i').attr('class', 'fa fa-share-alt').on('click', () =>
@@ -533,6 +563,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
       d3.event.stopPropagation();
     });
 
+    // tool to show external distances
     $toolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
     {
       var statsView = that.statsViews[cluster];
@@ -540,33 +571,36 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
       statsView.externVisible = !statsView.externVisible;
 
-      var layoutWidth = that.computeColumnWidth();
-
-      that.$parent.style('width', layoutWidth + 'px');
-      that.$layoutHelper.style('width', layoutWidth + 'px');
-
       for (var jj = 0; jj < numGroups - 1; ++jj)
       {
         var externNode = statsView.externNodes[jj];
         if (statsView.externVisible)
         {
+          externNode.classed('hidden', false);
           externNode.transition().duration(columns.animationTime(within)).style('opacity', 1);
         }
         else
         {
+          externNode.classed('hidden', true);
           externNode.transition().duration(columns.animationTime(within)).style('opacity', 0);
         }
       }
+
+      var layoutWidth = that.computeColumnWidth();
+
+      that.$parent.style('width', layoutWidth + 'px');
+      that.$layoutHelper.style('width', layoutWidth + 'px');
 
       that.stratomex.relayout();
     });
 
     const $body = $elem.append('div').attr('class', 'body');
 
+    // close / hide statistics views
     $toolbar.append('i').attr('class', 'fa fa-close').on('click', () =>
     {
-      var g = this.stratomex.provGraph;
-      var s = g.findObject(this);
+      var g = that.stratomex.provGraph;
+      var s = g.findObject(that);
       g.push(createToggleStatsCmd(s, cluster, false));
     });
 
@@ -670,6 +704,8 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
       // 3) create heatmap
       var distHeatmap = heatmap.create(distMatrix, <Element>$body.node(), {});
+      var zoomHeatmap = new behaviors.ZoomLogic(distHeatmap, null);
+      d3.select(distHeatmap.node).classed('hidden', true);
 
       var externDividers = [];
       var externZooms = [];
@@ -713,7 +749,8 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
         $node: $elem, externNodes: externNodes,
         divider: divider, externDividers: externDividers,
         cluster: cluster, visible: true, externVisible: false, column: null,
-        zoom: new behaviors.ZoomLogic((<boxSlider.BoxSlider>divider), null), externZooms: externZooms
+        zoom: new behaviors.ZoomLogic((<boxSlider.BoxSlider>divider), null), externZooms: externZooms,
+        matrixMode: false, heatmap: distHeatmap, zoomMatrix: zoomHeatmap
       };
 
       var layoutWidth = that.computeColumnWidth();
@@ -751,13 +788,15 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     var statsView = this.statsViews[cluster];
 
     statsView.visible = false;
-    statsView.$node.transition().duration(columns.animationTime(within)).style('opacity', 0); //.remove();
+    statsView.$node.transition().duration(columns.animationTime(within)).style('opacity', 0);
+    statsView.$node.classed('hidden', true); //.remove();
 
     if (statsView.externNodes.length > 0)
     {
       for (var k = 0; k < statsView.externNodes.length; ++k)
       {
         statsView.externNodes[k].transition().duration(columns.animationTime(within)).style('opacity', 0);
+        statsView.externNodes[k].classed('hidden', true);
       }
     }
 
@@ -996,17 +1035,25 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
     const numGroups = (<any>this.range.dims[0]).groups.length;
 
-    if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return d.visible; } ))
-    {
-      var numVisibleGroups = 1;
+    var numVisibleGroups = 0;
+    var matrixWidth = 0;
 
-      if (this.statsViews.some( (d: any) => { if (d == null) { return false; } return d.visible && d.externVisible; } ))
+    if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return !d.matrixMode && d.visible; } ))
+    {
+      numVisibleGroups = 1;
+
+      if (this.statsViews.some( (d: any) => { if (d == null) { return false; } return !d.matrixMode && d.visible && d.externVisible; } ))
       {
         numVisibleGroups = numGroups;
       }
-
-      size.x -= this.options.statsWidth * numVisibleGroups;
     }
+
+    if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return d.matrixMode && d.visible; } ))
+    {
+      matrixWidth = this.options.matrixWidth;
+    }
+
+    size.x -= Math.max(this.options.statsWidth * numVisibleGroups, matrixWidth);
 
     // check if any column was removed and update active divisions
     for (var j = 0; j < numGroups; ++j)
@@ -1066,26 +1113,34 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
           var clusterHeight = $(clusterGrid).height() - 10;
           var boxChartHeight = $(clusterGrid).height() - 18 - 10 - 2 * this.options.padding;
 
-          statsView.zoom.zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
-
-          statsView.$node.style({
-            width: this.options.statsWidth + 'px',
-            height: clusterHeight + 'px',
-            top: clusterPosY + 'px',
-            left: (size.x + this.options.padding * 2) + 'px'
-          });
-
-          if (statsView.externNodes != null)
-          {
-            for (var k = 0; k < statsView.externNodes.length; ++k)
+          statsView.$node.style(
             {
-              statsView.externZooms[k].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
-              statsView.externNodes[k].style({
-                width: this.options.statsWidth + 'px',
-                height: clusterHeight + 'px',
-                top: clusterPosY + 'px',
-                left: (size.x + this.options.padding * 2 + this.options.statsWidth * (k + 1)) + 'px'
-              });
+              width: ((statsView.matrixMode) ? this.options.matrixWidth : this.options.statsWidth) + 'px',
+              height: ((statsView.matrixMode) ? clusterHeight + 1 : clusterHeight) + 'px', // TODO Hack for matrix bug!
+              top: clusterPosY + 'px',
+              left: (size.x + this.options.padding * 2) + 'px'
+            });
+
+          if (statsView.matrixMode)
+          {
+              statsView.zoomMatrix.zoomTo(this.options.matrixWidth - this.options.padding * 2, boxChartHeight);
+          }
+          else
+          {
+            statsView.zoom.zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
+
+            if (statsView.externNodes != null)
+            {
+              for (var k = 0; k < statsView.externNodes.length; ++k)
+              {
+                statsView.externZooms[k].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
+                statsView.externNodes[k].style({
+                  width: this.options.statsWidth + 'px',
+                  height: clusterHeight + 'px',
+                  top: clusterPosY + 'px',
+                  left: (size.x + this.options.padding * 2 + this.options.statsWidth * (k + 1)) + 'px'
+                });
+              }
             }
           }
 

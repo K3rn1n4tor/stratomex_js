@@ -419,9 +419,10 @@ div.clusterPopup
 
       div.gtoolbar
       {
-        top: -1.2em;
-        right: -1.2em;
-        //text-align: center;
+        top: -1.1em;
+        left: 0px;
+        z-index: 1;
+        text-align: center;
       }
     }
 
