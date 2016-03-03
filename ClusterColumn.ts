@@ -27,6 +27,7 @@ import heatmap = require('../caleydo_vis/heatmap');
 // my own libraries
 import columns = require('./Column');
 import boxSlider = require('./boxslider');
+import {animationTime} from "./Column";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -209,7 +210,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     width: 160,
     detailWidth: 500,
     statsWidth: 50, // this is the default width for the distance view TODO: rename to distanceWidth
-    matrixWidth: 100,
+    matrixWidth: 140,
     padding: 2,
     name: null
   };
@@ -718,9 +719,105 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
       var distMatrix = parser.parseMatrix(rawDistMatrix);
 
       // 3) create heatmap
-      var distHeatmap = heatmap.create(distMatrix, <Element>$body.node(), {});
+      var distHeatmap = heatmap.create(distMatrix, <Element>$body.node(), { selectAble: false });
       var zoomHeatmap = new behaviors.ZoomLogic(distHeatmap, null);
       d3.select(distHeatmap.node).classed('hidden', true);
+
+      function onClickHeatmap(rawMatrix, cluster, numGroups, rawLabels)
+      {
+        return function()
+        {
+          var statsView = that.statsViews[cluster];
+
+          statsView.heatmap.destroy();
+          var mousePos = d3.mouse(statsView.$node.node());
+          const mousePosX = mousePos[0];
+          var columnWidth = that.options.matrixWidth / numGroups;
+
+          var index = 0;
+          for (var pos = 0; pos < mousePosX; pos += columnWidth)
+          {
+            index += 1;
+          }
+
+          // 1) sort matrix by selected column
+          function sortMatrix(a, b)
+          {
+            if (a[0] == 'ID') { return -1; }
+            if (b[0] == 'ID') { return 1; }
+
+            return a[index] - b[index];
+          }
+
+          rawMatrix.sort(sortMatrix);
+          //console.log(rawMatrix);
+
+          var newDistMatrix = parser.parseMatrix(rawMatrix);
+
+          var $body = statsView.$node.select('.body');
+
+          statsView.heatmap = heatmap.create(newDistMatrix, <Element>$body.node(), { selectAble: false });
+          d3.select(statsView.heatmap.node).classed('hidden', true);
+          statsView.zoomMatrix = new behaviors.ZoomLogic(statsView.heatmap, null);
+          d3.select(statsView.heatmap.node).on('click', onClickHeatmap(rawDistMatrix, cluster, numGroups, rawLabels));
+
+          C.resolveIn(5).then( () =>
+          {
+            d3.select(statsView.heatmap.node).classed('hidden', false);
+          });
+
+          // 2) resort corresponding group and its labels and redraw grid
+          var oldGroups = (<any>that.range.dim(0)).groups;
+
+          var newLabels = [];
+          // copy old distances to new distances
+          var newDistances = Array.apply(null, Array(numGroups)).map( (d,i) => { return []; });
+
+          for (var j = 0; j < rawLabels.length; ++j)
+          {
+            var ID = parseInt(rawMatrix[j + 1][0]);
+            newLabels.push(rawLabels[ID]);
+            for (var i = 0; i < newDistances.length; ++i)
+            {
+              newDistances[i].push(rawMatrix[j + 1][i + 1]);
+            }
+          }
+
+          var newRange = ranges.parse(newLabels);
+          var newGroup = new ranges.Range1DGroup('Group ' + String(cluster), 'grey', newRange.dim(0));
+          oldGroups.splice(cluster, 1, newGroup);
+
+          const newCompositeRange = ranges.composite(oldGroups.name, oldGroups);
+
+          // 3) create new dividers
+          // TODO: update zooms!
+          for (var i = 0; i < newDistances.length; ++i)
+          {
+            if (i == 0)
+            {
+              d3.select(statsView.divider.node).remove();
+              statsView.divider = boxSlider.createRaw(newDistances[i], <Element>$body.node(), {
+                scaleTo: [dividerWidth, height], range: that.distancesRange, numAvg: 1 });
+              d3.select(statsView.divider.node).classed('hidden', true);
+              (<boxSlider.BoxSlider>statsView.divider).setLabels(newLabels);
+              statsView.zoom = new behaviors.ZoomLogic((<boxSlider.BoxSlider>statsView.divider), null)
+            }
+            else
+            {
+              d3.select(statsView.externDividers[i - 1].node).remove();
+              var $extNode = statsView.externNodes[i - 1];
+              statsView.externDividers[i - 1] = boxSlider.createRaw(newDistances[i], <Element>$extNode.node(), {
+                scaleTo: [dividerWidth, height], range: that.distancesRange, numAvg: 1, numSlider: 0 });
+              statsView.externZooms[i - 1] = new behaviors.ZoomLogic((<boxSlider.BoxSlider>statsView.externDividers[i - 1]), null)
+            }
+          }
+
+          // 4) finally update the grid
+          that.updateGrid(newCompositeRange, true);
+        }
+      }
+
+      d3.select(distHeatmap.node).on('click', onClickHeatmap(rawDistMatrix, cluster, numGroups, labels));
 
       var externDividers = [];
       var externZooms = [];
@@ -780,7 +877,6 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
       var rangeGroup = ranges.parse(labels);
       var newGroups = (<any>that.range.dims[0]).groups;
       newGroups.splice(cluster, 1, new ranges.Range1DGroup('Group ' + String(cluster), 'grey', rangeGroup.dim(0)));
-      console.log(newGroups.length);
 
       const dataName = that.data.desc.name;
       const compositeRange = ranges.composite(dataName + 'groups', newGroups);
@@ -1131,7 +1227,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
           statsView.$node.style(
             {
               width: ((statsView.matrixMode) ? this.options.matrixWidth : this.options.statsWidth) + 'px',
-              height: ((statsView.matrixMode) ? clusterHeight + 1 : clusterHeight) + 'px', // TODO Hack for matrix bug!
+              height: clusterHeight + 'px', // TODO Hack for matrix bug!
               top: clusterPosY + 'px',
               left: (size.x + this.options.padding * 2) + 'px'
             });
@@ -1390,7 +1486,7 @@ export class HierarchicalClusterColumn extends ClusterColumn implements idtypes.
         groups.push(new ranges.Range1DGroup('Group ' + String(i),
           'grey', rangeGroups[i].dim(0)));
 
-        groupsDesc.push({ name: 'Division ' + String(i), size: groupSize});
+        groupsDesc.push({ name: 'Group ' + String(i), size: groupSize});
       }
 
       var compositeRange = ranges.composite(dataName + 'groups', groups);

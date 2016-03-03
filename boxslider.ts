@@ -420,7 +420,8 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
       x: 0, y: 0,
       width: (d: any) => { return scaleX(d); }, height: barHeight,
       'fill': this.options.sliderColor, id: 'bar', class: (_: any, i: number) => { return 'bar' + String(i);},
-      'shape-rendering': 'crispEdges'
+      'shape-rendering': 'crispEdges', stroke: 'black', 'stroke-width': '2px', 'stroke-alignment': 'inner',
+      'stroke-opacity': 0.05
     }).on('mouseover', this._mouseHandler('mouseover', $root, [scaleY]))
       .on('mouseout', this._mouseHandler('mouseout', $root, []));
   }
@@ -702,9 +703,9 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
 
     var descs: any[] = [];
     // TODO! implement custom interpolator for colors
-    const redColor = '#AA4040';
-    const greenColor = '#45AA55';
-    const yellowColor = '#AAAA40';
+    const redColor = '#BB0000';//'#AA4040';
+    const greenColor = '#009900';//'#45AA55';
+    const yellowColor = '#AAAA00';//'#AAAA40';
 
     var colors = (numDivs == 1) ? [greenColor, redColor] : [greenColor, yellowColor, redColor];
 
