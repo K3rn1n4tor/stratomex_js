@@ -723,6 +723,15 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
       var zoomHeatmap = new behaviors.ZoomLogic(distHeatmap, null);
       d3.select(distHeatmap.node).classed('hidden', true);
 
+      function mouseOutHandler(divider: vis.AVisInstance, extDividers: vis.AVisInstance[])
+      {
+        return (_: any) =>
+        {
+          var divs = (<boxSlider.BoxSlider>divider).getCurrentDivisions();
+          extDividers.forEach((d: boxSlider.BoxSlider) => { d.setDivisions(divs); });
+        };
+      }
+
       function onClickHeatmap(rawMatrix, cluster, numGroups, rawLabels)
       {
         return function()
@@ -808,9 +817,13 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
               var $extNode = statsView.externNodes[i - 1];
               statsView.externDividers[i - 1] = boxSlider.createRaw(newDistances[i], <Element>$extNode.node(), {
                 scaleTo: [dividerWidth, height], range: that.distancesRange, numAvg: 1, numSlider: 0 });
-              statsView.externZooms[i - 1] = new behaviors.ZoomLogic((<boxSlider.BoxSlider>statsView.externDividers[i - 1]), null)
+              statsView.externZooms[i - 1] = new behaviors.ZoomLogic((<boxSlider.BoxSlider>statsView.externDividers[i - 1]), null);
+              (<boxSlider.BoxSlider>statsView.externDividers[i - 1]).setLabels(newLabels);
             }
           }
+
+          statsView.$node.on('mouseup', mouseOutHandler(statsView.divider, statsView.externDividers));
+          mouseOutHandler(statsView.divider, statsView.externDividers)({});
 
           // 4) finally update the grid
           that.updateGrid(newCompositeRange, true);
@@ -841,15 +854,6 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
           externZooms.push(new behaviors.ZoomLogic((<boxSlider.BoxSlider>externDivider), null));
           externNodes.push($elemNext);
         }
-      }
-
-      function mouseOutHandler(divider: vis.AVisInstance, extDividers: vis.AVisInstance[])
-      {
-        return (_: any) =>
-        {
-          var divs = (<boxSlider.BoxSlider>divider).getCurrentDivisions();
-          extDividers.forEach((d: boxSlider.BoxSlider) => { d.setDivisions(divs); });
-        };
       }
 
       $elem.on('mouseup', mouseOutHandler(divider, externDividers));
