@@ -215,7 +215,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     name: null
   };
 
-  protected statsViews: any[] = []; // array of all distance views for this column TODO: rename to distanceViews
+  protected statsViews: ClusterDetailView[] = []; // array of all distance views for this column TODO: rename to distanceViews
   protected activeDivision: ClusterColumn[] = []; // TODO!: check if we still need the tracking of active divisions
   protected distancesRange: [number, number] = null;
 
@@ -302,15 +302,15 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
           that.statsViews[i] = null;
           if (statsView != null)
           {
-            statsView.divider.destroy();
-            statsView.$node.remove();
+            statsView.dividers[0].destroy();
+            statsView.$nodes[0].remove();
 
-            if (statsView.externNodes.length > 0)
+            if (statsView.$nodes.length - 1 > 0)
             {
-              for (var k = 0; k < statsView.externNodes.length; ++k)
+              for (var k = 1; k < statsView.$nodes.length; ++k)
               {
-                statsView.externDividers[k].destroy();
-                statsView.externNodes[k].remove();
+                statsView.dividers[k].destroy();
+                statsView.$nodes[k].remove();
               }
             }
 
@@ -482,7 +482,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     return layoutWidth;
   }
 
-  private buildStatsToolbar(cluster: number, $toolbar: d3.Selection<any>, matrixMode: boolean, within)
+  private buildClusterDetailToolbar(cluster: number, $toolbar: d3.Selection<any>, matrixMode: boolean, within)
   {
     const that = this;
 
@@ -495,16 +495,16 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     $toolbar.append('i').attr('class', icon).on('click', () =>
     {
       var statsView = that.statsViews[cluster];
-      var distHeatmap = statsView.heatmap;
+      var distHeatmap = statsView.matrix;
 
-      statsView.matrixMode = !statsView.matrixMode;
+      statsView.toggleMatrixMode();
 
       d3.select(distHeatmap.node).classed('hidden', !statsView.matrixMode);
 
-      d3.select(statsView.divider.node).classed('hidden', statsView.matrixMode);
-      for (var j = 0; j < statsView.externNodes.length; ++j)
+      d3.select(statsView.dividers[0].node).classed('hidden', statsView.matrixMode);
+      for (var j = 1; j < statsView.$nodes.length; ++j)
       {
-        statsView.externNodes[j].classed('hidden', statsView.matrixMode);
+        statsView.$nodes[j].classed('hidden', statsView.matrixMode);
       }
 
       var layoutWidth = that.computeColumnWidth();
@@ -513,7 +513,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
       that.stratomex.relayout();
 
-      that.buildStatsToolbar(cluster, $toolbar, statsView.matrixMode, within);
+      that.buildClusterDetailToolbar(cluster, $toolbar, statsView.matrixMode, within);
     });
 
     if (!matrixMode)
@@ -535,7 +535,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
       // stop propagation to disable further event triggering
       d3.event.stopPropagation();
     });
-    
+
     if (!matrixMode)
     {
       // tool to show external distances
@@ -546,9 +546,9 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
         statsView.externVisible = !statsView.externVisible;
 
-        for (var jj = 0; jj < numGroups - 1; ++jj)
+        for (var j = 1; j < numGroups; ++j)
         {
-          var externNode = statsView.externNodes[jj];
+          var externNode = statsView.$nodes[j];
           if (statsView.externVisible)
           {
             externNode.classed('hidden', false);
@@ -585,21 +585,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
     if (statsView != null)
     {
-      statsView.$node.classed('hidden', false);
-      statsView.$node.transition().duration(columns.animationTime(within)).style('opacity', 1);
-      statsView.visible = true;
-
-      d3.select(statsView.divider.node).classed('hidden', statsView.matrixMode);
-      d3.select(statsView.heatmap.node).classed('hidden', !statsView.matrixMode);
-
-      if (statsView.externNodes.length > 0 && statsView.externVisible)
-      {
-        for (var k = 0; k < statsView.externNodes.length; ++k)
-        {
-          statsView.externNodes[k].transition().duration(columns.animationTime(within)).style('opacity', 1);
-          statsView.externNodes[k].classed('hidden', statsView.matrixMode);
-        }
-      }
+      statsView.show(within);
 
       var layoutWidth = this.computeColumnWidth();
 
@@ -611,290 +597,21 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
     const that = this;
 
-    // obtain either full data (if cluster index < 0) or cluster data
-    const data = cluster < 0 ? this.data : this.grid.getData(cluster);
+    var newStatsView: ClusterDetailView = new ClusterDetailView(cluster, this.data, this.range, {});
+    var promise = newStatsView.build(this.$parent, this);
+    this.buildClusterDetailToolbar(cluster, newStatsView.$toolbar, false, within);
 
-    const $elem = this.$parent.append('div').classed('stats', true).style('opacity', 0);
-    $elem.classed('group', true).datum(data);
+    this.statsViews[cluster] = newStatsView;
 
-    var $toolbar = $elem.append('div').attr('class', 'gtoolbar');
+    var layoutWidth = that.computeColumnWidth();
 
-    $elem.append('div').attr('class', 'title').text('Distances');
+    this.$parent.style('width', layoutWidth + 'px');
+    this.$layoutHelper.style('width', layoutWidth + 'px');
 
-    this.buildStatsToolbar(cluster, $toolbar, false, within);
-
-    const $body = $elem.append('div').attr('class', 'body');
-
-    const numGroups = (<any>this.range.dims[0]).groups.length;
-
-    var responses = [];
-
-    if (this.distancesRange == null)
+    return promise.then( (args) =>
     {
-      $('body').addClass('waiting');
-
-     // var total = 0;
-      for (var j = 0; j < numGroups; ++j)
-      {
-        var labelList = (<any>this.range.dims[0]).groups[j].asList();
-        var request = { group: JSON.stringify({ labels: labelList }) };
-        responses.push(ajax.send('/api/clustering/distances/' + that.data.desc.id, request, 'post'));
-      }
-
-      Promise.all(responses).then( (args: any) =>
-      {
-        var values = [];
-
-        for (var j = 0; j < numGroups; ++j)
-        {
-          values = values.concat(args[j].distances);
-        }
-
-        that.distancesRange = d3.extent(values);
-      });
-    }
-
-
-    var labelList = (<any>this.range.dims[0]).groups[cluster].asList();
-
-    // gather all other clusters and their labels
-    var externLabelList = [];
-    var externLabelIDs = [];
-    for (var j = 0; j < numGroups; ++j)
-    {
-      if (j == cluster) { continue; }
-      externLabelList.push((<any>this.range.dims[0]).groups[j].asList());
-      externLabelIDs.push(j);
-    }
-
-    // request cluster distance data from server
-    $('body').addClass('waiting');
-    var request = { group: JSON.stringify({ labels: labelList, externLabels: externLabelList }) };
-    var response = ajax.send('/api/clustering/distances/' + this.data.desc.id, request, 'post');
-    console.log("Requested distances of data set:", this.data.desc.id);
-
-    // resolve all promises, including the promises where the distance range is determined
-    return Promise.all(responses.concat(response)).then( (args: any) =>
-    {
-      var distanceData = args[responses.length];
-
-      if (distanceData === null) { return Promise.resolve([]); }
-
-      var distances = distanceData.distances;
-      var externDistances = distanceData.externDistances;
-      var labels = distanceData.labels;
-
-      var dividerWidth = this.options.statsWidth - this.options.padding * 2;
-
-      //this.options.statsWidth = 50;
-      var clusterGrid = $(this.$parent.node()).find('div.gridrow')[cluster];
-      var height = $(clusterGrid).height() - 18 - 10 - 2 * this.options.padding;
-
-      var divider = boxSlider.createRaw(distances, <Element>$body.node(), {
-        scaleTo: [dividerWidth, height], range: that.distancesRange, numAvg: 1
-      });
-      (<boxSlider.BoxSlider>divider).setLabels(labels);
-
-      // create a new matrix view
-      // 1) create matrix data
-      var rawDistMatrix = [];
-
-      var header = ['ID'];
-      for (var j = 0; j < numGroups; ++j)
-      {
-        header.push(String(j));
-      }
-      rawDistMatrix.push(header);
-
-      for (var i = 0; i < distances.length; ++i)
-      {
-        var row = [String(i), distances[i]];
-
-        for (var j = 0; j < externDistances.length; ++j)
-        {
-          row.push(externDistances[j][i])
-        }
-
-        rawDistMatrix.push(row);
-      }
-      // 2) parse matrix
-      var distMatrix = parser.parseMatrix(rawDistMatrix);
-
-      // 3) create heatmap
-      var distHeatmap = heatmap.create(distMatrix, <Element>$body.node(), { selectAble: false });
-      var zoomHeatmap = new behaviors.ZoomLogic(distHeatmap, null);
-      d3.select(distHeatmap.node).classed('hidden', true);
-
-      function mouseOutHandler(divider: vis.AVisInstance, extDividers: vis.AVisInstance[])
-      {
-        return (_: any) =>
-        {
-          var divs = (<boxSlider.BoxSlider>divider).getCurrentDivisions();
-          extDividers.forEach((d: boxSlider.BoxSlider) => { d.setDivisions(divs); });
-        };
-      }
-
-      function onClickHeatmap(rawMatrix, cluster, numGroups, rawLabels)
-      {
-        return function()
-        {
-          var statsView = that.statsViews[cluster];
-
-          statsView.heatmap.destroy();
-          var mousePos = d3.mouse(statsView.$node.node());
-          const mousePosX = mousePos[0];
-          var columnWidth = that.options.matrixWidth / numGroups;
-
-          var index = 0;
-          for (var pos = 0; pos < mousePosX; pos += columnWidth)
-          {
-            index += 1;
-          }
-
-          // 1) sort matrix by selected column
-          function sortMatrix(a, b)
-          {
-            if (a[0] == 'ID') { return -1; }
-            if (b[0] == 'ID') { return 1; }
-
-            return a[index] - b[index];
-          }
-
-          rawMatrix.sort(sortMatrix);
-          //console.log(rawMatrix);
-
-          var newDistMatrix = parser.parseMatrix(rawMatrix);
-
-          var $body = statsView.$node.select('.body');
-
-          statsView.heatmap = heatmap.create(newDistMatrix, <Element>$body.node(), { selectAble: false });
-          d3.select(statsView.heatmap.node).classed('hidden', true);
-          statsView.zoomMatrix = new behaviors.ZoomLogic(statsView.heatmap, null);
-          d3.select(statsView.heatmap.node).on('click', onClickHeatmap(rawDistMatrix, cluster, numGroups, rawLabels));
-
-          C.resolveIn(5).then( () =>
-          {
-            d3.select(statsView.heatmap.node).classed('hidden', false);
-          });
-
-          // 2) resort corresponding group and its labels and redraw grid
-          var oldGroups = (<any>that.range.dim(0)).groups;
-
-          var newLabels = [];
-          // copy old distances to new distances
-          var newDistances = Array.apply(null, Array(numGroups)).map( (d,i) => { return []; });
-
-          for (var j = 0; j < rawLabels.length; ++j)
-          {
-            var ID = parseInt(rawMatrix[j + 1][0]);
-            newLabels.push(rawLabels[ID]);
-            for (var i = 0; i < newDistances.length; ++i)
-            {
-              newDistances[i].push(rawMatrix[j + 1][i + 1]);
-            }
-          }
-
-          var newRange = ranges.parse(newLabels);
-          var newGroup = new ranges.Range1DGroup('Group ' + String(cluster), 'grey', newRange.dim(0));
-          oldGroups.splice(cluster, 1, newGroup);
-
-          const newCompositeRange = ranges.composite(oldGroups.name, oldGroups);
-
-          // 3) create new dividers
-          // TODO: update zooms!
-          for (var i = 0; i < newDistances.length; ++i)
-          {
-            if (i == 0)
-            {
-              d3.select(statsView.divider.node).remove();
-              statsView.divider = boxSlider.createRaw(newDistances[i], <Element>$body.node(), {
-                scaleTo: [dividerWidth, height], range: that.distancesRange, numAvg: 1 });
-              d3.select(statsView.divider.node).classed('hidden', true);
-              (<boxSlider.BoxSlider>statsView.divider).setLabels(newLabels);
-              statsView.zoom = new behaviors.ZoomLogic((<boxSlider.BoxSlider>statsView.divider), null)
-            }
-            else
-            {
-              d3.select(statsView.externDividers[i - 1].node).remove();
-              var $extNode = statsView.externNodes[i - 1];
-              statsView.externDividers[i - 1] = boxSlider.createRaw(newDistances[i], <Element>$extNode.node(), {
-                scaleTo: [dividerWidth, height], range: that.distancesRange, numAvg: 1, numSlider: 0 });
-              statsView.externZooms[i - 1] = new behaviors.ZoomLogic((<boxSlider.BoxSlider>statsView.externDividers[i - 1]), null);
-              (<boxSlider.BoxSlider>statsView.externDividers[i - 1]).setLabels(newLabels);
-            }
-          }
-
-          statsView.$node.on('mouseup', mouseOutHandler(statsView.divider, statsView.externDividers));
-          mouseOutHandler(statsView.divider, statsView.externDividers)({});
-
-          // 4) finally update the grid
-          that.updateGrid(newCompositeRange, true);
-        }
-      }
-
-      d3.select(distHeatmap.node).on('click', onClickHeatmap(rawDistMatrix, cluster, numGroups, labels));
-
-      var externDividers = [];
-      var externZooms = [];
-      var externNodes = [];
-
-      if (externDistances != null)
-      {
-        for (var j = 0; j < externDistances.length; ++j)
-        {
-          const $elemNext = this.$parent.append('div').classed('stats', true).style('opacity', 0);
-          $elemNext.classed('group', true).datum(data);
-          $elemNext.append('div').attr('class', 'title').text('Ext ' + String(externLabelIDs[j]));
-          const $bodyNext = $elemNext.append('div').attr('class', 'body');
-
-          var externDivider = boxSlider.createRaw(externDistances[j], <Element>$bodyNext.node(), {
-            scaleTo: [dividerWidth, height], range: that.distancesRange, numAvg: 1, numSlider: 0
-          });
-          (<boxSlider.BoxSlider>externDivider).setLabels(labels);
-          externDividers.push(externDivider);
-          //$elemNext.transition().duration(columns.animationTime(within)).style('opacity', 1);
-          externZooms.push(new behaviors.ZoomLogic((<boxSlider.BoxSlider>externDivider), null));
-          externNodes.push($elemNext);
-        }
-      }
-
-      $elem.on('mouseup', mouseOutHandler(divider, externDividers));
-      // and color each extern distance box chart at the beginning
-      mouseOutHandler(divider, externDividers)({});
-
-      this.statsViews[cluster] =
-      {
-        $node: $elem, externNodes: externNodes,
-        divider: divider, externDividers: externDividers,
-        cluster: cluster, visible: true, externVisible: false, column: null,
-        zoom: new behaviors.ZoomLogic((<boxSlider.BoxSlider>divider), null), externZooms: externZooms,
-        matrixMode: false, heatmap: distHeatmap, zoomMatrix: zoomHeatmap
-      };
-
-      var layoutWidth = that.computeColumnWidth();
-
-      this.$parent.style('width', layoutWidth + 'px');
-      this.$layoutHelper.style('width', layoutWidth + 'px');
-      $elem.transition().duration(columns.animationTime(within)).style('opacity', 1);
-
-      $('body').removeClass('waiting');
-
-      // re-sort labels only on demand
-      var rangeGroup = ranges.parse(labels);
-      var newGroups = (<any>that.range.dims[0]).groups;
-      newGroups.splice(cluster, 1, new ranges.Range1DGroup('Group ' + String(cluster), 'grey', rangeGroup.dim(0)));
-
-      const dataName = that.data.desc.name;
-      const compositeRange = ranges.composite(dataName + 'groups', newGroups);
-
+      const compositeRange = args[0];
       return (relayout) ? that.updateGrid(compositeRange, true) : Promise.resolve([]);
-
-      //return prom.then( () =>
-      //{
-      //
-      //
-      //  return that.updateGrid(compositeRange, true);
-      //});
     });
   }
 
@@ -904,18 +621,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
   {
     var statsView = this.statsViews[cluster];
 
-    statsView.visible = false;
-    statsView.$node.transition().duration(columns.animationTime(within)).style('opacity', 0);
-    statsView.$node.classed('hidden', true); //.remove();
-
-    if (statsView.externNodes.length > 0)
-    {
-      for (var k = 0; k < statsView.externNodes.length; ++k)
-      {
-        statsView.externNodes[k].transition().duration(columns.animationTime(within)).style('opacity', 0);
-        statsView.externNodes[k].classed('hidden', true);
-      }
-    }
+    statsView.hide(within);
 
     var layoutWidth = this.computeColumnWidth();
 
@@ -948,7 +654,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
       return Promise.resolve([]);
     }
 
-    var divider = statsView.divider;
+    var divider = statsView.dividers[0];
     var that = this;
 
     if (cluster >= 0)
@@ -977,7 +683,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
         stratiSize += groupSize;
 
         rangeGroups.push(ranges.parse(subRanges[i]));
-        groups.push(new ranges.Range1DGroup(groupName + ' (Div ' + String(i) + ')',
+        groups.push(new ranges.Range1DGroup(groupName,
           'grey', rangeGroups[i].dim(0)));
 
         groupsDesc.push({ name: 'Division ' + String(i), size: groupSize});
@@ -1045,17 +751,17 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
       return Promise.resolve([]);
     }
 
-    const clusterLabels = statsView.divider.getLabels();
+    const clusterLabels = statsView.dividers[0].getLabels();
 
     var distanceVec: any[] = [];
 
-    for (var j = 0; j < statsView.externDividers.length; ++j)
+    for (var j = 1; j < statsView.dividers.length; ++j)
     {
-      distanceVec.push(statsView.externDividers[j].data);
+      distanceVec.push(statsView.dividers[j].data);
     }
 
     // insert cluster into distance vectors
-    distanceVec.splice(cluster, 0, statsView.divider.data);
+    distanceVec.splice(cluster, 0, statsView.dividers[0].data);
 
     var compositeRange = <ranges.CompositeRange1D>this.range.dim(0);
     const numGroups = compositeRange.groups.length;
@@ -1230,7 +936,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
           var clusterHeight = $(clusterGrid).height() - 10;
           var boxChartHeight = $(clusterGrid).height() - 18 - 10 - 2 * this.options.padding;
 
-          statsView.$node.style(
+          statsView.$nodes[0].style(
             {
               width: ((statsView.matrixMode) ? this.options.matrixWidth : this.options.statsWidth) + 'px',
               height: clusterHeight + 'px', // TODO Hack for matrix bug!
@@ -1244,18 +950,18 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
           }
           else
           {
-            statsView.zoom.zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
+            statsView.zooms[0].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
 
-            if (statsView.externNodes != null)
+            if (statsView.externVisible)
             {
-              for (var k = 0; k < statsView.externNodes.length; ++k)
+              for (var k = 1; k < statsView.$nodes.length; ++k)
               {
-                statsView.externZooms[k].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
-                statsView.externNodes[k].style({
+                statsView.zooms[k].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
+                statsView.$nodes[k].style({
                   width: this.options.statsWidth + 'px',
                   height: clusterHeight + 'px',
                   top: clusterPosY + 'px',
-                  left: (size.x + this.options.padding * 2 + this.options.statsWidth * (k + 1)) + 'px'
+                  left: (size.x + this.options.padding * 2 + this.options.statsWidth * (k)) + 'px'
                 });
               }
             }
@@ -1268,7 +974,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
               var statsView = that.statsViews[cluster];
 
               if (column == null) { return; }
-              if (statsView.divider.hasChanged())
+              if (statsView.dividers[0].hasChanged())
               {
                 that.showDivisions(cluster, column);
               }
@@ -1283,8 +989,8 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
             var newColumn = this.stratomex.getLastColumn();
             statsView.column = newColumn;
 
-            d3.select((<boxSlider.BoxSlider>statsView.divider).node)
-              .on('mouseup', onClickSlider(statsView.cluster, newColumn));
+            d3.select((<boxSlider.BoxSlider>statsView.dividers[0]).node)
+              .on('mouseup', onClickSlider(j, newColumn));
 
             this.connectSignal = null;
 
@@ -1436,9 +1142,6 @@ export class HierarchicalClusterColumn extends ClusterColumn implements idtypes.
     for (var ii = 0; ii < k; ++ii)
     {
       clusters.push(queue[ii].indices);
-
-      //var request = { group: JSON.stringify({ labels: queue[ii].indices }) };
-      //responses.push(ajax.send('/api/clustering/distances/' + this.data.desc.id, request, 'post'));
     }
 
     function compareCluster(a, b)
@@ -1451,19 +1154,6 @@ export class HierarchicalClusterColumn extends ClusterColumn implements idtypes.
     return Promise.all(responses).then( (args: any) =>
     {
       return clusters;
-    //  for (var ii = 0; ii < k; ++ii)
-    //  {
-    //    clusters[ii] = args[ii].labels;
-    //  }
-    //
-    //  function compareCluster(a, b)
-    //  {
-    //    return (a.length < b.length) ? -1 : (a.length > b.length) ? 1 : 0;
-    //  }
-    //
-    //  clusters = clusters.sort(compareCluster);
-    //  return clusters;
-    //
     });
   }
 
@@ -1503,6 +1193,350 @@ export class HierarchicalClusterColumn extends ClusterColumn implements idtypes.
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+class ClusterDetailView
+{
+  public dividers: boxSlider.BoxSlider[] = [];
+  public $nodes: d3.Selection<any>[] = [];
+  public column: ClusterColumn = null;
+  public zooms: behaviors.ZoomLogic[] = [];
+  public matrix: heatmap.HeatMap;
+  public zoomMatrix: behaviors.ZoomLogic;
+  public visible: boolean = true;
+  public externVisible: boolean = false;
+  public $toolbar: d3.Selection<any>;
+
+  private distancesRange: [number, number];
+
+  constructor(private cluster: number, private data: datatypes.IDataType, private range: ranges.Range,
+              private options: any)
+  {
+    this.options = C.mixin({ matrixMode: false, matrixWidth: 160 }, options);
+  }
+
+  build($parent :d3.Selection<any>, column: ClusterColumn, within=-1)
+  {
+    const that = this;
+    const cluster = this.cluster;
+    const data = this.data;
+    const compositeRange = (<any>this.range.dims[0]);
+    const numGroups = compositeRange.groups.length;
+    // build main node of the view
+    const $elem = $parent.append('div').classed('stats', true).style('opacity', 0);
+    $elem.classed('group', true).datum(data);
+
+    // create the toolbar of the detail view
+    this.$toolbar = $elem.append('div').attr('class', 'gtoolbar');
+
+    // build title and body
+    $elem.append('div').attr('class', 'title').text('Distances');
+    const $body = $elem.append('div').attr('class', 'body');
+
+    // collect all server requests
+    var responses = [];
+
+    if (this.distancesRange == null)
+    {
+      // show mouse waiting icon
+      $('body').addClass('waiting');
+
+      // request all inner cluster-distances (no external distances)
+      for (var j = 0; j < numGroups; ++j)
+      {
+        var labelList = compositeRange.groups[j].asList();
+        var request = { group: JSON.stringify({ labels: labelList }) };
+        responses.push(ajax.send('/api/clustering/distances/' + data.desc.id, request, 'post'));
+      }
+
+      // concat all distances and compute min/max value along all distances
+      Promise.all(responses).then( (args: any) =>
+      {
+        var values = [];
+
+        for (var j = 0; j < numGroups; ++j)
+        {
+          values = values.concat(args[j].distances);
+        }
+
+        that.distancesRange = d3.extent(values);
+      });
+    }
+
+    // request inner and external distances of current cluster
+    var labelList = compositeRange.groups[cluster].asList();
+
+    // gather all other clusters and their labels
+    var externLabelList = [];
+    var externLabelIDs = [];
+    for (var j = 0; j < numGroups; ++j)
+    {
+      if (j == cluster) { continue; }
+      externLabelList.push(compositeRange.groups[j].asList());
+      externLabelIDs.push(j);
+    }
+
+    // request cluster distance data from server
+    $('body').addClass('waiting');
+    var request = { group: JSON.stringify({ labels: labelList, externLabels: externLabelList }) };
+    var response = ajax.send('/api/clustering/distances/' + this.data.desc.id, request, 'post');
+    console.log("Requested distances of data set:", this.data.desc.id);
+
+    // resolve all promises, including the promises where the distance range is determined
+    return Promise.all(responses.concat(response)).then( (args: any) =>
+    {
+      var distanceData = args[responses.length];
+      if (distanceData === null) { return Promise.resolve([]); }
+
+      var distances = distanceData.distances;
+      var externDistances = distanceData.externDistances;
+      var labels = distanceData.labels;
+
+      var divider = <boxSlider.BoxSlider>boxSlider.createRaw(distances, <Element>$body.node(), {
+        range: that.distancesRange, numAvg: 1, numSlider: 2 });
+      divider.setLabels(labels);
+
+      that.$nodes[0] = $elem;
+      that.dividers[0] = divider;
+      that.zooms[0] = new behaviors.ZoomLogic(divider, null);
+
+      // create a new matrix view
+      // 1) create matrix data
+      var rawDistMatrix = [];
+
+      var header = ['ID'];
+      for (var j = 0; j < numGroups; ++j)
+      {
+        header.push(String(j));
+      }
+      rawDistMatrix.push(header);
+
+      for (var i = 0; i < distances.length; ++i)
+      {
+        var row = [String(i), distances[i]];
+        for (var j = 0; j < externDistances.length; ++j)
+        {
+          row.push(externDistances[j][i])
+        }
+
+        rawDistMatrix.push(row);
+      }
+      // 2) parse matrix
+      var distMatrix = parser.parseMatrix(rawDistMatrix);
+
+      // 3) create heatmap
+      that.matrix = heatmap.create(distMatrix, <Element>$body.node(), { selectAble: false });
+      that.zoomMatrix = new behaviors.ZoomLogic(that.matrix, null);
+      d3.select(that.matrix.node).classed('hidden', true);
+
+      // 4) create dividers
+      // TODO: create own function for building dividers and matrix using the distMatrix
+      if (externDistances != null)
+      {
+        for (var j = 0; j < externDistances.length; ++j)
+        {
+          const $elemNext = $parent.append('div').classed('stats', true).style('opacity', 0);
+          $elemNext.classed('group', true).datum(data);
+          $elemNext.append('div').attr('class', 'title').text('Ext ' + String(externLabelIDs[j]));
+          const $bodyNext = $elemNext.append('div').attr('class', 'body');
+
+          var externDivider = <boxSlider.BoxSlider>boxSlider.createRaw(externDistances[j], <Element>$bodyNext.node(), {
+            range: that.distancesRange, numAvg: 1, numSlider: 0
+          });
+          externDivider.setLabels(labels);
+          that.dividers.push(externDivider);
+          that.zooms.push(new behaviors.ZoomLogic(externDivider, null));
+          that.$nodes.push($elemNext);
+        }
+      }
+
+      // activate matrix handler
+      d3.select(that.matrix.node).on('click', that._onClickMatrix(rawDistMatrix, numGroups, labels, column));
+
+      // update all dividers after mouse click
+      $elem.on('mouseup', that._mouseOutHandler());
+      // and color each extern distance box chart at the beginning
+      that._mouseOutHandler()({});
+
+      // remove waiting icon
+      $('body').removeClass('waiting');
+      // make first view visible
+      that.$nodes[0].transition().duration(columns.animationTime(within)).style('opacity', 1);
+
+      // re-sort labels so that patients correspond to bar rows / matrix rows
+      var rangeGroup = ranges.parse(labels);
+      var newGroups = (<any>that.range.dims[0]).groups;
+      newGroups.splice(cluster, 1, new ranges.Range1DGroup('Group ' + String(cluster), 'grey', rangeGroup.dim(0)));
+
+      const dataName = that.data.desc.name;
+      const newCompositeRange = ranges.composite(dataName + 'groups', newGroups);
+
+      return Promise.resolve([newCompositeRange]);
+    });
+
+  }
+
+  private _mouseOutHandler()
+  {
+    const that = this;
+
+    return (_: any) =>
+    {
+      var extDividers = that.dividers.slice(1, that.dividers.length);
+      var innerDivider = that.dividers[0];
+
+      var divs = innerDivider.getCurrentDivisions();
+      extDividers.forEach((d: boxSlider.BoxSlider) => { d.setDivisions(divs); });
+    };
+  }
+
+  private _onClickMatrix(rawMatrix, numGroups, rawLabels, column: ClusterColumn)
+  {
+    const that = this;
+
+    return function()
+    {
+      that.matrix.destroy();
+      var mousePos = d3.mouse(that.$nodes[0].node());
+      const mousePosX = mousePos[0];
+      var columnWidth = that.options.matrixWidth / numGroups;
+
+      var index = 0;
+      for (var pos = 0; pos < mousePosX; pos += columnWidth)
+      {
+        index += 1;
+      }
+
+      // 1) sort matrix by selected column
+      function sortMatrix(a, b)
+      {
+        if (a[0] == 'ID') { return -1; }
+        if (b[0] == 'ID') { return 1; }
+
+        return a[index] - b[index];
+      }
+
+      var sortedMatrix = rawMatrix.slice();
+      sortedMatrix.sort(sortMatrix);
+      var newDistMatrix = parser.parseMatrix(sortedMatrix);
+
+      var $body = that.$nodes[0].select('.body');
+
+      that.matrix = heatmap.create(newDistMatrix, <Element>$body.node(), { selectAble: false });
+      d3.select(that.matrix.node).classed('hidden', true);
+      that.zoomMatrix = new behaviors.ZoomLogic(that.matrix, null);
+      d3.select(that.matrix.node).on('click', that._onClickMatrix(rawMatrix, numGroups, rawLabels, column));
+
+      C.resolveIn(5).then( () =>
+      {
+        d3.select(that.matrix.node).classed('hidden', false);
+      });
+
+      // 2) resort corresponding group and its labels and redraw grid
+      var oldGroups = (<any>that.range.dim(0)).groups;
+
+      var newLabels = [];
+      // copy old distances to new distances
+      var newDistances = Array.apply(null, Array(numGroups)).map( (d,i) => { return []; });
+
+      for (var j = 0; j < rawLabels.length; ++j)
+      {
+        var ID = parseInt(sortedMatrix[j + 1][0]);
+        newLabels.push(rawLabels[ID]);
+        for (var i = 0; i < newDistances.length; ++i)
+        {
+          newDistances[i].push(sortedMatrix[j + 1][i + 1]);
+        }
+      }
+
+      var newRange = ranges.parse(newLabels);
+      var newGroup = new ranges.Range1DGroup('Group ' + String(that.cluster), 'grey', newRange.dim(0));
+      oldGroups.splice(that.cluster, 1, newGroup);
+
+      const newCompositeRange = ranges.composite(oldGroups.name, oldGroups);
+
+      // 3) create new dividers
+      for (var i = 0; i < newDistances.length; ++i)
+      {
+        if (i == 0)
+        {
+          d3.select(that.dividers[0].node).remove();
+          that.dividers[0] = <boxSlider.BoxSlider>boxSlider.createRaw(newDistances[i], <Element>$body.node(), {
+            range: that.distancesRange, numAvg: 1 });
+          d3.select(that.dividers[0].node).classed('hidden', true);
+          (<boxSlider.BoxSlider>that.dividers[0]).setLabels(newLabels);
+          that.zooms[0] = new behaviors.ZoomLogic((<boxSlider.BoxSlider>that.dividers[0]), null)
+        }
+        else
+        {
+          d3.select(that.dividers[i].node).remove();
+          var $extNode = that.$nodes[i];
+          that.dividers[i] = <boxSlider.BoxSlider>boxSlider.createRaw(newDistances[i], <Element>$extNode.node(), {
+            range: that.distancesRange, numAvg: 1, numSlider: 0 });
+          that.zooms[i] = new behaviors.ZoomLogic((<boxSlider.BoxSlider>that.dividers[i]), null);
+          (<boxSlider.BoxSlider>that.dividers[i]).setLabels(newLabels);
+        }
+      }
+
+      that.$nodes[0].on('mouseup', that._mouseOutHandler());
+      that._mouseOutHandler()({});
+
+      // 4) finally update the grid
+      column.updateGrid(newCompositeRange, true);
+    };
+  }
+
+  get matrixMode()
+  {
+    return this.options.matrixMode;
+  }
+
+  toggleMatrixMode()
+  {
+    this.options.matrixMode = !this.options.matrixMode;
+  }
+
+  update()
+  {
+
+  }
+
+  show(within=-1)
+  {
+    this.$nodes[0].classed('hidden', false);
+    this.$nodes[0].transition().duration(columns.animationTime(within)).style('opacity', 1);
+    this.visible = true;
+
+    d3.select(this.dividers[0].node).classed('hidden', this.matrixMode);
+    d3.select(this.matrix.node).classed('hidden', !this.matrixMode);
+
+    if (this.$nodes.length - 1 > 0 && this.externVisible)
+    {
+      for (var k = 1; k < this.$nodes.length; ++k)
+      {
+        this.$nodes[k].transition().duration(columns.animationTime(within)).style('opacity', 1);
+        this.$nodes[k].classed('hidden', this.matrixMode);
+      }
+    }
+  }
+
+  hide(within=-1)
+  {
+    this.visible = false;
+    this.$nodes[0].transition().duration(columns.animationTime(within)).style('opacity', 0);
+    this.$nodes[0].classed('hidden', true);
+
+    if (this.$nodes.length - 1 > 0)
+    {
+      for (var k = 1; k < this.$nodes.length; ++k)
+      {
+        this.$nodes[k].transition().duration(columns.animationTime(within)).style('opacity', 0);
+        this.$nodes[k].classed('hidden', true);
+      }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // TODO! To support provenance graph --> dendrogram needs to be added to server for api/dataset request
 export interface IDendrogram extends C.IPersistable
 {
@@ -1515,6 +1549,7 @@ export class Dendrogram implements IDendrogram
 {
   constructor(public tree: any, public desc: datatypes.IDataDescription)
   {
+
   }
 
   persist() : any
