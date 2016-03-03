@@ -561,10 +561,13 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
     // set slider indices for given number of sliders
     var sliderStarts : number[] = [];
 
+    // sort vector
+    var sortedVec = vec.slice().sort( (a, b) => { return a - b; });
+
     if (this.options.numSlider > 1)
     {
-      const Q1 = d3.quantile(vec, 0.5);
-      const Q2 = d3.quantile(vec, 0.75);
+      const Q1 = d3.quantile(sortedVec, 0.5);
+      const Q2 = d3.quantile(sortedVec, 0.75);
       //const Q2 = d3.quantile(vec, 0.5);
       //const IQR = 1.5 * (Q3 - Q1);
       const minValue = Q1;
@@ -576,9 +579,9 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
         const currentValue = minValue + j * stepSize;
         var index = (sliderStarts.length == 0) ? 0 : sliderStarts[j - 1];
 
-        for (var i = index; i < vec.length; ++i)
+        for (var i = index; i < sortedVec.length; ++i)
         {
-          var value = vec[i];
+          var value = sortedVec[i];
 
           if (value >= currentValue)
           {
@@ -591,11 +594,11 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
     }
     else
     {
-      const Q2 = d3.quantile(vec, 0.50);
+      const Q2 = d3.quantile(sortedVec, 0.50);
 
-      for (var i = 0; i < vec.length; ++i)
+      for (var i = 0; i < sortedVec.length; ++i)
       {
-        var value = vec[i];
+        var value = sortedVec[i];
 
         if (value >= Q2)
         {

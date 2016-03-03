@@ -520,22 +520,24 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     {
 
       // tool to divide current cluster and create new divisions / stratifications displayed in a new column
-      $toolbar.append('i').attr('class', 'fa fa-share-alt').on('click', () =>
-      {
+      $toolbar.append('i').attr('class', 'fa fa-share-alt').on('click', () => {
         that.showDivisions(cluster);
         // stop propagation to disable further event triggering
         d3.event.stopPropagation();
       });
+    }
 
-      // tool to recluster current column
-      $toolbar.append('i').attr('class', 'fa fa-refresh').on('click', () =>
-      {
-        that.regroupCluster(cluster);
+    // tool to recluster current column
+    $toolbar.append('i').attr('class', 'fa fa-refresh').on('click', () =>
+    {
+      that.regroupCluster(cluster);
 
-        // stop propagation to disable further event triggering
-        d3.event.stopPropagation();
-      });
-
+      // stop propagation to disable further event triggering
+      d3.event.stopPropagation();
+    });
+    
+    if (!matrixMode)
+    {
       // tool to show external distances
       $toolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
       {
