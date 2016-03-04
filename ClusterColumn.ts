@@ -1188,6 +1188,8 @@ class ClusterDetailView
   public $toolbar: d3.Selection<any>;
 
   private distancesRange: [number, number];
+  private numGroups: number;
+  private hovering: boolean = false;
 
   // -------------------------------------------------------------------------------------------------------------------
 
@@ -1206,6 +1208,7 @@ class ClusterDetailView
     const data = this.data;
     const compositeRange = (<any>this.range.dims[0]);
     const numGroups = compositeRange.groups.length;
+    this.numGroups = numGroups;
 
     // collect all server requests
     var responses = [];
@@ -1365,18 +1368,33 @@ class ClusterDetailView
   {
     const that = this;
 
-    if (mode == 'mouseover')
+    var IDs = Array.apply(null, Array(that.numGroups)).map( (_, i) => { return i; });
+    IDs.splice(that.cluster, 1);
+    IDs.splice(0, 0, that.cluster);
+
+    if (mode == 'mousemove')
     {
       return function(_: any)
       {
+        var $target = $(event.target);
+        if ($target.is('.title') || $target.is('.gtoolbar')) { return; }
+
         var mousePos = d3.mouse(that.$nodes[0].node());
 
-        that.$tooltipMatrix.style('opacity', 1);
-        that.$tooltipMatrix.style({ left: mousePos[0] + 'px', top: mousePos[1] + 'px' });
-        that.$tooltipMatrix.html('test');
+        that.$tooltipMatrix.style('opacity', 0.75);
+        that.$tooltipMatrix.style({ left: (mousePos[0] - 25) + 'px', top: (mousePos[1] - 20) + 'px' });
 
-        console.log('mouseover');
+        const mousePosX = mousePos[0];
+        const padding = 4;
+        const columnWidth = (that.options.matrixWidth - padding) / that.numGroups;
 
+        var index = -1;
+        for (var pos = 0; pos <= mousePosX; pos += columnWidth) { index++; }
+
+        if (index < 0 || index >= that.numGroups) { return; }
+        that.$tooltipMatrix.html('Group ' + String(IDs[index]));
+
+        d3.event.stopPropagation();
       }
     }
 
@@ -1384,6 +1402,9 @@ class ClusterDetailView
     {
       return function(_: any)
       {
+        //var $target = $(event.target);
+        //if ($target.is('rect') || $target.is('canvas')) { return; }
+
         that.$tooltipMatrix.style('opacity', 0);
       }
     }
@@ -1402,13 +1423,11 @@ class ClusterDetailView
       that.matrix.destroy();
       var mousePos = d3.mouse(that.$nodes[0].node());
       const mousePosX = mousePos[0];
-      var columnWidth = that.options.matrixWidth / numGroups;
+      const padding = 4;
+      var columnWidth = (that.options.matrixWidth - padding) / numGroups;
 
       var index = 0;
-      for (var pos = 0; pos < mousePosX; pos += columnWidth)
-      {
-        index += 1;
-      }
+      for (var pos = 0; pos < mousePosX; pos += columnWidth) { index++; }
 
       // 1) sort matrix by selected column
       function sortMatrix(a, b)
@@ -1484,16 +1503,19 @@ class ClusterDetailView
     this.matrix = heatmap.create(distMatrix, <Element>$body.node(), { selectAble: false });
     this.zoomMatrix = new behaviors.ZoomLogic(this.matrix, null);
     d3.select(this.matrix.node).classed('hidden', true);
+
+    if (this.$tooltipMatrix) { this.$tooltipMatrix.remove(); }
     this.$tooltipMatrix = $body.append('div').classed('tooltip', true)
       .style({ opacity: 0, position: 'absolute !important', left: 0, top: 0, color: 'black', width: '50px',
             padding: 0, margin: 0, 'text-align': 'center', 'border-radius': '4px', 'background': '#60AA85'});
-    d3.select(this.matrix.node).on('mouseover', this._matrixMouseHandler('mouseover'));
-    d3.select(this.matrix.node).on('mouseout', this._matrixMouseHandler('mouseout'));
+
+    this.$nodes[0].on('mousemove', this._matrixMouseHandler('mousemove'));
+    this.$nodes[0].on('mouseout', this._matrixMouseHandler('mouseout'));
 
     for (var i = 0; i < distances.length; ++i)
     {
       var divider = <boxSlider.BoxSlider>this.dividers[i];
-      if (divider != null) { d3.select(divider.node).remove(); }
+      if (divider) { d3.select(divider.node).remove(); }
 
       var $currentNode = this.$nodes[i].select('.body');
       this.dividers[i] = <boxSlider.BoxSlider>boxSlider.createRaw(distances[i], <Element>$currentNode.node(), {
