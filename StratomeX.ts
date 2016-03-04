@@ -187,7 +187,7 @@ class StratomeX extends views.AView {
 
       var argUrl = [k, initMethod, dataID].join('/');
       clusterResponse = ajax.getAPIJSON('/clustering/kmeans/' + argUrl, {});
-      methodName = 'K-Means_' + String(k);
+      methodName = 'K-Means';
     }
 
     if (method == 'affinity') {
@@ -220,7 +220,7 @@ class StratomeX extends views.AView {
 
       var argUrl = [c, m, dataID].join('/');
       clusterResponse = ajax.getAPIJSON('/clustering/fuzzy/' + argUrl, {});
-      methodName = 'Fuzzy_' + String(c);
+      methodName = 'Fuzzy';
     }
 
     clusterResponse.then( (result: any) =>
@@ -330,6 +330,10 @@ class StratomeX extends views.AView {
       {
         that.addHierarchicalClusterData(strati, data, result.dendrogram, null);
       }
+      else if (method == 'Fuzzy')
+      {
+        that.addFuzzyClusterData(strati, data, null, null);
+      }
       else
       {
         that.addClusterData(strati, data, null);
@@ -387,29 +391,20 @@ class StratomeX extends views.AView {
               colStrat?: stratification.IStratification)
   {
     var that = this;
-    var mref = this.provGraph.findOrAddObject(rowMatrix, rowMatrix.desc.name, 'orlydata');
+    var mref = this.provGraph.findOrAddObject(rowMatrix, rowMatrix.desc.name, 'data');
 
-    if (rowStrat === rowMatrix)
-    {
-      //both are stratifications
-      rowStrat.range().then((range) =>
+
+    Promise.all<ranges.Range1D>([rowStrat.idRange(), colStrat ? colStrat.idRange() : ranges.Range1D.all()])
+      .then((range_list:ranges.Range1D[]) =>
+      {
+        const idRange = ranges.list(range_list);
+        return rowMatrix.fromIdRange(idRange);
+
+      }).then((range) =>
       {
         that.provGraph.push(clustercolumns.createClusterColumnCmd(that.ref, mref, range,
-          toName(toMiddle(rowMatrix.desc.fqname), rowStrat.desc.name)));
+          toName(rowMatrix.desc.name, rowStrat.desc.name)));
       });
-    } else {
-      Promise.all<ranges.Range1D>([rowStrat.idRange(), colStrat ? colStrat.idRange() : ranges.Range1D.all()])
-        .then((range_list:ranges.Range1D[]) =>
-        {
-          const idRange = ranges.list(range_list);
-          return rowMatrix.fromIdRange(idRange);
-
-        }).then((range) =>
-        {
-          that.provGraph.push(clustercolumns.createClusterColumnCmd(that.ref, mref, range,
-            toName(rowMatrix.desc.name, rowStrat.desc.name)));
-        });
-    }
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -426,36 +421,63 @@ class StratomeX extends views.AView {
               colStrat?: stratification.IStratification)
   {
     var that = this;
-    var mref = this.provGraph.findOrAddObject(rowMatrix, rowMatrix.desc.name, 'orlydata');
+    var mref = this.provGraph.findOrAddObject(rowMatrix, rowMatrix.desc.name, 'data');
 
-    if (rowStrat === rowMatrix)
-    {
-      //both are stratifications
-      rowStrat.range().then((range) =>
+    Promise.all<ranges.Range1D>([rowStrat.idRange(), colStrat ? colStrat.idRange() : ranges.Range1D.all()])
+      .then((range_list:ranges.Range1D[]) =>
       {
-        that.provGraph.push(clustercolumns.createClusterColumnCmd(that.ref, mref, range,
-          toName(toMiddle(rowMatrix.desc.fqname), rowStrat.desc.name)));
+        const idRange = ranges.list(range_list);
+        return rowMatrix.fromIdRange(idRange);
+
+      }).then((range) =>
+      {
+        const newID = rowMatrix.desc.id + 'Dendrogram';
+        const dendrogramName = rowMatrix.desc.name + '_Dendrogram';
+        var dendrogramDesc = { id: newID, name: 'dendrogramName', 'fqname': 'null', type: 'tree' };
+        var dendrogramData = new clustercolumns.Dendrogram(dendrogram, dendrogramDesc);
+
+        var dendrogramRef = that.provGraph.findOrAddObject(dendrogramData, dendrogramName, 'data');
+
+        that.provGraph.push(clustercolumns.createHierarchicalClusterColumnCmd(that.ref, mref, range, dendrogramRef,
+          toName(rowMatrix.desc.name, rowStrat.desc.name)));
       });
-    } else {
-      Promise.all<ranges.Range1D>([rowStrat.idRange(), colStrat ? colStrat.idRange() : ranges.Range1D.all()])
-        .then((range_list:ranges.Range1D[]) =>
-        {
-          const idRange = ranges.list(range_list);
-          return rowMatrix.fromIdRange(idRange);
+  }
 
-        }).then((range) =>
-        {
-          const newID = rowMatrix.desc.id + 'Dendrogram';
-          const dendrogramName = rowMatrix.desc.name + '_Dendrogram';
-          var dendrogramDesc = { id: newID, name: 'dendrogramName', 'fqname': 'null', type: 'tree' };
-          var dendrogramData = new clustercolumns.Dendrogram(dendrogram, dendrogramDesc);
+  // -------------------------------------------------------------------------------------------------------------------
 
-          var dendrogramRef = that.provGraph.findOrAddObject(dendrogramData, dendrogramName, 'data');
+  /**
+   * Add new (custom) cluster column
+   * @param rowStrat
+   * @param rowMatrix
+   * @param colStrat
+     */
+  addFuzzyClusterData(rowStrat: stratification.IStratification,
+              rowMatrix: datatypes.IDataType,
+              dendrogram: any,
+              colStrat?: stratification.IStratification)
+  {
+    var that = this;
+    var mref = this.provGraph.findOrAddObject(rowMatrix, rowMatrix.desc.name, 'data');
 
-          that.provGraph.push(clustercolumns.createHierarchicalClusterColumnCmd(that.ref, mref, range, dendrogramRef,
-            toName(rowMatrix.desc.name, rowStrat.desc.name)));
-        });
-    }
+    Promise.all<ranges.Range1D>([rowStrat.idRange(), colStrat ? colStrat.idRange() : ranges.Range1D.all()])
+      .then((range_list:ranges.Range1D[]) =>
+      {
+        const idRange = ranges.list(range_list);
+        return rowMatrix.fromIdRange(idRange);
+
+      }).then((range) =>
+      {
+        //const newID = rowMatrix.desc.id + 'Dendrogram';
+        //const dendrogramName = rowMatrix.desc.name + '_Dendrogram';
+        //var dendrogramDesc = { id: newID, name: 'dendrogramName', 'fqname': 'null', type: 'tree' };
+        //var dendrogramData = new clustercolumns.Dendrogram(dendrogram, dendrogramDesc);
+        //var dendrogramRef = that.provGraph.findOrAddObject(dendrogramData, dendrogramName, 'data');
+        var partitionRef = that.provGraph.findOrAddObject([], 'test', 'data');
+        // TODO add partition matrix!
+
+        that.provGraph.push(clustercolumns.createFuzzyClusterColumnCmd(that.ref, mref, range, partitionRef,
+          toName(rowMatrix.desc.name, rowStrat.desc.name)));
+      });
   }
 
   // -------------------------------------------------------------------------------------------------------------------

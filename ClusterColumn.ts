@@ -101,13 +101,55 @@ function createHierarchicalClusterColumn(inputs, parameter, graph, within)
     name = parameter.name || inputs[1].name,
     dendrogram = inputs[2].value.tree;
 
-  console.log(dendrogram);
-  //console.log(ranges.parse(parameter.partitioning));
-
   return inputs[1].v.then(function (data)
   {
     //console.log(new Date(), 'create column', data.desc.name, index);
     var c = new HierarchicalClusterColumn(stratomex, data, partitioning, dendrogram, inputs[1], {
+      width: (data.desc.type === 'stratification') ? 60 : (data.desc.name.toLowerCase().indexOf('death') >= 0 ? 110 : 160),
+      name: name
+    }, within);
+    var r = prov.ref(c, c.name, prov.cat.visual, c.hashString);
+    c.changeHandler = function (event, to, from)
+    {
+      if (from)
+      { //have a previous one so not the default
+        graph.push(columns.createChangeVis(r, to.id, from ? from.id : null));
+      }
+    };
+    c.optionHandler = function (event, name, value, bak)
+    {
+      graph.push(columns.createSetOption(r, name, value, bak));
+    };
+    c.on('changed', c.changeHandler);
+    c.on('option', c.optionHandler);
+
+    //console.log(new Date(), 'add column', data.desc.name, index);
+    return stratomex.addColumn(c, index, within).then(() =>
+    {
+      //console.log(new Date(), 'added column', data.desc.name, index);
+      return {
+        created: [r],
+        inverse: (inputs, created) => columns.createRemoveCmd(inputs[0], created[0]),
+        consumed: within
+      };
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+function createFuzzyClusterColumn(inputs, parameter, graph, within)
+{
+  var stratomex = inputs[0].value,
+    partitioning = ranges.parse(parameter.partitioning),
+    index = parameter.hasOwnProperty('index') ? parameter.index : -1,
+    name = parameter.name || inputs[1].name,
+    partitionMatrix = inputs[2].value;
+
+  return inputs[1].v.then(function (data)
+  {
+    //console.log(new Date(), 'create column', data.desc.name, index);
+    var c = new FuzzyClusterColumn(stratomex, data, partitioning, partitionMatrix, inputs[1], {
       width: (data.desc.type === 'stratification') ? 60 : (data.desc.name.toLowerCase().indexOf('death') >= 0 ? 110 : 160),
       name: name
     }, within);
@@ -162,6 +204,19 @@ export function createHierarchicalClusterColumnCmd(stratomex, data, partitioning
     index: index
   });
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export function createFuzzyClusterColumnCmd(stratomex, data, partitioning, partitionMatrix, name:string, index:number = -1)
+{
+  return prov.action(prov.meta(name, prov.cat.data, prov.op.create),
+    'createStratomeXHierarchicalClusterColumn', createFuzzyClusterColumn, [stratomex, data, partitionMatrix], {
+    partitioning: partitioning.toString(),
+    name: name,
+    index: index
+  });
+}
+
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -332,10 +387,82 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
         // update grid after all views are recreated
         return Promise.all(promises).then((_) =>
         {
-          that.statsViews.forEach( (d: clusterView.ClusterDetailView) => { d.show(-1); })
+          that.statsViews.forEach( (d: clusterView.ClusterDetailView) => { if (d) { d.show(-1); } });
 
           return that.stratomex.relayout();
         });
+    });
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  protected createGridToolbar(elem, data, cluster, pos, $toolbar: d3.Selection<any>)
+  {
+    const that = this;
+
+    // add new command with symbol fa-expand
+    $toolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
+    {
+      // first obtain the provenance graph
+      var graph = that.stratomex.provGraph;
+      // next find the current object / selection / cluster
+      var obj = graph.findObject(that);
+      // push new command to graph
+      graph.push(columns.createToggleDetailCmd(obj, pos[0], true));
+      // stop propagation to disable further event triggering
+      d3.event.stopPropagation();
+    });
+
+    // create new cluster stats command
+    $toolbar.append('i').attr('class', 'fa fa-sort-amount-asc').on('click', () =>
+    {
+      // first obtain the provenance graph
+      var graph = that.stratomex.provGraph;
+      // next find the current object / selection / cluster
+      var obj = graph.findObject(that);
+      // push new command to graph
+      graph.push(createToggleStatsCmd(obj, pos[0], true));
+      // stop propagation to disable further event triggering
+      d3.event.stopPropagation();
+    });
+
+    // re-cluster column command
+    $toolbar.append('i').attr('class', 'fa fa-refresh').on('click', () =>
+    {
+      var clusterIndex = pos[0];
+
+      var statsView = that.statsViews[clusterIndex];
+      if (statsView == null) { return; }
+
+      var rangeColumn = <ranges.CompositeRange1D>statsView.column.getRange().dim(0);
+      var groupsColumn = rangeColumn.groups;
+      var newGroups = [];
+
+      var compRange = <ranges.CompositeRange1D>that.range.dim(0);
+
+      for (var i = 0; i < compRange.groups.length; ++i)
+      {
+        if (i == clusterIndex) { continue; }
+        var groupIndex = i;
+        if (i > clusterIndex) { groupIndex = i + groupsColumn.length - 1; }
+
+        compRange.groups[i].name = "Group " + String(groupIndex) + '(Custom)';
+        newGroups.push(compRange.groups[i]);
+      }
+
+      for (var k = groupsColumn.length - 1; k >= 0; --k)
+      {
+        groupsColumn[k].name = "Group " + String(k + clusterIndex) + '(Custom)';
+        newGroups.splice(clusterIndex, 0, groupsColumn[k]);
+      }
+
+      const dataName = that.data.desc.name;
+      var compositeRange = ranges.composite(dataName + 'cluster', newGroups);
+
+      that.updateGrid(compositeRange);
+
+      // stop propagation to disable further event triggering
+      d3.event.stopPropagation();
     });
   }
 
@@ -359,71 +486,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
       $elem.classed('group', true).datum(data);
       // create new toolbar
       var $toolbar = $elem.append('div').attr('class', 'gtoolbar');
-
-      // add new command with symbol fa-expand
-      $toolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
-      {
-        // first obtain the provenance graph
-        var graph = that.stratomex.provGraph;
-        // next find the current object / selection / cluster
-        var obj = graph.findObject(that);
-        // push new command to graph
-        graph.push(columns.createToggleDetailCmd(obj, pos[0], true));
-        // stop propagation to disable further event triggering
-        d3.event.stopPropagation();
-      });
-
-      // create new cluster stats command
-      $toolbar.append('i').attr('class', 'fa fa-sort-amount-asc').on('click', () =>
-      {
-        // first obtain the provenance graph
-        var graph = that.stratomex.provGraph;
-        // next find the current object / selection / cluster
-        var obj = graph.findObject(that);
-        // push new command to graph
-        graph.push(createToggleStatsCmd(obj, pos[0], true));
-        // stop propagation to disable further event triggering
-        d3.event.stopPropagation();
-      });
-
-      // re-cluster column command
-      $toolbar.append('i').attr('class', 'fa fa-refresh').on('click', () =>
-      {
-        var clusterIndex = pos[0];
-
-        var statsView = that.statsViews[clusterIndex];
-        if (statsView == null) { return; }
-
-        var rangeColumn = <ranges.CompositeRange1D>statsView.column.getRange().dim(0);
-        var groupsColumn = rangeColumn.groups;
-        var newGroups = [];
-
-        var compRange = <ranges.CompositeRange1D>that.range.dim(0);
-
-        for (var i = 0; i < compRange.groups.length; ++i)
-        {
-          if (i == clusterIndex) { continue; }
-          var groupIndex = i;
-          if (i > clusterIndex) { groupIndex = i + groupsColumn.length - 1; }
-
-          compRange.groups[i].name = "Group " + String(groupIndex) + '(Custom)';
-          newGroups.push(compRange.groups[i]);
-        }
-
-        for (var k = groupsColumn.length - 1; k >= 0; --k)
-        {
-          groupsColumn[k].name = "Group " + String(k + clusterIndex) + '(Custom)';
-          newGroups.splice(clusterIndex, 0, groupsColumn[k]);
-        }
-
-        const dataName = that.data.desc.name;
-        var compositeRange = ranges.composite(dataName + 'cluster', newGroups);
-
-        that.updateGrid(compositeRange);
-
-        // stop propagation to disable further event triggering
-        d3.event.stopPropagation();
-      });
+      that.createGridToolbar(elem, data, cluster, pos, $toolbar);
 
       const toggleSelection = () =>
       {
@@ -1115,6 +1178,31 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
       }
     }
   }
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUniqueId, link_m.IDataVis
+{
+  constructor(protected stratomex, public data, partitioning:ranges.Range, private partitionMatrix: any, public dataRef,
+              options:any = {}, within = -1)
+  {
+    super(stratomex, data, partitioning, dataRef, options, within);
+  }
+
+  protected createGridToolbar(elem, data, cluster, pos, $toolbar: d3.Selection<any>)
+  {
+    const that = this;
+
+    super.createGridToolbar(elem, data, cluster, pos, $toolbar);
+
+    $toolbar.insert('i', '.fa-expand').attr('class', 'fa fa-align-left').on('click', () =>
+    {
+      //TODO create bar charts with probabilities
+    });
+  }
+
 
 }
 

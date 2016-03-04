@@ -20,8 +20,9 @@ import matrix = require('../caleydo_core/matrix');
  */
 export class ClusterPopup
 {
-  private $node : d3.Selection<any>;
+  private $node : d3.Selection<any> = null;
   private destroyed: boolean = false;
+  public height: number = 0;
 
   // -------------------------------------------------------------------------------------------------------------------
 
@@ -41,16 +42,15 @@ export class ClusterPopup
     this.options = C.mixin(
       {
         width: 580,
+        rowHeight: 35,
         animationTime: 200,
         'kmeans':
         {
-          range: [2, 10, 2],
           inits: ['forgy', 'uniform', 'random', 'kmeans++'], // initialization method for k-means
           initSelect: 3
         },
         'hierarchical':
         {
-          range: [2, 10, 2],
           methods: ['single', 'complete', 'weighted', 'median', 'average', 'centroid'], // linkage method for k-means
           methodSelect: 1,
           distSelect: 0
@@ -63,10 +63,15 @@ export class ClusterPopup
           prefSelect: 1,
           distSelect: 1
         },
+        'fuzzy':
+        {
+          fuzzifier: [1.001, 100, 2.0]
+        },
         'general':
         {
           distances: ['euclidean', 'sqeuclidean', 'cityblock', 'chebyshev', 'canberra', 'correlation', 'hamming',
                       'mahalanobis', 'correlation', 'pearson', 'spearman', 'kendall'],
+          numClusters: [2, 10, 2]
         }
       }, options);
     this.$node = this._build(d3.select(parent), rowID);
@@ -101,25 +106,10 @@ export class ClusterPopup
     var $currentRow = $($rows).find("g.row[data-index='" + String(rowID) + "']")[0];
     var $action = $($currentRow).find("tspan[title='cluster']")[0];
 
-    // obtain current position of cluster button
-    // TODO: this does not work for Firefox
-    //var position = $($action).offset();
-    //var parentPosition = $($rows).offset();
-
-    // compute offsets
-    const offsetX = 5;
-    const offsetY = 10;
-    const windowHeight = 115; // 2 * 35px row height + title_height / 2
-
     // this works for both Firefox and Chrome
     var mousePos = d3.mouse($parent.node());
 
-    // move window to cluster button
     var $root = $parent.append('div').classed('clusterPopup', true);
-    $root.style({
-      'opacity': 0, left: String(mousePos[0] - offsetX) + 'px',
-      top: String(mousePos[1] - windowHeight - offsetY) + 'px'
-    });
 
     // start animation of popup
     $root.transition().duration(this.options.animationTime).style('opacity', 0.5);
@@ -147,6 +137,19 @@ export class ClusterPopup
     // create affinity row
     this._buildAffinityRow($body);
 
+    // create fuzzy row
+    this._buildFuzzyRow($body);
+
+    // compute offsets
+    const offsetX = 5;
+    const offsetY = 15;
+
+    // move window to cluster button
+    $root.style({
+      'opacity': 0, left: String(mousePos[0] - offsetX) + 'px',
+      top: String(mousePos[1] - this.height - offsetY) + 'px'
+    });
+
     return $root;
   }
 
@@ -155,13 +158,14 @@ export class ClusterPopup
   private _buildKMeansRow($body: d3.Selection<any>)
   {
     var that = this;
+    this.height += this.options.rowHeight;
 
     var row = $body.append('div').classed('method', true);
     var button = row.append('button').text('k-Means');
     var input = row.append('input').attr({
       class: 'k-number', type: 'number',
-      min: this.options.kmeans.range[0], max: this.options.kmeans.range[1],
-      value: this.options.kmeans.range[2], step: 1, title: "Number of Clusters"
+      min: this.options.general.numClusters[0], max: this.options.general.numClusters[1],
+      value: this.options.general.numClusters[2], step: 1, title: "Number of Clusters"
     });
 
     var select = row.append('select').attr({ title: 'Initialization Method' });
@@ -186,13 +190,14 @@ export class ClusterPopup
   private _buildHierarchicalRow($body: d3.Selection<any>)
   {
     var that = this;
+    this.height += this.options.rowHeight;
 
     var row = $body.append('div').classed('method', true);
     var button = row.append('button').text('Hierarchical');
     var input = row.append('input').attr({
       class: 'k-number', type: 'number',
-      min: this.options.hierarchical.range[0], max: this.options.hierarchical.range[1],
-      value: this.options.hierarchical.range[2], step: 1, title: "Number of Clusters"
+      min: this.options.general.numClusters[0], max: this.options.general.numClusters[1],
+      value: this.options.general.numClusters[2], step: 1, title: "Number of Clusters"
     });
 
     var select = row.append('select').attr({ title: 'Linkage Method' }).classed('linkage', true);
@@ -227,6 +232,7 @@ export class ClusterPopup
   private _buildAffinityRow($body: d3.Selection<any>)
   {
     var that = this;
+    this.height += this.options.rowHeight;
 
     var row = $body.append('div').classed('method', true);
     var button = row.append('button').text('Affinity');
@@ -268,6 +274,38 @@ export class ClusterPopup
       const dist = $(inputDistance).val();
 
       that.stratomex.clusterData(that.data, 'affinity', [affDamping, affFactor, affPref, dist]);
+    });
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  private _buildFuzzyRow($body: d3.Selection<any>)
+  {
+    var that = this;
+    this.height += this.options.rowHeight;
+
+    var row = $body.append('div').classed('method', true);
+    var button = row.append('button').text('Fuzzy');
+
+    var inputC = row.append('input').attr({
+      class: 'c-number', type: 'number', name: 'c-number',
+      min: this.options.general.numClusters[0], max: this.options.general.numClusters[1],
+      value: this.options.general.numClusters[2], step: 1, title: "Number of Clusters"
+    });
+
+    var inputM = row.append('input').attr({
+      class: 'fuzzifier', type: 'number', name: 'fuzzifier',
+      min: this.options.fuzzy.fuzzifier[0], max: this.options.fuzzy.fuzzifier[1],
+      value: this.options.fuzzy.fuzzifier[2], step: 0.001, title: "Fuzzifier Factor"
+    });
+
+    button.on('mouseup', (_ : any) => {
+      var inputC = $(row.node()).find("input[name='c-number']");
+      var inputM = $(row.node()).find("input[name='fuzzifier']");
+      const c = parseInt($(inputC).val());
+      const m = parseFloat($(inputM).val());
+
+      that.stratomex.clusterData(that.data, 'fuzzy', [c, m]);
     });
   }
 
