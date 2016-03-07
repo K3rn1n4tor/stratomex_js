@@ -41,6 +41,8 @@ export function createCmd(id:string)
       return createHierarchicalClusterColumn;
     case 'showStratomeXStats' :
       return showStats;
+    case 'showStratomeXProbs' :
+      return clusterView.showProbs;
   }
   return null;
 }
@@ -144,7 +146,7 @@ function createFuzzyClusterColumn(inputs, parameter, graph, within)
     partitioning = ranges.parse(parameter.partitioning),
     index = parameter.hasOwnProperty('index') ? parameter.index : -1,
     name = parameter.name || inputs[1].name,
-    partitionMatrix = inputs[2].value;
+    partitionMatrix = inputs[2].value.partition;
 
   return inputs[1].v.then(function (data)
   {
@@ -531,11 +533,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  /**
-   * Update width of this column for relayouting.
-   * @param reset
-     */
-  private setColumnWidth(reset=false)
+  protected determineColumnWidth(reset=false)
   {
     var layoutWidth = this.options.width;
     if (this.detail) { layoutWidth += this.options.detailWidth; }
@@ -567,9 +565,24 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
       layoutWidth = this.options.width;
     }
 
+    return layoutWidth;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Update width of this column for relayouting.
+   * @param reset
+     */
+  protected setColumnWidth(reset=false)
+  {
+    const layoutWidth = this.determineColumnWidth(reset);
+
     this.$parent.style('width', layoutWidth + 'px');
     this.$layoutHelper.style('width', layoutWidth + 'px');
   }
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   private createClusterDetailToolbar(cluster: number, $toolbar: d3.Selection<any>, matrixMode: boolean, within)
   {
@@ -663,6 +676,8 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     });
   }
 
+  // -------------------------------------------------------------------------------------------------------------------
+
   /**
    * Show detailed cluster view for certain stratification.
    * @param cluster
@@ -679,7 +694,6 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
       statsView.show(within);
 
       this.setColumnWidth();
-
       return (relayout) ? this.stratomex.relayout(within) : Promise.resolve([]);
     }
 
@@ -922,59 +936,42 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
      */
   layouted(within = -1)
   {
-    //sync the scaling
-    let bounds = C.bounds(<Element>this.$layoutHelper.node());
-    var size = {x: bounds.w, y: bounds.h - 5}; //no idea why but needed avoiding an overflow
+    super.layouted(within);
+  }
 
-    size.y -= this.options.summaryHeight;
-    size.y -= (<any>this.range.dim(0)).groups.length * 32; //remove the grid height
+  // -------------------------------------------------------------------------------------------------------------------
 
-    this.$parent.interrupt().style('opacity', 1).transition().style({
-      left: bounds.x + 'px',
-      //top: (bounds.y - 20) + 'px', //for the padding applied in the style to the stratomex
-      width: bounds.w + 'px',
-      height: (bounds.h - 5) + 'px' //no idea why but needed avoiding an overflow
-    });
-
-    // -----------------------------------------------------------------------------------------------------------------
-    // Resize if detail is shown
-
-
-    if (this.detail)
-    {
-      var clusterGrid = $(this.$parent.node()).find('div.gridrow')[this.detail.cluster];
-      //var clusterPosY = $(clusterGrid).position().top;
-      var clusterPosY = this.options.summaryHeight + 32;
-
-      size.x -= this.options.detailWidth;
-      this.detail.$node.style({
-        width: this.options.detailWidth + 'px',
-        height: size.y + 'px',
-        top: clusterPosY + 'px',
-        left: (size.x + this.options.padding * 2) + 'px'
-      });
-      this.detail.zoom.zoomTo(this.options.detailWidth - this.options.padding * 4, size.y - this.options.padding * 2 - 30);
-    }
-
-    // -----------------------------------------------------------------------------------------------------------------
+  protected resizeColumn(size: any, within=-1)
+  {
     // Resize if statistics are shown
-
     const numGroups = (<any>this.range.dims[0]).groups.length;
 
     var numVisibleGroups = 0;
     var matrixWidth = 0;
 
-    if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return !d.matrixMode && d.visible; } ))
+    if (this.statsViews.some((d:any) =>
+      {
+        if (d == null) { return false; }
+        return !d.matrixMode && d.visible;
+      }))
     {
       numVisibleGroups = 1;
 
-      if (this.statsViews.some( (d: any) => { if (d == null) { return false; } return !d.matrixMode && d.visible && d.externVisible; } ))
+      if (this.statsViews.some((d:any) =>
+        {
+          if (d == null) { return false; }
+          return !d.matrixMode && d.visible && d.externVisible;
+        }))
       {
         numVisibleGroups = numGroups;
       }
     }
 
-    if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return d.matrixMode && d.visible; } ))
+    if (this.statsViews.some((d:any) =>
+      {
+        if (d == null) { return false; }
+        return d.matrixMode && d.visible;
+      }))
     {
       matrixWidth = this.options.matrixWidth;
     }
@@ -985,7 +982,10 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     for (var j = 0; j < numGroups; ++j)
     {
       var statsView = this.statsViews[j];
-      if (statsView == null) { continue; }
+      if (statsView == null)
+      {
+        continue;
+      }
 
       if (statsView.column != null)
       {
@@ -997,114 +997,93 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
         }
       }
     }
+  }
 
-    // -----------------------------------------------------------------------------------------------------------------
-    // Resize rest of column
+  // -------------------------------------------------------------------------------------------------------------------
 
-    this.$summary.style('width', size.x + 'px');
+  protected onActionLoader(size: any)
+  {
+    const that = this;
+    const numGroups = (<any>this.range.dims[0]).groups.length;
 
-    this.summary.actLoader.then(() =>
+    // go through all stats view and determine their position
+    // resize cluster windows since their height should correspond to the heatmap height
+    for (var j = 0; j < numGroups; ++j)
     {
-      this.summary_zoom.zoomTo(size.x - this.options.padding * 3, this.options.summaryHeight - this.options.padding * 3 - 30);
-    });
-    this.grid.actLoader.then(() =>
-    {
-      this.grid_zoom.zoomTo(size.x - this.options.padding * 2, size.y);
+      var statsView = this.statsViews[j];
 
-      //shift the content for the aspect ratio
-      var shift = [null, null];
-      if (this.grid_zoom.isFixedAspectRatio)
+      if (statsView == null) { continue; }
+      if (statsView.visible == true)
       {
-        var act = this.grid.size;
-        shift[0] = ((size.x - act[0]) / 2) + 'px';
-        shift[1] = ((size.y - act[1]) / 2) + 'px';
-      }
-      this.$parent.select('div.multiformgrid').style({
-        left: shift[0],
-        top: shift[1]
-      });
 
-      // go through all stats view and determine their position
-      // resize cluster windows since their height should correspond to the heatmap height
-      for (var j = 0; j < numGroups; ++j)
-      {
-        var statsView = this.statsViews[j];
+        var clusterGrid = $(this.$parent.node()).find('div.gridrow')[j];
+        var clusterPosY = $(clusterGrid).position().top;
+        var clusterHeight = $(clusterGrid).height() - 10;
+        var boxChartHeight = $(clusterGrid).height() - 18 - 10 - 2 * this.options.padding;
 
-        if (statsView == null) { continue; }
-        if (statsView.visible == true)
+        if (!statsView.$nodes[0]) { continue; }
+
+        statsView.$nodes[0].style(
+          {
+            width: ((statsView.matrixMode) ? this.options.matrixWidth : this.options.statsWidth) + 'px',
+            height: clusterHeight + 'px', // TODO Hack for matrix bug!
+            top: clusterPosY + 'px',
+            left: (size.x + this.options.padding * 2) + 'px'
+          });
+
+        if (statsView.matrixMode)
         {
+            statsView.zoomMatrix.zoomTo(this.options.matrixWidth - this.options.padding * 2, boxChartHeight);
+        }
+        else
+        {
+          statsView.zooms[0].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
 
-          var clusterGrid = $(this.$parent.node()).find('div.gridrow')[j];
-          var clusterPosY = $(clusterGrid).position().top;
-          var clusterHeight = $(clusterGrid).height() - 10;
-          var boxChartHeight = $(clusterGrid).height() - 18 - 10 - 2 * this.options.padding;
-
-          if (!statsView.$nodes[0]) { continue; }
-
-          statsView.$nodes[0].style(
-            {
-              width: ((statsView.matrixMode) ? this.options.matrixWidth : this.options.statsWidth) + 'px',
-              height: clusterHeight + 'px', // TODO Hack for matrix bug!
-              top: clusterPosY + 'px',
-              left: (size.x + this.options.padding * 2) + 'px'
-            });
-
-          if (statsView.matrixMode)
+          if (statsView.externVisible)
           {
-              statsView.zoomMatrix.zoomTo(this.options.matrixWidth - this.options.padding * 2, boxChartHeight);
-          }
-          else
-          {
-            statsView.zooms[0].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
-
-            if (statsView.externVisible)
+            for (var k = 1; k < statsView.$nodes.length; ++k)
             {
-              for (var k = 1; k < statsView.$nodes.length; ++k)
-              {
-                statsView.zooms[k].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
-                statsView.$nodes[k].style({
-                  width: this.options.statsWidth + 'px',
-                  height: clusterHeight + 'px',
-                  top: clusterPosY + 'px',
-                  left: (size.x + this.options.padding * 2 + this.options.statsWidth * (k)) + 'px'
-                });
-              }
+              statsView.zooms[k].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
+              statsView.$nodes[k].style({
+                width: this.options.statsWidth + 'px',
+                height: clusterHeight + 'px',
+                top: clusterPosY + 'px',
+                left: (size.x + this.options.padding * 2 + this.options.statsWidth * (k)) + 'px'
+              });
             }
-          }
-
-          if (this.connectSignal != null && this.connectSignal.cluster == j) {
-            var that = this;
-
-            function refreshColumn(cluster, column: ClusterColumn) {
-              var statsView = that.statsViews[cluster];
-
-              if (column == null) { return; }
-              if (statsView.dividers[0].hasChanged())
-              {
-                that.showDivisions(cluster, column);
-              }
-            }
-
-            function onClickSlider(cluster, column) {
-              return function (d) {
-                return refreshColumn(cluster, column);
-              }
-            }
-
-            var newColumn = this.stratomex.getLastColumn();
-            statsView.column = newColumn;
-
-            d3.select((<boxSlider.BoxSlider>statsView.dividers[0]).node)
-              .on('mouseup', onClickSlider(j, newColumn));
-
-            this.connectSignal = null;
-
-            this.activeDivision.push(newColumn);
           }
         }
-      }
 
-    });
+        if (this.connectSignal != null && this.connectSignal.cluster == j) {
+
+          function refreshColumn(cluster, column: ClusterColumn) {
+            var statsView = that.statsViews[cluster];
+
+            if (column == null) { return; }
+            if (statsView.dividers[0].hasChanged())
+            {
+              that.showDivisions(cluster, column);
+            }
+          }
+
+          function onClickSlider(cluster, column) {
+            return function (d) {
+              return refreshColumn(cluster, column);
+            }
+          }
+
+          var newColumn = this.stratomex.getLastColumn();
+          statsView.column = newColumn;
+
+          d3.select((<boxSlider.BoxSlider>statsView.dividers[0]).node)
+            .on('mouseup', onClickSlider(j, newColumn));
+
+          this.connectSignal = null;
+
+          this.activeDivision.push(newColumn);
+        }
+      }
+    }
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -1185,11 +1164,17 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
 export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUniqueId, link_m.IDataVis
 {
+  private probsViews : clusterView.ClusterProbView[] = [];
+
+  // -------------------------------------------------------------------------------------------------------------------
+
   constructor(protected stratomex, public data, partitioning:ranges.Range, private partitionMatrix: any, public dataRef,
               options:any = {}, within = -1)
   {
     super(stratomex, data, partitioning, dataRef, options, within);
   }
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   protected createGridToolbar(elem, data, cluster, pos, $toolbar: d3.Selection<any>)
   {
@@ -1199,11 +1184,143 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
 
     $toolbar.insert('i', '.fa-expand').attr('class', 'fa fa-align-left').on('click', () =>
     {
-      //TODO create bar charts with probabilities
+      // first obtain the provenance graph
+      var graph = that.stratomex.provGraph;
+      // next find the current object / selection / cluster
+      var obj = graph.findObject(that);
+      // push new command to graph
+      graph.push(clusterView.createToggleProbsCmd(obj, pos[0], true));
+      // stop propagation to disable further event triggering
+      d3.event.stopPropagation();
     });
   }
 
+  // -------------------------------------------------------------------------------------------------------------------
 
+  protected determineColumnWidth(reset=false)
+  {
+    var layoutWidth = super.determineColumnWidth(reset);
+    if (reset) { return layoutWidth; }
+
+    if (this.probsViews.some((d:any) =>
+        {
+          if (d == null) { return false; }
+          return d.visible;
+        }))
+    {
+      const numGroups = (<any>this.range.dims[0]).groups.length;
+
+      layoutWidth += this.options.statsWidth * numGroups;
+    }
+
+    return layoutWidth;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  protected resizeColumn(size: any, within=-1)
+  {
+    super.resizeColumn(size);
+
+    const numGroups = (<any>this.range.dims[0]).groups.length;
+
+    if (this.probsViews.some((d:any) =>
+        {
+          if (d == null) { return false; }
+          return d.visible;
+        }))
+    {
+      size.x -= this.options.statsWidth * numGroups;
+    }
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  protected onActionLoader(size: any, within=-1)
+  {
+    super.onActionLoader(size);
+
+    const that = this;
+    const numGroups = (<any>this.range.dims[0]).groups.length;
+
+    // go through all stats view and determine their position
+    // resize cluster windows since their height should correspond to the heatmap height
+    for (var j = 0; j < numGroups; ++j)
+    {
+      var probsView = this.probsViews[j];
+
+      if (probsView == null) { continue; }
+      if (probsView.visible == true)
+      {
+        var clusterGrid = $(this.$parent.node()).find('div.gridrow')[j];
+        var clusterPosY = $(clusterGrid).position().top;
+        var clusterHeight = $(clusterGrid).height() - 10;
+        var boxChartHeight = $(clusterGrid).height() - 18 - 10 - 2 * this.options.padding;
+
+        for (var i = 0; i < numGroups; ++i)
+        {
+          if (!probsView.$nodes[i]) { continue; }
+
+          probsView.zooms[i].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
+
+          probsView.$nodes[i].style(
+            {
+              width: (this.options.statsWidth) + 'px',
+              height: clusterHeight + 'px',
+              top: clusterPosY + 'px',
+              left: (size.x + this.options.padding * 2 + this.options.statsWidth * i) + 'px'
+            });
+        }
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Show detailed probability view for certain stratification.
+   * @param cluster
+   * @param within
+   * @param relayout
+   * @returns {any}
+     */
+  showProbs(cluster, within = -1, relayout = true)
+  {
+    var probsView = this.probsViews[cluster];
+
+    if (probsView != null)
+    {
+      probsView.show(within);
+
+      this.setColumnWidth();
+      return (relayout) ? this.stratomex.relayout(within) : Promise.resolve([]);
+    }
+
+    var probView = new clusterView.ClusterProbView(cluster, this.range, this.partitionMatrix, {});
+    probView.build(this.$parent, this);
+    this.probsViews[cluster] = probView;
+
+    this.setColumnWidth();
+
+    return (relayout) ? this.stratomex.relayout(within) : Promise.resolve([]);
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Hide cluster probability view.
+   * @param cluster
+   * @param within
+   * @returns {Promise<void>}
+     */
+  hideProbs(cluster, within)
+  {
+    var probsView = this.probsViews[cluster];
+    probsView.hide(within);
+
+    this.setColumnWidth();
+    return this.stratomex.relayout(within);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1346,7 +1463,7 @@ export interface IDendrogram extends C.IPersistable
   desc: datatypes.IDataDescription;
 }
 
-// --------------------------------------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------------------------------------
 
 export class Dendrogram implements IDendrogram
 {
@@ -1366,4 +1483,30 @@ export class Dendrogram implements IDendrogram
   }
 }
 
-// --------------------------------------------------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// TODO! To support provenance graph --> partition matrix needs to be added to server for api/dataset request
+export interface IPartitionMatrix extends C.IPersistable
+{
+  desc: datatypes.IDataDescription;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export class PartitionMatrix implements IPartitionMatrix
+{
+  constructor(public partition: any, public desc: datatypes.IDataDescription)
+  {
+
+  }
+
+  persist() : any
+  {
+    return this.desc.id;
+  }
+
+  restore(persisted: any)
+  {
+    return this;
+  }
+}

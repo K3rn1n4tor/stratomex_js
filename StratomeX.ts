@@ -263,12 +263,12 @@ class StratomeX extends views.AView {
     var clusterRanges = <any>[];
 
     // sort groups in ascending order
-    function compareCluster(a, b)
-    {
-      return (a.length < b.length) ? -1 : (a.length > b.length) ? 1 : 0;
-    }
-
-    clusterLabels.sort(compareCluster);
+    //function compareCluster(a, b)
+    //{
+    //  return (a.length < b.length) ? -1 : (a.length > b.length) ? 1 : 0;
+    //}
+    //
+    ////clusterLabels.sort(compareCluster);
 
     Promise.all([(<any>data).rows(), (<any>data).rowIds()]).then((args) =>
     {
@@ -332,7 +332,8 @@ class StratomeX extends views.AView {
       }
       else if (method == 'Fuzzy')
       {
-        that.addFuzzyClusterData(strati, data, null, null);
+        const partitionMatrix = result.partitionMatrix;
+        that.addFuzzyClusterData(strati, data, partitionMatrix, null);
       }
       else
       {
@@ -453,7 +454,7 @@ class StratomeX extends views.AView {
      */
   addFuzzyClusterData(rowStrat: stratification.IStratification,
               rowMatrix: datatypes.IDataType,
-              dendrogram: any,
+              partitionMatrix: any[],
               colStrat?: stratification.IStratification)
   {
     var that = this;
@@ -467,13 +468,11 @@ class StratomeX extends views.AView {
 
       }).then((range) =>
       {
-        //const newID = rowMatrix.desc.id + 'Dendrogram';
-        //const dendrogramName = rowMatrix.desc.name + '_Dendrogram';
-        //var dendrogramDesc = { id: newID, name: 'dendrogramName', 'fqname': 'null', type: 'tree' };
-        //var dendrogramData = new clustercolumns.Dendrogram(dendrogram, dendrogramDesc);
-        //var dendrogramRef = that.provGraph.findOrAddObject(dendrogramData, dendrogramName, 'data');
-        var partitionRef = that.provGraph.findOrAddObject([], 'test', 'data');
-        // TODO add partition matrix!
+        const newID = rowMatrix.desc.id + 'PartitionMatrix';
+        const partitionName = rowMatrix.desc.name + '_PartitionMatrix';
+        const partitionDesc = { id: newID, name: partitionName, fqname: 'null', type: 'tree' };
+        const partitionData = new clustercolumns.PartitionMatrix(partitionMatrix, partitionDesc);
+        const partitionRef = that.provGraph.findOrAddObject(partitionData, partitionName, 'data');
 
         that.provGraph.push(clustercolumns.createFuzzyClusterColumnCmd(that.ref, mref, range, partitionRef,
           toName(rowMatrix.desc.name, rowStrat.desc.name)));

@@ -930,8 +930,6 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     if (this.detail)
     {
-      var clusterGrid = $(this.$parent.node()).find('div.gridrow')[this.detail.cluster];
-      //var clusterPosY = $(clusterGrid).position().top;
       var clusterPosY = this.options.summaryHeight + 32;
 
       size.x -= this.options.detailWidth;
@@ -946,7 +944,11 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     // -----------------------------------------------------------------------------------------------------------------
     // Resize rest of column
+    this.resizeColumn(size, within);
 
+    // -----------------------------------------------------------------------------------------------------------------
+
+    // Apply zooms to column elements / grids
     this.$summary.style('width', size.x + 'px');
 
     this.summary.actLoader.then(() =>
@@ -969,7 +971,24 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         left: shift[0],
         top: shift[1]
       });
+
+      // function for custom action loader
+      this.onActionLoader(size, within);
     });
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  protected resizeColumn(size: any, within=-1)
+  {
+    // nothing to do here
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  protected onActionLoader(size: any, within=-1)
+  {
+    // nothing to do here
   }
 
   // -------------------------------------------------------------------------------------------------------------------

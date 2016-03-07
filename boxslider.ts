@@ -49,7 +49,8 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
       numSlider: 2, // number of sliders
       sliderColor: 'grey', // default color for sliders
       sliderHeight: 4, // height of slider in px
-      duration: 50 // duration of animations in ms
+      duration: 50, // duration of animations in ms
+      precision: 2 // precision of values in tooltip box
     }, options);
 
     if (this.options.scaleTo)
@@ -326,7 +327,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
         //const absPosY = absPos[1];
 
         var index = d3.round(scaleY.invert(posY) - 0.5);
-        var value = d3.round(that.boxValues[index], 2);
+        var value = d3.round(that.boxValues[index], that.options.precision);
 
         index = Math.min(that.numBars - 1, Math.max(0, index));
         var $bar = $(that.$node.select('.bar' + index).node());
@@ -509,7 +510,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
         }
 
 
-        const value = d3.round((that.boxValues[minIndex] + that.boxValues[maxIndex]) / 2, 2);
+        const value = d3.round((that.boxValues[minIndex] + that.boxValues[maxIndex]) / 2, that.options.precision);
         //const sliderPosY = $(that.sliders[number].node()).position().top;
         //console.log('SliderPosY', sliderPosY);
 

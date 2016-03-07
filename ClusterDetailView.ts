@@ -28,6 +28,45 @@ import heatmap = require('../caleydo_vis/heatmap');
 import columns = require('./Column');
 import boxSlider = require('./boxslider');
 
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export function showProbs(inputs, parameter, graph, within)
+{
+  var column: any = inputs[0].value;
+  var cluster = parameter.cluster;
+  var show = parameter.action === 'show';
+
+  var r: Promise<any>;
+  if (show)
+  {
+    r = column.showProbs(cluster, within);
+  }
+  else
+  {
+    r = column.hideProbs(cluster, within);
+  }
+  return r.then(() =>
+  {
+    return {
+      inverse: createToggleProbsCmd(inputs[0], cluster, !show),
+      consumed: within
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export function createToggleProbsCmd(column, cluster, show)
+{
+  var act = show ? 'Show' : 'Hide';
+  return prov.action(prov.meta(act + ' Probabilities of ' + column.toString() + ' Cluster "' + cluster + '"', prov.cat.layout),
+    'showStratomeXStats', showProbs, [column], {
+      cluster: cluster,
+      action: show ? 'show' : 'hide'
+    });
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // class definition
 
@@ -479,6 +518,177 @@ export class ClusterDetailView
         this.$nodes[k].transition().duration(columns.animationTime(within)).style('opacity', 0);
         this.$nodes[k].classed('hidden', true);
       }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export class ClusterProbView
+{
+  public $nodes: d3.Selection<any>[] = [];
+  public boxCharts: boxSlider.BoxSlider[] = [];
+  public zooms: behaviors.ZoomLogic[] = [];
+  private partitionMatrix: any[] = [];
+  private labels: number[] = [];
+  private numGroups = 0;
+
+  public visible: boolean = true;
+
+  constructor(private cluster: number, private range: ranges.Range, partitionMatrix: any,
+              private options: any)
+  {
+    this.labels = (<any>this.range.dims[0]).groups[cluster].asList();
+    this.numGroups = (<any>this.range.dims[0]).groups.length;
+
+    // zip values and sort
+    for (var j = 0; j < this.labels.length; ++j)
+    {
+      const labelID = this.labels[j];
+      var labelProbs = partitionMatrix[labelID];
+      var prob = labelProbs.splice(cluster, 1)[0];
+      labelProbs.splice(0, 0, prob);
+
+      this.partitionMatrix.push({ id: this.labels[j], probs: labelProbs});
+    }
+  }
+
+  public build($parent: d3.Selection<any>, column: any)
+  {
+
+    const clusterID = this.cluster;
+    const numGroups = this.numGroups;
+
+    var probs = Array.apply(null, Array(numGroups)).map( (_, i) => { return new Array(0); });
+
+    // determine order of cluster IDs
+    var IDs = Array.apply(null, Array(numGroups)).map( (_, i) => { return i; });
+    IDs.splice(clusterID, 1);
+    IDs.splice(0, 0, clusterID);
+
+    var partitionMat = this.partitionMatrix.slice();
+
+    var clusterProbs = [];
+    var labels = [];
+
+    // unzip and write back
+    for (var j = 0; j < this.labels.length; ++j)
+    {
+      var zip = partitionMat[j];
+      labels.push(zip.id);
+      clusterProbs.push(zip.probs);
+    }
+
+    for (var j = 0; j < labels.length; ++j)
+    {
+      var labelProbs = clusterProbs[j];
+
+      for (var i = 0; i < numGroups; ++i)
+      {
+        probs[i].push(labelProbs[i]);
+      }
+    }
+
+    // build main nodes of the view
+    for (var j = 0; j < numGroups; ++j)
+    {
+      const index = j;
+      let probabilities = probs[index];
+
+      const $elem = $parent.append('div').classed('stats', true).style('opacity', 0);
+      $elem.classed('group', true).datum(probabilities);
+      $elem.append('div').attr('class', 'title').text('Probs' + String(IDs[j]));
+      var $body = $elem.append('div').attr('class', 'body');
+
+
+      var boxChart = <boxSlider.BoxSlider>boxSlider.createRaw(probabilities, <Element>$body.node(), {
+        range: [0.0, 1.0], numAvg: 1, numSlider: 0, precision: 4 });
+      boxChart.setLabels(labels);
+      this.boxCharts.push(boxChart);
+
+      this.zooms.push(new behaviors.ZoomLogic(boxChart, null));
+      this.$nodes.push($elem);
+
+    }
+
+    const that = this;
+
+    // show all nodes
+    for (var j = 0; j < probs.length; ++j)
+    {
+      this.$nodes[j].transition().duration(columns.animationTime(-1)).style('opacity', 1);
+
+      // create the toolbar of the detail view
+      var $gtoolbar = this.$nodes[j].append('div').attr('class', 'gtoolbar');
+
+      function onClick(index, column)
+      {
+        return () =>
+        {
+          that.sortByClusterID(index, column);
+        }
+      }
+
+      $gtoolbar.append('i').attr('class', 'fa fa fa-sort-amount-desc').on('click', onClick(j, column));
+
+      if (j == 0)
+      {
+        $gtoolbar.append('i').attr('class', 'fa fa-close').on('click', () =>
+        {
+          var g = column.stratomex.provGraph;
+          var s = g.findObject(column);
+          g.push(createToggleProbsCmd(s, that.cluster, false));
+        });
+      }
+    }
+  }
+
+  public sortByClusterID(index: number, column: any)
+  {
+    console.log('sort by cluster', index);
+
+    var partitionMat = this.partitionMatrix.slice();
+
+    function sortProbs(a, b)
+    {
+      return b.probs[index] - a.probs[index];
+    }
+
+    partitionMat.sort(sortProbs);
+
+    var clusterProbs = [];
+    var labels = [];
+
+    // unzip and write back
+    for (var j = 0; j < this.labels.length; ++j)
+    {
+      var zip = partitionMat[j];
+      labels.push(zip.id);
+      clusterProbs.push(zip.probs);
+    }
+
+    console.log(labels, clusterProbs);
+
+
+  }
+
+  public show(within)
+  {
+    this.visible = true;
+
+    for (var i = 0; i < this.numGroups; ++i)
+    {
+      this.$nodes[i].classed('hidden', false);
+    }
+  }
+
+  public hide(within)
+  {
+    this.visible = false;
+
+    for (var i = 0; i < this.numGroups; ++i)
+    {
+      this.$nodes[i].classed('hidden', true);
     }
   }
 }
