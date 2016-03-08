@@ -285,7 +285,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     super(stratomex, data, partitioning, dataRef, options, within);
 
     this.on('relayouted', this.relayoutAfterHandler);
-    const numGroups = <any>(partitioning.dim(0)).groups.length;
+    const numGroups = (<any>this.range.dim(0)).groups.length;
     this.statsViews = Array.apply(null, Array(numGroups)).map( (_, i) => { return null; });
   }
 
@@ -335,7 +335,6 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
     var that = this;
 
-    const numStatsViews = that.statsViews.length;
     var compositeRange = <ranges.CompositeRange1D>that.range.dim(0);
     that.range = ranges.parse(range.toString());
 
@@ -353,47 +352,56 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
     return promise.then((_: any) =>
     {
-      var promises: any[] = [];
-      // destroy current stats views
+      var promises = (!noStatsUpdate) ? that.onUpdate(groupsChanged) : [];
 
-      for (var i = 0; i < numStatsViews; ++i)
-      {
-        // do not update if showStats has been invoked before
-        if (noStatsUpdate) { break; }
-
-        var statsView = that.statsViews[i];
-        that.statsViews[i] = null;
-        if (statsView != null)
-        {
-          statsView.dividers[0].destroy();
-          statsView.$nodes[0].remove();
-
-          if (statsView.$nodes.length - 1 > 0)
-          {
-            for (var k = 1; k < statsView.$nodes.length; ++k)
-            {
-              statsView.dividers[k].destroy();
-              statsView.$nodes[k].remove();
-            }
-          }
-
-          if (groupsChanged) { that.distancesRange = null; }
-
-          if (statsView.visible && !groupsChanged)
-          {
-            promises.push(that.showStats(i, -1, false));
-          }
-        }
-      }
-
-      // update grid after all views are recreated
       return Promise.all(promises).then((_) =>
       {
-        that.statsViews.forEach( (d: clusterView.ClusterDetailView) => { if (d && d.visible) { d.show(-1); } });
-
         return that.stratomex.relayout();
       });
+
     });
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  protected onUpdate(groupsChanged: boolean)
+  {
+    const that = this;
+
+    const numGroups = (<any>that.range.dim(0)).groups.length;
+
+    if (groupsChanged) { this.distancesRange = null; }
+
+    var oldStatsViews = this.statsViews.slice();
+    this.statsViews = Array.apply(null, Array(numGroups)).map( () => { return null; });
+
+    var promises: any[] = [];
+
+    for (var i = 0; i < oldStatsViews.length; ++i)
+    {
+      var statsView = oldStatsViews[i];
+
+      if (statsView != null)
+      {
+        for (var k = 0; k < statsView.$nodes.length; ++k)
+        {
+          statsView.dividers[k].destroy();
+          statsView.$nodes[k].remove();
+        }
+
+        if (statsView.visible && !groupsChanged)
+        {
+          promises.push(this.showStats(i, -1, false, statsView.matrixMode));
+        }
+      }
+    }
+
+    Promise.all(promises).then(() =>
+    {
+      that.statsViews.forEach( (d: clusterView.ClusterDetailView) => { if (d && d.visible) { d.show(-1); } });
+    });
+
+    return promises;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -659,9 +667,10 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
    * @param cluster
    * @param within
    * @param relayout
+   * @param matrixMode
    * @returns {any}
      */
-  showStats(cluster, within = -1, relayout = true)
+  showStats(cluster, within = -1, relayout = true, matrixMode: boolean = false)
   {
     var statsView = this.statsViews[cluster];
 
@@ -676,7 +685,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     const that = this;
 
     var newStatsView: clusterView.ClusterDetailView = new clusterView.ClusterDetailView(cluster, this.data, this.range,
-      { matrixWidth: this.options.matrixWidth });
+      { matrixWidth: this.options.matrixWidth, matrixMode: matrixMode });
     var promise = newStatsView.build(this.$parent, this);
 
     this.statsViews[cluster] = newStatsView;
@@ -685,7 +694,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
     return promise.then( (args) =>
     {
-      that.createClusterDetailToolbar(cluster, newStatsView.$toolbar, false, within);
+      that.createClusterDetailToolbar(cluster, newStatsView.$toolbar, matrixMode, within);
       if (!relayout) { newStatsView.$nodes.forEach((d: d3.Selection<any>) => {d.classed('hidden', true); }); }
       const compositeRange = args[0];
       return (relayout) ? that.updateGrid(compositeRange, true) : Promise.resolve([]);
@@ -1114,7 +1123,8 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
 export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUniqueId, link_m.IDataVis
 {
-  private probsViews : clusterView.ClusterProbView[] = [];
+  private probsViews: clusterView.ClusterProbView[] = [];
+  private noProbs: boolean = false;
 
   // -------------------------------------------------------------------------------------------------------------------
 
@@ -1135,17 +1145,71 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
 
     super.createGridToolbar(elem, data, cluster, pos, $toolbar);
 
-    $toolbar.insert('i', '.fa-expand').attr('class', 'fa fa-align-left').on('click', () =>
+    if (!this.noProbs)
     {
-      // first obtain the provenance graph
-      var graph = that.stratomex.provGraph;
-      // next find the current object / selection / cluster
-      var obj = graph.findObject(that);
-      // push new command to graph
-      graph.push(clusterView.createToggleProbsCmd(obj, pos[0], true));
-      // stop propagation to disable further event triggering
-      d3.event.stopPropagation();
+      $toolbar.insert('i', '.fa-expand').attr('class', 'fa fa-align-left').on('click', () =>
+      {
+        // first obtain the provenance graph
+        var graph = that.stratomex.provGraph;
+        // next find the current object / selection / cluster
+        var obj = graph.findObject(that);
+        // push new command to graph
+        graph.push(clusterView.createToggleProbsCmd(obj, pos[0], true));
+        // stop propagation to disable further event triggering
+        d3.event.stopPropagation();
+      });
+    }
+  }
+
+  protected onUpdate(groupsChanged: boolean)
+  {
+    const that = this;
+
+    var promises = super.onUpdate(groupsChanged);
+
+    var numGroups = (<any>that.range.dim(0)).groups.length;
+
+    var oldProbsViews = this.probsViews.slice();
+    this.probsViews = Array.apply(null, Array(numGroups)).map( () => { return null; });
+
+    for (var i = 0; i < oldProbsViews.length; ++i)
+    {
+      var probsView = oldProbsViews[i];
+
+      if (probsView != null)
+      {
+        for (var k = 0; k < probsView.$nodes.length; ++k)
+        {
+          probsView.boxCharts[k].destroy();
+          probsView.$nodes[k].remove();
+        }
+
+        if (probsView.visible && !groupsChanged)
+        {
+          promises.push(this.showProbs(i, -1, false));
+        }
+      }
+    }
+
+    Promise.all(promises).then(() =>
+    {
+      if (!groupsChanged)
+      {
+        that.probsViews.forEach( (d: clusterView.ClusterProbView) => { if (d && d.visible) { d.show(-1); } });
+      }
+      else
+      {
+        that.noProbs = true;
+      }
+
+      for (var i = 0; i < numGroups && groupsChanged; ++i)
+      {
+        var gridRow = that.$parent.select('.gridrow:nth-child(' + String(i + 1) + ')');
+        gridRow.select('.gtoolbar').select('.fa-align-left').remove();
+      }
     });
+
+    return promises;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
