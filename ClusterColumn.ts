@@ -1161,6 +1161,8 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
     }
   }
 
+  // -------------------------------------------------------------------------------------------------------------------
+
   protected onUpdate(groupsChanged: boolean)
   {
     const that = this;

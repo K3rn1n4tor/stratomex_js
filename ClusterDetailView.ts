@@ -314,7 +314,7 @@ export class ClusterDetailView
         if (!that.matrixMode) { return; }
 
         var $target = $(event.target);
-        if ($target.is('.title') || $target.is('.gtoolbar')) { return; }
+        if ($target.is('.title') || $target.is('.gtoolbar') || $target.is('.fa')) { return; }
 
         var mousePos = d3.mouse(that.$nodes[0].node());
 
@@ -787,7 +787,7 @@ export class ClusterProbView
       if (oldBoxChart) { oldBoxChart.destroy(); }
 
       var boxChart = <boxSlider.BoxSlider>boxSlider.createRaw(probabilities[i], <Element>$body.node(), {
-        range: [0.0, 1.0], numAvg: 1, numSlider: 0, precision: 4 });
+        range: [0.0, 1.0], numAvg: 1, numSlider: 0, precision: 4, valueName: 'Prob.' });
       boxChart.setLabels(labels);
 
       this.boxCharts[i] = boxChart;

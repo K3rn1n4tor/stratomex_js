@@ -50,7 +50,8 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
       sliderColor: 'grey', // default color for sliders
       sliderHeight: 4, // height of slider in px
       duration: 50, // duration of animations in ms
-      precision: 2 // precision of values in tooltip box
+      precision: 2, // precision of values in tooltip box
+      valueName: 'Distance' // name of data element
     }, options);
 
     if (this.options.scaleTo)
@@ -340,7 +341,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
           .transition().duration(that.options.duration).attr('fill', 'darkorange');
 
         that.$tooltip.style('opacity', 1);
-        that.$tooltip.html('Distance: ' + String(value));
+        that.$tooltip.html(that.options.valueName + ': ' + String(value));
         that.$tooltip.style({ left: (absPosX + 5) + 'px', top: (absPosY) + 'px' });
 
       }
