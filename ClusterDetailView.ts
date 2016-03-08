@@ -88,13 +88,30 @@ export class ClusterDetailView
 
   private distancesRange: [number, number];
   private numGroups: number;
+  private labels: number[] = [];
+  private updated: boolean = false;
 
   // -------------------------------------------------------------------------------------------------------------------
 
   constructor(private cluster: number, private data: datatypes.IDataType, private range: ranges.Range,
               private options: any)
   {
-    this.options = C.mixin({ matrixMode: false, matrixWidth: 140 }, options);
+    this.options = C.mixin({ matrixMode: false, matrixWidth: 140, statsWidth: 50 }, options);
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  getWidth()
+  {
+    if (this.visible)
+    {
+      if (this.matrixMode) { return this.options.matrixWidth; }
+      else
+      {
+        return (this.externVisible) ? this.numGroups * this.options.statsWidth : this.options.statsWidth;
+      }
+    }
+    else { return 0; }
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -200,7 +217,7 @@ export class ClusterDetailView
 
       // build main node of the view
       const $elem = $parent.append('div').classed('stats', true).style('opacity', 0);
-      $elem.classed('group', true).datum(data);
+      $elem.classed('group', true).datum(rawDistMatrix);
 
       // create the toolbar of the detail view
       this.$toolbar = $elem.append('div').attr('class', 'gtoolbar');
@@ -215,7 +232,7 @@ export class ClusterDetailView
         for (var j = 0; j < externDistances.length; ++j)
         {
           const $elemNext = $parent.append('div').classed('stats', true).style('opacity', 0);
-          $elemNext.classed('group', true).datum(data);
+          $elemNext.classed('group', true).datum(rawDistMatrix);
           $elemNext.append('div').attr('class', 'title').text('Ext ' + String(externLabelIDs[j]));
           $elemNext.append('div').attr('class', 'body');
           that.$nodes.push($elemNext);
@@ -225,6 +242,7 @@ export class ClusterDetailView
       // update statistics view
       var allDistances = [distances].concat(externDistances);
       that.update(allDistances, labels, distMatrix);
+      that.updated = false;
 
       // activate matrix handler
       d3.select(that.matrix.node).on('click', that._onClickMatrix(rawDistMatrix, numGroups, labels, column));
@@ -417,6 +435,22 @@ export class ClusterDetailView
 
   // -------------------------------------------------------------------------------------------------------------------
 
+  isUpdated()
+  {
+    var updated = this.updated;
+    this.updated = false;
+    return updated;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  getLabels()
+  {
+    return this.labels;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
   /**
    * Switch matrix mode.
    */
@@ -435,6 +469,8 @@ export class ClusterDetailView
      */
   update(distances: any, labels: number[], distMatrix)
   {
+    this.labels = labels;
+
     const that = this;
 
     var $body = this.$nodes[0].select('.body');
@@ -472,6 +508,8 @@ export class ClusterDetailView
         d3.select(that.matrix.node).classed('hidden', false);
       });
     }
+
+    this.updated = true;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -482,9 +520,9 @@ export class ClusterDetailView
      */
   show(within=-1)
   {
+    this.visible = true;
     this.$nodes[0].classed('hidden', false);
     this.$nodes[0].transition().duration(columns.animationTime(within)).style('opacity', 1);
-    this.visible = true;
 
     d3.select(this.dividers[0].node).classed('hidden', this.matrixMode);
     d3.select(this.matrix.node).classed('hidden', !this.matrixMode);
@@ -530,15 +568,21 @@ export class ClusterProbView
   public boxCharts: boxSlider.BoxSlider[] = [];
   public zooms: behaviors.ZoomLogic[] = [];
   private partitionMatrix: any[] = [];
+
   private labels: number[] = [];
-  private numGroups = 0;
+  private numGroups: number = 0;
+  private updated: boolean = false;
 
   public visible: boolean = true;
   public externVisible: boolean = false;
 
+  // -------------------------------------------------------------------------------------------------------------------
+
   constructor(private cluster: number, private range: ranges.Range, partitionMatrix: any,
               private options: any)
   {
+    this.options = C.mixin({ probsWidth: 50 }, options);
+
     this.labels = (<any>this.range.dims[0]).groups[cluster].asList();
     this.numGroups = (<any>this.range.dims[0]).groups.length;
 
@@ -553,6 +597,35 @@ export class ClusterProbView
       this.partitionMatrix.push({ id: this.labels[j], probs: labelProbs});
     }
   }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  getWidth()
+  {
+    if (this.visible)
+    {
+      return (this.externVisible) ? (this.numGroups * this.options.probsWidth) : this.options.probsWidth;
+    }
+    else { return 0; }
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  isUpdated()
+  {
+    var updated = this.updated;
+    this.updated = false;
+    return updated;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  getLabels()
+  {
+    return this.labels;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   public build($parent: d3.Selection<any>, column: any)
   {
@@ -604,6 +677,7 @@ export class ClusterProbView
     }
 
     this.update(probs, labels);
+    this.updated = false;
 
     const that = this;
 
@@ -648,6 +722,8 @@ export class ClusterProbView
       }
     }
   }
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   public sortByClusterID(index: number, column: any)
   {
@@ -697,8 +773,12 @@ export class ClusterProbView
     column.updateGrid(newCompositeRange, true);
   }
 
+  // -------------------------------------------------------------------------------------------------------------------
+
   public update(probabilities: any, labels: any)
   {
+    this.labels = labels;
+
     for (var i = 0; i < this.numGroups; ++i)
     {
       var $body = this.$nodes[i].select('.body');
@@ -717,7 +797,11 @@ export class ClusterProbView
       else { this.$nodes[i].classed('hidden', !this.externVisible); }
       this.$nodes[i].transition().duration(columns.animationTime(-1)).style('opacity', 1);
     }
+
+    this.updated = true;
   }
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   public show(within)
   {
@@ -729,6 +813,8 @@ export class ClusterProbView
       else { this.$nodes[i].classed('hidden', !this.externVisible); }
     }
   }
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   public hide(within)
   {

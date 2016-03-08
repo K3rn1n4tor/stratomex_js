@@ -25,7 +25,6 @@ import vis = require('../caleydo_core/vis');
 
 // my own libraries
 import boxSlider = require('./boxslider');
-//import clustercolumns = require('./ClusterColumn');
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Column utility functions

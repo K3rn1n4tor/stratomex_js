@@ -285,6 +285,8 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     super(stratomex, data, partitioning, dataRef, options, within);
 
     this.on('relayouted', this.relayoutAfterHandler);
+    const numGroups = <any>(partitioning.dim(0)).groups.length;
+    this.statsViews = Array.apply(null, Array(numGroups)).map( (_, i) => { return null; });
   }
 
   /**
@@ -536,34 +538,11 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     var layoutWidth = this.options.width;
     if (this.detail) { layoutWidth += this.options.detailWidth; }
 
-    var numVisibleGroups = 0;
-    var matrixWidth = 0;
-    const numGroups = (<any>this.range.dims[0]).groups.length;
+    var statsWidth = Math.max.apply(Math, this.statsViews.map( (stat) => { return (stat) ? stat.getWidth() : 0; }));
+    statsWidth = Math.max(statsWidth, 0);
+    layoutWidth += statsWidth;
 
-    if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return !d.matrixMode && d.visible; } ))
-    {
-      numVisibleGroups = 1;
-
-      if (this.statsViews.some( (d: any) =>
-        { if (d == null) { return false; } return !d.matrixMode && d.visible && d.externVisible; } ))
-      {
-        numVisibleGroups = numGroups;
-      }
-    }
-
-    if (this.statsViews.some( (d : any) => { if (d == null) { return false; } return d.matrixMode && d.visible; } ))
-    {
-      matrixWidth = this.options.matrixWidth;
-    }
-
-    layoutWidth += Math.max(this.options.statsWidth * numVisibleGroups, matrixWidth);
-
-    if (reset)
-    {
-      layoutWidth = this.options.width;
-    }
-
-    return layoutWidth;
+    return (reset)? this.options.width : layoutWidth;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -608,7 +587,6 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
       }
 
       that.setColumnWidth();
-
       that.stratomex.relayout();
 
       that.createClusterDetailToolbar(cluster, $toolbar, statsView.matrixMode, within);
@@ -937,44 +915,18 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     super.layouted(within);
   }
 
-  // -------------------------------------------------------------------------------------------------------------------
+    // -------------------------------------------------------------------------------------------------------------------
 
   protected resizeColumn(size: any, within=-1)
   {
     // Resize if statistics are shown
     const numGroups = (<any>this.range.dims[0]).groups.length;
 
-    var numVisibleGroups = 0;
-    var matrixWidth = 0;
+    // Obtain maximum size of all stats views
+    var statsWidth = Math.max.apply(Math, this.statsViews.map( (stat) => { return (stat) ? stat.getWidth() : 0; }));
+    statsWidth = Math.max(statsWidth, 0);
 
-    if (this.statsViews.some((d:any) =>
-      {
-        if (d == null) { return false; }
-        return !d.matrixMode && d.visible;
-      }))
-    {
-      numVisibleGroups = 1;
-
-      if (this.statsViews.some((d:any) =>
-        {
-          if (d == null) { return false; }
-          return !d.matrixMode && d.visible && d.externVisible;
-        }))
-      {
-        numVisibleGroups = numGroups;
-      }
-    }
-
-    if (this.statsViews.some((d:any) =>
-      {
-        if (d == null) { return false; }
-        return d.matrixMode && d.visible;
-      }))
-    {
-      matrixWidth = this.options.matrixWidth;
-    }
-
-    size.x -= Math.max(this.options.statsWidth * numVisibleGroups, matrixWidth);
+    size.x -= statsWidth;
 
     // check if any column was removed and update active divisions
     for (var j = 0; j < numGroups; ++j)
@@ -1170,6 +1122,9 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
               options:any = {}, within = -1)
   {
     super(stratomex, data, partitioning, dataRef, options, within);
+
+    const numGroups = (<any>partitioning.dim(0)).groups.length;
+    this.probsViews = Array.apply(null, Array(numGroups)).map( (_, i) => { return null; });
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -1197,33 +1152,24 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
 
   protected determineColumnWidth(reset=false)
   {
-    var layoutWidth = super.determineColumnWidth(reset);
-    if (reset) { return layoutWidth; }
+    var layoutWidth = this.options.width;
+    if (this.detail) { layoutWidth += this.options.detailWidth; }
 
-    var numVisibleGroups = 0;
+
     const numGroups = (<any>this.range.dims[0]).groups.length;
+    var statsProbsWidth = 0;
 
-    if (this.probsViews.some((d:any) =>
-        {
-          if (d == null) { return false; }
-          return d.visible;
-        }))
+    for (var i = 0; i < numGroups; ++i)
     {
-      numVisibleGroups = 1;
+      var width = (this.statsViews[i]) ? this.statsViews[i].getWidth() : 0;
+      width += (this.probsViews[i])? this.probsViews[i].getWidth() : 0;
 
-      if (this.probsViews.some((d:any) =>
-        {
-          if (d == null) { return false; }
-          return d.visible && d.externVisible;
-        }))
-      {
-        numVisibleGroups = numGroups;
-      }
+      statsProbsWidth = Math.max(statsProbsWidth, width);
     }
 
-    layoutWidth += this.options.statsWidth * numVisibleGroups;
+    layoutWidth += statsProbsWidth;
 
-    return layoutWidth;
+    return (reset)? this.options.width : layoutWidth;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -1232,28 +1178,23 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
   {
     super.resizeColumn(size);
 
+    var restSize = 0;
+    var maxStatsWidth = Math.max.apply(Math, this.statsViews.map( (stat) => { return (stat) ? stat.getWidth() : 0 }));
+    maxStatsWidth = Math.max(maxStatsWidth, 0);
+
     const numGroups = (<any>this.range.dims[0]).groups.length;
-    var numVisibleGroups = 0;
-
-    if (this.probsViews.some((d:any) =>
-        {
-          if (d == null) { return false; }
-          return d.visible;
-        }))
+    for (var i = 0; i < numGroups; ++i)
     {
-      numVisibleGroups = 1;
+      var probsWidth = (this.probsViews[i]) ? this.probsViews[i].getWidth() : 0;
+      var statsWidth = (this.statsViews[i]) ? this.statsViews[i].getWidth() : 0;
 
-      if (this.probsViews.some((d:any) =>
-        {
-          if (d == null) { return false; }
-          return d.visible && d.externVisible;
-        }))
-      {
-        numVisibleGroups = numGroups;
-      }
+      const groupWidth = probsWidth + statsWidth;
+
+      const width = Math.max(groupWidth - maxStatsWidth, 0);
+      restSize = Math.max(restSize, width);
     }
 
-    size.x -= this.options.statsWidth * numVisibleGroups;
+    size.x -= restSize;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -1286,12 +1227,17 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
 
           probsView.zooms[i].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
 
+          var viewPosX = size.x + this.options.padding * 2 + this.options.statsWidth * i;
+          const statsView = this.statsViews[j];
+          const statsWidth = (statsView != null) ? statsView.getWidth() : 0;
+          viewPosX += statsWidth;
+
           probsView.$nodes[i].style(
             {
               width: (this.options.statsWidth) + 'px',
               height: clusterHeight + 'px',
               top: clusterPosY + 'px',
-              left: (size.x + this.options.padding * 2 + this.options.statsWidth * i) + 'px'
+              left: String(viewPosX) + 'px'
             });
         }
       }
