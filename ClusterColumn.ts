@@ -333,66 +333,64 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
     var that = this;
 
-    //strati.range().then((range) =>
-    //{
-      const numStatsViews = that.statsViews.length;
-      var compositeRange = <ranges.CompositeRange1D>that.range.dim(0);
-      that.range = ranges.parse(range.toString());
+    const numStatsViews = that.statsViews.length;
+    var compositeRange = <ranges.CompositeRange1D>that.range.dim(0);
+    that.range = ranges.parse(range.toString());
 
-      const oldNumGroups = range.groups.length;
-      const newNumGroups = compositeRange.groups.length;
-      const groupsChanged = (newNumGroups != oldNumGroups);
+    const oldNumGroups = range.groups.length;
+    const newNumGroups = compositeRange.groups.length;
+    const groupsChanged = (newNumGroups != oldNumGroups);
 
-      // reset layout of column
-      that.setColumnWidth(!noStatsUpdate);
+    // reset layout of column
+    that.setColumnWidth(!noStatsUpdate);
 
-      var promise = that.stratomex.relayout();
+    var promise = that.stratomex.relayout();
 
-      // recreate grid and fire changed option
-      that.createMultiGrid(that.range, that.data);
+    // recreate grid and fire changed option
+    that.createMultiGrid(that.range, that.data);
 
-      return promise.then((_: any) =>
+    return promise.then((_: any) =>
+    {
+      var promises: any[] = [];
+      // destroy current stats views
+
+      for (var i = 0; i < numStatsViews; ++i)
       {
-        var promises: any[] = [];
-        // destroy current stats views
+        // do not update if showStats has been invoked before
+        if (noStatsUpdate) { break; }
 
-        for (var i = 0; i < numStatsViews; ++i)
+        var statsView = that.statsViews[i];
+        that.statsViews[i] = null;
+        if (statsView != null)
         {
-          // do not update if showStats has been invoked before
-          if (noStatsUpdate) { break; }
+          statsView.dividers[0].destroy();
+          statsView.$nodes[0].remove();
 
-          var statsView = that.statsViews[i];
-          that.statsViews[i] = null;
-          if (statsView != null)
+          if (statsView.$nodes.length - 1 > 0)
           {
-            statsView.dividers[0].destroy();
-            statsView.$nodes[0].remove();
-
-            if (statsView.$nodes.length - 1 > 0)
+            for (var k = 1; k < statsView.$nodes.length; ++k)
             {
-              for (var k = 1; k < statsView.$nodes.length; ++k)
-              {
-                statsView.dividers[k].destroy();
-                statsView.$nodes[k].remove();
-              }
-            }
-
-            if (groupsChanged) { that.distancesRange = null; }
-
-            if (statsView.visible && !groupsChanged)
-            {
-              promises.push(that.showStats(i, -1, false));
+              statsView.dividers[k].destroy();
+              statsView.$nodes[k].remove();
             }
           }
+
+          if (groupsChanged) { that.distancesRange = null; }
+
+          if (statsView.visible && !groupsChanged)
+          {
+            promises.push(that.showStats(i, -1, false));
+          }
         }
+      }
 
-        // update grid after all views are recreated
-        return Promise.all(promises).then((_) =>
-        {
-          that.statsViews.forEach( (d: clusterView.ClusterDetailView) => { if (d) { d.show(-1); } });
+      // update grid after all views are recreated
+      return Promise.all(promises).then((_) =>
+      {
+        that.statsViews.forEach( (d: clusterView.ClusterDetailView) => { if (d && d.visible) { d.show(-1); } });
 
-          return that.stratomex.relayout();
-        });
+        return that.stratomex.relayout();
+      });
     });
   }
 
@@ -1202,16 +1200,28 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
     var layoutWidth = super.determineColumnWidth(reset);
     if (reset) { return layoutWidth; }
 
+    var numVisibleGroups = 0;
+    const numGroups = (<any>this.range.dims[0]).groups.length;
+
     if (this.probsViews.some((d:any) =>
         {
           if (d == null) { return false; }
           return d.visible;
         }))
     {
-      const numGroups = (<any>this.range.dims[0]).groups.length;
+      numVisibleGroups = 1;
 
-      layoutWidth += this.options.statsWidth * numGroups;
+      if (this.probsViews.some((d:any) =>
+        {
+          if (d == null) { return false; }
+          return d.visible && d.externVisible;
+        }))
+      {
+        numVisibleGroups = numGroups;
+      }
     }
+
+    layoutWidth += this.options.statsWidth * numVisibleGroups;
 
     return layoutWidth;
   }
@@ -1223,6 +1233,7 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
     super.resizeColumn(size);
 
     const numGroups = (<any>this.range.dims[0]).groups.length;
+    var numVisibleGroups = 0;
 
     if (this.probsViews.some((d:any) =>
         {
@@ -1230,8 +1241,19 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
           return d.visible;
         }))
     {
-      size.x -= this.options.statsWidth * numGroups;
+      numVisibleGroups = 1;
+
+      if (this.probsViews.some((d:any) =>
+        {
+          if (d == null) { return false; }
+          return d.visible && d.externVisible;
+        }))
+      {
+        numVisibleGroups = numGroups;
+      }
     }
+
+    size.x -= this.options.statsWidth * numVisibleGroups;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -1260,6 +1282,7 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
         for (var i = 0; i < numGroups; ++i)
         {
           if (!probsView.$nodes[i]) { continue; }
+          if (i > 0 && !probsView.externVisible) { break; }
 
           probsView.zooms[i].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
 

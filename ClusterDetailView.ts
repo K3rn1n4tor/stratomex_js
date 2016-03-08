@@ -534,6 +534,7 @@ export class ClusterProbView
   private numGroups = 0;
 
   public visible: boolean = true;
+  public externVisible: boolean = false;
 
   constructor(private cluster: number, private range: ranges.Range, partitionMatrix: any,
               private options: any)
@@ -559,7 +560,7 @@ export class ClusterProbView
     const clusterID = this.cluster;
     const numGroups = this.numGroups;
 
-    var probs = Array.apply(null, Array(numGroups)).map( (_, i) => { return new Array(0); });
+    var probs = Array.apply(null, Array(numGroups)).map( (_, i) => { return []; });
 
     // determine order of cluster IDs
     var IDs = Array.apply(null, Array(numGroups)).map( (_, i) => { return i; });
@@ -598,30 +599,21 @@ export class ClusterProbView
       const $elem = $parent.append('div').classed('stats', true).style('opacity', 0);
       $elem.classed('group', true).datum(probabilities);
       $elem.append('div').attr('class', 'title').text('Probs' + String(IDs[j]));
-      var $body = $elem.append('div').attr('class', 'body');
-
-
-      var boxChart = <boxSlider.BoxSlider>boxSlider.createRaw(probabilities, <Element>$body.node(), {
-        range: [0.0, 1.0], numAvg: 1, numSlider: 0, precision: 4 });
-      boxChart.setLabels(labels);
-      this.boxCharts.push(boxChart);
-
-      this.zooms.push(new behaviors.ZoomLogic(boxChart, null));
+      $elem.append('div').attr('class', 'body');
       this.$nodes.push($elem);
-
     }
+
+    this.update(probs, labels);
 
     const that = this;
 
     // show all nodes
     for (var j = 0; j < probs.length; ++j)
     {
-      this.$nodes[j].transition().duration(columns.animationTime(-1)).style('opacity', 1);
-
       // create the toolbar of the detail view
       var $gtoolbar = this.$nodes[j].append('div').attr('class', 'gtoolbar');
 
-      function onClick(index, column)
+      function OnSortDesc(index, column)
       {
         return () =>
         {
@@ -629,10 +621,24 @@ export class ClusterProbView
         }
       }
 
-      $gtoolbar.append('i').attr('class', 'fa fa fa-sort-amount-desc').on('click', onClick(j, column));
+      $gtoolbar.append('i').attr('class', 'fa fa-sort-amount-desc').on('click', OnSortDesc(j, column));
 
       if (j == 0)
       {
+        $gtoolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
+        {
+          that.externVisible = !that.externVisible;
+
+          for (var i = 1; i < that.numGroups; ++i)
+          {
+            that.$nodes[i].classed('hidden', !that.externVisible);
+            that.$nodes[i].style('opacity', 1);
+          }
+
+          column.setColumnWidth();
+          column.stratomex.relayout();
+        });
+
         $gtoolbar.append('i').attr('class', 'fa fa-close').on('click', () =>
         {
           var g = column.stratomex.provGraph;
@@ -667,9 +673,50 @@ export class ClusterProbView
       clusterProbs.push(zip.probs);
     }
 
-    console.log(labels, clusterProbs);
+    var probs = Array.apply(null, Array(this.numGroups)).map( (_, i) => { return []; });
 
+    for (var j = 0; j < labels.length; ++j)
+    {
+      var labelProbs = clusterProbs[j];
 
+      for (var i = 0; i < this.numGroups; ++i)
+      {
+        probs[i].push(labelProbs[i]);
+      }
+    }
+
+    this.update(probs, labels);
+
+    var oldGroups = (<any>this.range.dim(0)).groups;
+    var newRange = ranges.parse(labels);
+    var newGroup = new ranges.Range1DGroup('Group ' + String(this.cluster), 'grey', newRange.dim(0));
+    oldGroups.splice(this.cluster, 1, newGroup);
+
+    const newCompositeRange = ranges.composite(oldGroups.name, oldGroups);
+
+    column.updateGrid(newCompositeRange, true);
+  }
+
+  public update(probabilities: any, labels: any)
+  {
+    for (var i = 0; i < this.numGroups; ++i)
+    {
+      var $body = this.$nodes[i].select('.body');
+
+      var oldBoxChart = this.boxCharts[i];
+      if (oldBoxChart) { oldBoxChart.destroy(); }
+
+      var boxChart = <boxSlider.BoxSlider>boxSlider.createRaw(probabilities[i], <Element>$body.node(), {
+        range: [0.0, 1.0], numAvg: 1, numSlider: 0, precision: 4 });
+      boxChart.setLabels(labels);
+
+      this.boxCharts[i] = boxChart;
+      this.zooms[i] = new behaviors.ZoomLogic(boxChart, null);
+
+      if (i == 0) { this.$nodes[i].classed('hidden', !this.visible); }
+      else { this.$nodes[i].classed('hidden', !this.externVisible); }
+      this.$nodes[i].transition().duration(columns.animationTime(-1)).style('opacity', 1);
+    }
   }
 
   public show(within)
@@ -678,7 +725,8 @@ export class ClusterProbView
 
     for (var i = 0; i < this.numGroups; ++i)
     {
-      this.$nodes[i].classed('hidden', false);
+      if (i == 0) { this.$nodes[i].classed('hidden', !this.visible); }
+      else { this.$nodes[i].classed('hidden', !this.externVisible); }
     }
   }
 
