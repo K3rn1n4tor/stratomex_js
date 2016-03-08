@@ -396,7 +396,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
     var range = (this.options.range) ? this.options.range : d3.extent(this.boxValues);
 
     var scaleY = d3.scale.linear().domain([0, numBars - 1]).range([0, rawSize[1] - lastBarHeight]);
-    var scaleX = d3.scale.linear().domain(range).range([5, rawSize[0]]);
+    var scaleX = d3.scale.linear().domain(range).range([0, rawSize[0]]);
 
     // create dummy rect to detect hovering event
     $root.append('rect').attr({ width: rawSize[0], height: rawSize[1], opacity: 0 })

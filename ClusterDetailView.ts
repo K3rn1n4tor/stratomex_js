@@ -586,6 +586,7 @@ export class ClusterProbView
     this.labels = (<any>this.range.dims[0]).groups[cluster].asList();
     this.numGroups = (<any>this.range.dims[0]).groups.length;
 
+    this.partitionMatrix = [];
     // zip values and sort
     for (var j = 0; j < this.labels.length; ++j)
     {
