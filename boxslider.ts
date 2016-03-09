@@ -51,7 +51,8 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
       sliderHeight: 4, // height of slider in px
       duration: 50, // duration of animations in ms
       precision: 2, // precision of values in tooltip box
-      valueName: 'Distance' // name of data element
+      valueName: 'Distance', // name of data element,
+      customColorFunc: null
     }, options);
 
     if (this.options.scaleTo)
@@ -328,9 +329,9 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
         //const absPosY = absPos[1];
 
         var index = d3.round(scaleY.invert(posY) - 0.5);
+        index = Math.min(that.numBars - 1, Math.max(0, index));
         var value = d3.round(that.boxValues[index], that.options.precision);
 
-        index = Math.min(that.numBars - 1, Math.max(0, index));
         var $bar = $(that.$node.select('.bar' + index).node());
         // HINT! use this technique to compute relative distance to parent, works for both Firefox and Chrome!
         var absPosY = $bar.offset().top - $bar.parent().parent().offset().top + 18 - tooltipHeight / 2;
@@ -424,7 +425,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
       'fill': this.options.sliderColor, id: 'bar', class: (_: any, i: number) => { return 'bar' + String(i);},
       'shape-rendering': 'crispEdges', stroke: 'black', 'stroke-width': '2px', 'stroke-alignment': 'inner',
       'stroke-opacity': 0.05
-    }).on('mouseover', this._mouseHandler('mouseover', $root, [scaleY]))
+    }).on('mousemove', this._mouseHandler('mousemove', $root, [scaleY]))
       .on('mouseout', this._mouseHandler('mouseout', $root, []));
   }
 
@@ -700,7 +701,15 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
   {
     if (this.options.numSlider == 0 && this.divisions.length == 0)
     {
-      this.$node.selectAll('#bar').transition().duration(this.options.duration).attr('fill', this.options.sliderColor);
+      // TODO toggle colorByValue / colorByRange
+      const midRange = (this.options.range[0] + this.options.range[1]) / 2.0;
+      var cScale = d3.scale.linear().domain([this.options.range[0], midRange, this.options.range[1]])
+        .range((<any>['red', 'yellow', 'green']));
+
+      function colorByValue(d: any) { return cScale(d); }
+
+      this.$node.selectAll('#bar').transition().duration(this.options.duration).attr('fill', colorByValue);//this.options.sliderColor);
+
       return;
     }
 
