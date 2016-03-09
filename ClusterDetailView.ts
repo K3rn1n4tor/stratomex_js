@@ -590,6 +590,7 @@ export class ClusterProbView
     this.partitionMatrix = [];
 
     var test = [];
+    const maxProb = 1.0 / this.numGroups;
     // zip values and sort
     for (var j = 0; j < this.labels.length; ++j)
     {
@@ -598,13 +599,11 @@ export class ClusterProbView
       var prob = labelProbs.splice(cluster, 1)[0];
       labelProbs.splice(0, 0, prob);
 
-      test.push(prob);
+      var numOccurs = 0;
+      for (var i = 0; i < this.numGroups; ++i) { numOccurs += (labelProbs[i] >= maxProb) ? 1 : 0; }
 
-      this.partitionMatrix.push({ id: this.labels[j], probs: labelProbs});
+      this.partitionMatrix.push({ id: this.labels[j], probs: labelProbs, occurs: numOccurs});
     }
-
-    console.log(test);
-    //console.log(this.labels, this.partitionMatrix);
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -653,6 +652,7 @@ export class ClusterProbView
 
     var clusterProbs = [];
     var labels = [];
+    var occurs = [];
 
     // unzip and write back
     for (var j = 0; j < this.labels.length; ++j)
@@ -660,6 +660,7 @@ export class ClusterProbView
       var zip = partitionMat[j];
       labels.push(zip.id);
       clusterProbs.push(zip.probs);
+      occurs.push(zip.occurs);
     }
 
     for (var j = 0; j < labels.length; ++j)
@@ -685,7 +686,7 @@ export class ClusterProbView
       this.$nodes.push($elem);
     }
 
-    this.update(probs, labels);
+    this.update(probs, labels, occurs);
     this.updated = false;
 
     const that = this;
@@ -749,6 +750,7 @@ export class ClusterProbView
 
     var clusterProbs = [];
     var labels = [];
+    var occurs = [];
 
     // unzip and write back
     for (var j = 0; j < this.labels.length; ++j)
@@ -756,6 +758,7 @@ export class ClusterProbView
       var zip = partitionMat[j];
       labels.push(zip.id);
       clusterProbs.push(zip.probs);
+      occurs.push(zip.occurs);
     }
 
     var probs = Array.apply(null, Array(this.numGroups)).map( (_, i) => { return []; });
@@ -770,7 +773,7 @@ export class ClusterProbView
       }
     }
 
-    this.update(probs, labels);
+    this.update(probs, labels, occurs);
 
     var oldGroups = (<any>this.range.dim(0)).groups;
     var newRange = ranges.parse(labels);
@@ -784,9 +787,10 @@ export class ClusterProbView
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  public update(probabilities: any, labels: any)
+  public update(probabilities: any, labels: any, occurs: any)
   {
     this.labels = labels;
+    var that = this;
 
     for (var i = 0; i < this.numGroups; ++i)
     {
@@ -794,6 +798,16 @@ export class ClusterProbView
 
       var oldBoxChart = this.boxCharts[i];
       if (oldBoxChart) { oldBoxChart.destroy(); }
+
+      //function colorBars(numOccurs)
+      //{
+      //  var cScale = d3.scale.linear().domain([1,that.numGroups]).range(<any>['#777777', '#aaaaaa']);
+      //
+      //  return function(d: any, i: number)
+      //  {
+      //    return cScale(numOccurs[i]);
+      //  }
+      //}
 
       var boxChart = <boxSlider.BoxSlider>boxSlider.createRaw(probabilities[i], <Element>$body.node(), {
         range: [0.0, 1.0], numAvg: 1, numSlider: 0, precision: 4, valueName: 'Prob.' });

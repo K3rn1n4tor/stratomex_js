@@ -51,8 +51,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
       sliderHeight: 4, // height of slider in px
       duration: 50, // duration of animations in ms
       precision: 2, // precision of values in tooltip box
-      valueName: 'Distance', // name of data element,
-      customColorFunc: null
+      valueName: 'Distance' // name of data element
     }, options);
 
     if (this.options.scaleTo)
@@ -706,9 +705,10 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
       var cScale = d3.scale.linear().domain([this.options.range[0], midRange, this.options.range[1]])
         .range((<any>['red', 'yellow', 'green']));
 
-      function colorByValue(d: any) { return cScale(d); }
+      var colorByValue = function(d: any) { return cScale(d); };
+      var colorFunc = (this.options.colorFunction) ? this.options.colorFunction : colorByValue;
 
-      this.$node.selectAll('#bar').transition().duration(this.options.duration).attr('fill', colorByValue);//this.options.sliderColor);
+      this.$node.selectAll('#bar').transition().duration(this.options.duration).attr('fill', colorFunc);//this.options.sliderColor);
 
       return;
     }
