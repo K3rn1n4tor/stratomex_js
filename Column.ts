@@ -14,10 +14,10 @@ import geom = require('../caleydo_core/geom');
 import idtypes = require('../caleydo_core/idtype');
 import behaviors = require('../caleydo_core/behavior');
 import events = require('../caleydo_core/event');
-import link_m = require('../caleydo_links/link');
+import link_m = require('../caleydo_d3/link');
 import datatypes = require('../caleydo_core/datatype');
 import datas = require('../caleydo_core/data');
-import prov = require('../caleydo_provenance/main');
+import prov = require('../caleydo_clue/prov');
 import ranges = require('../caleydo_core/range');
 import stratification = require('../caleydo_core/stratification');
 import stratification_impl = require('../caleydo_core/stratification_impl');
@@ -86,7 +86,8 @@ function createColumn(inputs, parameter, graph, within)
   var stratomex = inputs[0].value,
     partitioning = ranges.parse(parameter.partitioning),
     index = parameter.hasOwnProperty('index') ? parameter.index : -1,
-    name = parameter.name || inputs[1].name;
+    name = parameter.name || inputs[1].name,
+    uid = parameter.uid || 'C'+C.random_id();
 
   //console.log(ranges.parse(parameter.partitioning));
 
@@ -97,6 +98,7 @@ function createColumn(inputs, parameter, graph, within)
       width: (data.desc.type === 'stratification') ? 60 : (data.desc.name.toLowerCase().indexOf('death') >= 0 ? 110 : 160),
       name: name
     }, within);
+    c.node.setAttribute('data-anchor', uid);
     var r = prov.ref(c, c.name, prov.cat.visual, c.hashString);
     c.changeHandler = function (event, to, from)
     {
@@ -140,7 +142,7 @@ function removeColumn(inputs, parameter, graph, within)
     //console.log(new Date(), 'removed column', dataRef.value.desc.name, index);
     return {
       removed: [inputs[1]],
-      inverse: (inputs, created) => createColumnCmd(inputs[0], dataRef, partitioning, columnName, index),
+      inverse: (inputs, created) => createColumnCmd(inputs[0], dataRef, partitioning, columnName, index, uid),
       consumed: within
     };
   });
@@ -255,13 +257,14 @@ export function createSetOption(column, name, value, old)
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function createColumnCmd(stratomex, data, partitioning, name:string, index:number = -1)
+export function createColumnCmd(stratomex, data, partitioning, name:string, index:number = -1, uid = 'C'+ C.random_id())
 {
   return prov.action(prov.meta(name, prov.cat.data, prov.op.create),
     'createStratomeXColumn', createColumn, [stratomex, data], {
     partitioning: partitioning.toString(),
     name: name,
-    index: index
+    index: index,
+    uid: uid
   });
 }
 

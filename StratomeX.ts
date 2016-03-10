@@ -9,9 +9,9 @@ import stratification_impl = require('../caleydo_core/stratification_impl');
 import vector = require('../caleydo_core/vector');
 import vector_impl = require('../caleydo_core/vector_impl');
 import C = require('../caleydo_core/main');
-import link_m = require('../caleydo_links/link');
+import link_m = require('../caleydo_d3/link');
 import ranges = require('../caleydo_core/range');
-import prov = require('../caleydo_provenance/main');
+import prov = require('../caleydo_clue/prov');
 import ajax = require('../caleydo_core/ajax');
 
 import columns = require('./Column');

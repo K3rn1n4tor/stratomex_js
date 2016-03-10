@@ -16,8 +16,8 @@ define(function (require) {
   var data = require('../caleydo_core/data');
   var vis = require('../caleydo_core/vis');
   var C = require('../caleydo_core/main');
-  var template = require('../clue/template');
-  var cmode = require('../caleydo_provenance/mode');
+  var template = require('../caleydo_clue/template');
+  var cmode = require('../caleydo_clue/mode');
   var lineupModule = require('./lineup');
   var stratomeModule = require('./StratomeX');
   var utility = require('./utility');
