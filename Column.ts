@@ -50,7 +50,7 @@ function guessInitial(desc):any
 {
   if (desc.type === 'matrix')
   {
-    return 'caleydo-vis-heatmap';
+    return 'caleydo-vis-heatmap-custom';
   }
   if (desc.type === 'vector' && desc.value.type === 'int' && desc.name.toLowerCase().indexOf('daystodeath') >= 0)
   {
@@ -665,9 +665,11 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       'caleydo-vis-heatmap1d': {
         width: this.options.width - this.options.padding * 2
       },
-      'caleydo-vis-heatmap': {
+      'caleydo-vis-heatmap-custom': {
         scaleTo: [this.options.width - this.options.padding * 2, initialHeight],
-        forceThumbnails: true
+        forceThumbnails: true,
+        customSelectAble: true,
+        selectAble: false
       },
       'caleydo-vis-kaplanmeier': {
         maxTime: groupTotalAggregator((<ranges.CompositeRange1D>partitioning.dim(0)).groups.length, (v) => v.length === 0 ? 0 : v[v.length - 1])

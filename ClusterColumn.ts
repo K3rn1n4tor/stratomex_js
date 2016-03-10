@@ -501,24 +501,19 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
       const toggleSelection = () =>
       {
         var isSelected = $elem.classed('select-selected');
-        if (isSelected)
-        {
-          data.select(0, ranges.none());
-        }
-        else
-        {
-          data.select(0, ranges.all());
-        }
+        if (isSelected) { data.select(0, ranges.none()); }
+        else { data.select(0, ranges.all()); }
         $elem.classed('select-selected', !isSelected);
       };
 
       $elem.append('div').attr('class', 'title').style('max-width', (that.options.width - that.options.padding * 2) + 'px')
         .text(cluster.dim(0).name).on('click', toggleSelection);
-      $elem.append('div').attr('class', 'body').on('click', toggleSelection);
+      var $body = $elem.append('div').attr('class', 'body');
+      $body.on('click', toggleSelection);
 
       const ratio = cluster.dim(0).length / that.range.dim(0).length;
       $elem.append('div').attr('class', 'footer').append('div').style('width', Math.round(ratio * 100) + '%');
-      return $elem.select('div.body').node();
+      return $body.node();
 
     };
 

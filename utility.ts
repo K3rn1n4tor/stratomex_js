@@ -65,7 +65,7 @@ export class ClusterPopup
         },
         'fuzzy':
         {
-          fuzzifier: [1.001, 100, 2.0]
+          fuzzifier: [1.001, 100, 1.5]
         },
         'general':
         {

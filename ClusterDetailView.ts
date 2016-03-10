@@ -799,18 +799,19 @@ export class ClusterProbView
       var oldBoxChart = this.boxCharts[i];
       if (oldBoxChart) { oldBoxChart.destroy(); }
 
-      //function colorBars(numOccurs)
-      //{
-      //  var cScale = d3.scale.linear().domain([1,that.numGroups]).range(<any>['#777777', '#aaaaaa']);
-      //
-      //  return function(d: any, i: number)
-      //  {
-      //    return cScale(numOccurs[i]);
-      //  }
-      //}
+      function colorBars(numOccurs)
+      {
+        var cScale = d3.scale.linear().domain([0,1]).range(<any>['#449944', '#bbbb22']);
+
+        return function(d: any, i: number)
+        {
+          return cScale(numOccurs[i] > 1 ? 1 : 0);
+        }
+      }
 
       var boxChart = <boxSlider.BoxSlider>boxSlider.createRaw(probabilities[i], <Element>$body.node(), {
-        range: [0.0, 1.0], numAvg: 1, numSlider: 0, precision: 4, valueName: 'Prob.' });
+        range: [0.0, 1.0], numAvg: 1, numSlider: 0, precision: 4, valueName: 'Prob.',
+        colorFunction: colorBars(occurs)});
       boxChart.setLabels(labels);
 
       this.boxCharts[i] = boxChart;

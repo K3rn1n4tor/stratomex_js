@@ -78,6 +78,15 @@
           "icon": "icon.svg"
         },
         {
+          "type": "vis",
+          "id": "caleydo-vis-heatmap-custom",
+          "name": "HeatMapCustom",
+          "file": "heatmap",
+          "icon": "heatmap_icon.svg",
+          "sizeDependsOnDataDimension": true,
+          "filter": "matrix"
+        },
+        {
           "type": "app",
           "name": "Stratomex.js"
         }
