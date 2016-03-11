@@ -135,6 +135,7 @@ function removeColumn(inputs, parameter, graph, within)
   const dataRef = column.dataRef;
   const partitioning = column.range.toString();
   const columnName = column.name;
+  const uid = column.node.getAttribute('data-anchor');
   //console.log(new Date(), 'remove column', column.data.desc.name);
 
   return inputs[0].value.removeColumn(column, within).then((index) =>

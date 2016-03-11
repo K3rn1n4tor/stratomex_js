@@ -1,9 +1,6 @@
 /**
  * Created by Samuel Gratzl on 05.08.2014.
  */
-/**
- * Modified by Michael Kern on 10.03.2016 --> fixed matrix dimension bug
- */
 /// <amd-dependency path='css!./style' />
 
 /* global define */
@@ -94,12 +91,12 @@ class HeatMapDOMRenderer implements IHeatMapRenderer {
 
   build(data: matrix.IMatrix, $parent: d3.Selection<any>, scale: [number,number], c: IScale, onReady: () => void) {
     var dims = data.dim, that = this;
-    var width = dims[1], height = dims[0] - 1;
+    var width = dims[1], height = dims[0];
 
     var $svg = $parent.append('svg').attr({
       width: width * scale[0],
       height: height * scale[1],
-      'class': 'heatmap'
+      'class': 'caleydo-heatmap'
     });
     var $g = $svg.append('g').attr('transform','scale('+scale[0]+','+scale[1]+')');
     this.color = c;
@@ -117,10 +114,7 @@ class HeatMapDOMRenderer implements IHeatMapRenderer {
         });
         if (that.selectAble) {
           $cols_enter.on('click', (d, j) => {
-            data.select([
-              [i],
-              [j]
-            ], idtypes.toSelectOperation(d3.event));
+            data.selectProduct([ranges.cell(i,j)], idtypes.toSelectOperation(d3.event));
           });
         }
         $cols_enter.append('title').text(String);
@@ -128,38 +122,24 @@ class HeatMapDOMRenderer implements IHeatMapRenderer {
       });
       onReady();
     });
-    var l = function (event, type, selected: ranges.Range) {
-      $g.selectAll('rect').classed('select-' + type, false);
-      if (selected.isNone) {
+    var l = function (event, type, selected: ranges.Range[]) {
+      $g.selectAll('rect').classed('caleydo-select-' + type, false);
+      if (selected.length === 0) {
         return;
       }
-      var dim0 = selected.dim(0), dim1 = selected.dim(1);
-      if (selected.isAll) {
-        $g.selectAll('rect').classed('select-' + type, true);
-      } else if (dim0.isAll || dim0.isNone) {
-        dim1.forEach((j) => {
-          $g.selectAll('g > rect:nth-child(' + (j + 1) + ')').classed('select-' + type, true);
-        });
-      } else if (dim1.isAll || dim1.isNone) {
-        dim0.forEach((i) => {
-          $g.selectAll('g:nth-child(' + (i + 1) + ') > rect').classed('select-' + type, true);
-        });
-      } else {
-        dim0.forEach((i) => {
-          var row = $g.select('g:nth-child(' + (i + 1) + ')');
-          dim1.forEach((j) => {
-            row.select('rect:nth-child(' + (j + 1) + ')').classed('select-' + type, true);
-          });
-        });
-      }
+      selected.forEach((cell) => {
+        cell.product((indices) => {
+          $g.select(`g:nth-child(${indices[0] + 1})`).select(`rect:nth-child(${indices[1] + 1})`).classed('caleydo-select-' + type, true);
+        }, data.dim);
+      });
     };
     if (this.selectAble) {
-      data.on('select', l);
+      data.on('selectProduct', l);
       C.onDOMNodeRemoved(<Element>$g.node(), function () {
-        data.off('select', l);
+        data.off('selectProduct', l);
       });
-      data.selections().then(function (selected) {
-        l(null, 'selected', selected);
+      data.productSelections().then(function (selected) {
+        l(null, idtypes.defaultSelectionType, selected);
       });
     }
 
@@ -175,50 +155,40 @@ class AHeatMapCanvasRenderer {
   }
 
   rescale($node: d3.Selection<any>, dim: number[], scale: number[]) {
-    $node.selectAll('canvas.heatmap-selection').attr({
+    $node.selectAll('canvas.caleydo-heatmap-selection').attr({
       width: dim[1] * scale[0],
       height: dim[0] * scale[1]
     });
     if (this.selectAble) {
-      $node.datum().selections().then((selected) => {
-        this.redrawSelection(<HTMLCanvasElement>$node.select('canvas.heatmap-selection').node(), dim,
-          'selected', selected);
+      $node.datum().productSelections().then((selected) => {
+        this.redrawSelection(<HTMLCanvasElement>$node.select('canvas.caleydo-heatmap-selection').node(), dim,
+          idtypes.defaultSelectionType, selected);
       });
     }
   }
 
-  protected redrawSelection(canvas: HTMLCanvasElement, dim: number[], type: string, selected: ranges.Range) {
+  protected redrawSelection(canvas: HTMLCanvasElement, dim: number[], type: string, selected: ranges.Range[]) {
     var ctx = <CanvasRenderingContext2D>canvas.getContext('2d');
     ctx.save();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = 'orange';
-    if (selected.isNone) {
+    if (selected.length === 0) {
       ctx.restore();
       return;
     }
-    if (selected.isAll) {
+    if (selected.some((a) => a.isAll)) {
       ctx.fillRect(0,0, canvas.width, canvas.height);
       ctx.restore();
       return;
     }
-    var dim0 = selected.dim(0), dim1 = selected.dim(1);
-    ctx.scale(canvas.width / dim[1], canvas.height / dim[0]);
 
-    if (dim0.isAll || dim0.isNone) {
-      dim1.forEach((j) => { //column
-        ctx.fillRect(j, 0, 1, dim[0]);
-      });
-    } else if (dim1.isAll || dim1.isNone) {
-      dim0.forEach((i) => { //rows
-        ctx.fillRect(0, i, dim[1], 1);
-      });
-    } else {
-      dim0.forEach((i) => {
-        dim1.forEach((j) => {
-          ctx.fillRect(j,i, 1, 1);
-        });
-      });
-    }
+    ctx.scale(canvas.width / dim[1], canvas.height / dim[0]);
+    selected.forEach((cell) => {
+      cell.product((indices) => {
+        const [i,j] = indices;
+        ctx.fillRect(j,i, 1, 1);
+      }, dim);
+    });
     ctx.restore();
 
   }
@@ -233,10 +203,10 @@ class AHeatMapCanvasRenderer {
     const $selection = $root.append('canvas').attr({
       width: width * scale[0],
       height: height * scale[1],
-      'class': 'heatmap-selection'
+      'class': 'caleydo-heatmap-selection'
     });
 
-    var toCoord = (evt) => {
+    var toCoord = (evt) : [number,number] => {
       var c = <HTMLCanvasElement>$selection.node(),
         rect = c.getBoundingClientRect();
       var x = evt.clientX - rect.left,
@@ -248,18 +218,18 @@ class AHeatMapCanvasRenderer {
 
     $selection.on('click', () => {
       var ij = toCoord(d3.event);
-      data.select([[ij[0]], [ij[1]]], idtypes.toSelectOperation(d3.event));
+      data.selectProduct([ranges.cell(...ij)], idtypes.toSelectOperation(d3.event));
     });
 
     var l = (event, type, selected) => {
       this.redrawSelection(<HTMLCanvasElement>$selection.node(), dims, type, selected);
     };
 
-    data.on('select', l);
+    data.on('selectProduct', l);
     C.onDOMNodeRemoved(<Element>$selection.node(), () => {
-      data.off('select', l);
+      data.off('selectProduct', l);
     });
-    data.selections().then((selected) => {
+    data.productSelections().then((selected) => {
       this.redrawSelection(<HTMLCanvasElement>$selection.node(), dims, 'selected', selected);
     });
   }
@@ -301,7 +271,7 @@ class HeatMapCanvasRenderer extends AHeatMapCanvasRenderer implements IHeatMapRe
     }
   }
 
-  private genImage(rgba: number[], arr: number[][], ncol: number, c: IScale) {
+  private genImage(rgba: Uint8ClampedArray|number[], arr: number[][], ncol: number, c: IScale) {
     arr.forEach((row, j) => {
       var t = j * ncol;
       row.forEach((cell, i) => {
@@ -346,11 +316,11 @@ class HeatMapCanvasRenderer extends AHeatMapCanvasRenderer implements IHeatMapRe
     var dims = data.dim;
     var width = dims[1], height = dims[0];
 
-    var $root = $parent.append('div').attr('class','heatmap');
+    var $root = $parent.append('div').attr('class','caleydo-heatmap');
     var $canvas = $root.append('canvas').attr({
       width: width * scale[0],
       height: height * scale[1],
-      'class': 'heatmap-data'
+      'class': 'caleydo-heatmap-data'
     });
 
     this.imageData = (<CanvasRenderingContext2D>(<HTMLCanvasElement>$canvas.node()).getContext('2d')).createImageData(width, height);//new (<any>ImageData)(data.ncol, data.nrow);
@@ -446,11 +416,11 @@ class HeatMapImageRenderer extends AHeatMapCanvasRenderer implements IHeatMapRen
     var dims = data.dim;
     var width = dims[1], height = dims[0];
 
-    var $root = $parent.append('div').attr('class','heatmap');
+    var $root = $parent.append('div').attr('class','caleydo-heatmap');
     $root.append('canvas').attr({
       width: width * scale[0],
       height: height * scale[1],
-      'class': 'heatmap-data'
+      'class': 'caleydo-heatmap-data'
     });
 
     this.image = new Image();
@@ -517,10 +487,8 @@ export class HeatMap extends vis.AVisInstance implements vis.IVisInstance {
       forceThumbnails: false
     }, options);
     this.options.scale = [this.options.initialScale,this.options.initialScale];
-    this.data.dim[0] -= 1;
     if (this.options.scaleTo) {
       let raw = this.data.dim;
-      raw[0] -= 1;
       this.options.scale = this.options.scaleTo.map((d,i) => d / raw[i]);
     }
     this.options.rotate = 0;
@@ -609,6 +577,10 @@ export class HeatMap extends vis.AVisInstance implements vis.IVisInstance {
       this.renderer.redraw(this.$node, this.options.scale);
       this.markReady();
     });
+  }
+
+  update() {
+    this.renderer.redraw(this.$node, this.options.scale);
   }
 }
 
@@ -716,7 +688,7 @@ export class HeatMap1D extends vis.AVisInstance implements vis.IVisInstance {
     var $svg = $parent.append('svg').attr({
       width: width,
       height: height * this.options.initialScale,
-      'class': 'heatmap'
+      'class': 'caleydo-heatmap'
     });
     var $g = $svg.append('g').attr('transform', 'scale(1,' + this.options.initialScale + ')');
 
@@ -739,6 +711,7 @@ export class HeatMap1D extends vis.AVisInstance implements vis.IVisInstance {
     });
     return $svg;
   }
+
 }
 
 export function create(data:vector.IVector, parent:Element, options);
