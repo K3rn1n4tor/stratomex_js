@@ -750,7 +750,8 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
       }
     }
 
-    this.$node.selectAll('#bar').transition().duration(this.options.duration).attr('fill', colorize);
+    var colorFunc = (this.options.colorFunction) ? this.options.colorFunction : colorize;
+    this.$node.selectAll('#bar').transition().duration(this.options.duration).attr('fill', colorFunc);
   }
 
   // -------------------------------------------------------------------------------------------------------------------

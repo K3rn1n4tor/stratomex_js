@@ -61,7 +61,7 @@ export function createToggleProbsCmd(column, cluster, show)
 {
   var act = show ? 'Show' : 'Hide';
   return prov.action(prov.meta(act + ' Probabilities of ' + column.toString() + ' Cluster "' + cluster + '"', prov.cat.layout),
-    'showStratomeXStats', showProbs, [column], {
+    'showStratomeXProbs', showProbs, [column], {
       cluster: cluster,
       action: show ? 'show' : 'hide'
     });
@@ -810,7 +810,7 @@ export class ClusterProbView
       }
 
       var boxChart = <boxSlider.BoxSlider>boxSlider.createRaw(probabilities[i], <Element>$body.node(), {
-        range: [0.0, 1.0], numAvg: 1, numSlider: 0, precision: 4, valueName: 'Prob.',
+        range: [0.0, 1.0], numAvg: 1, numSlider: (i == 0) ? 1 : 0, precision: 4, valueName: 'Prob.',
         colorFunction: colorBars(occurs)});
       boxChart.setLabels(labels);
 
