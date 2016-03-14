@@ -39,6 +39,8 @@ export function createCmd(id:string)
       return createClusterColumn;
     case 'createStratomeXHierarchicalClusterColumn':
       return createHierarchicalClusterColumn;
+    case 'createStratomeXFuzzyClusterColumn':
+      return createFuzzyClusterColumn;
     case 'showStratomeXStats' :
       return showStats;
     case 'showStratomeXProbs' :
@@ -146,14 +148,15 @@ function createFuzzyClusterColumn(inputs, parameter, graph, within)
     partitioning = ranges.parse(parameter.partitioning),
     index = parameter.hasOwnProperty('index') ? parameter.index : -1,
     name = parameter.name || inputs[1].name,
-    partitionMatrix = inputs[2].value.partition;
+    partitionMatrix = inputs[2].value.partition,
+    maxProbability = parameter.maxProb;
 
   return inputs[1].v.then(function (data)
   {
     //console.log(new Date(), 'create column', data.desc.name, index);
     var c = new FuzzyClusterColumn(stratomex, data, partitioning, partitionMatrix, inputs[1], {
       width: (data.desc.type === 'stratification') ? 60 : (data.desc.name.toLowerCase().indexOf('death') >= 0 ? 110 : 160),
-      name: name
+      name: name, maxProb: maxProbability
     }, within);
     var r = prov.ref(c, c.name, prov.cat.visual, c.hashString);
     c.changeHandler = function (event, to, from)
@@ -197,7 +200,8 @@ export function createClusterColumnCmd(stratomex, data, partitioning, name:strin
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function createHierarchicalClusterColumnCmd(stratomex, data, partitioning, dendrogram, name:string, index:number = -1)
+export function createHierarchicalClusterColumnCmd(stratomex, data, partitioning, dendrogram, name:string,
+                                                   index:number = -1)
 {
   return prov.action(prov.meta(name, prov.cat.data, prov.op.create),
     'createStratomeXHierarchicalClusterColumn', createHierarchicalClusterColumn, [stratomex, data, dendrogram], {
@@ -209,13 +213,15 @@ export function createHierarchicalClusterColumnCmd(stratomex, data, partitioning
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function createFuzzyClusterColumnCmd(stratomex, data, partitioning, partitionMatrix, name:string, index:number = -1)
+export function createFuzzyClusterColumnCmd(stratomex, data, partitioning, partitionMatrix, maxProb:number,
+                                            name:string, index:number = -1)
 {
   return prov.action(prov.meta(name, prov.cat.data, prov.op.create),
-    'createStratomeXHierarchicalClusterColumn', createFuzzyClusterColumn, [stratomex, data, partitionMatrix], {
+    'createStratomeXFuzzyClusterColumn', createFuzzyClusterColumn, [stratomex, data, partitionMatrix], {
     partitioning: partitioning.toString(),
     name: name,
-    index: index
+    index: index,
+    maxProb: maxProb
   });
 }
 
@@ -266,16 +272,6 @@ export function createToggleStatsCmd(column, cluster, show)
  */
 export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueId, link_m.IDataVis
 {
-  protected options = {
-    summaryHeight: 90,
-    width: 160,
-    detailWidth: 500,
-    statsWidth: 50, // this is the default width for the distance view TODO: rename to distanceWidth
-    matrixWidth: 140,
-    padding: 2,
-    name: null
-  };
-
   protected statsViews: clusterView.ClusterDetailView[] = []; // array of all distance views for this column TODO: rename to distanceViews
   protected activeDivision: ClusterColumn[] = []; // TODO!: check if we still need the tracking of active divisions
   protected distancesRange: [number, number] = null;
@@ -283,6 +279,16 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
   constructor(protected stratomex, public data, partitioning:ranges.Range, public dataRef, options:any = {}, within = -1)
   {
     super(stratomex, data, partitioning, dataRef, options, within);
+
+    this.options = C.mixin({
+      summaryHeight: 90,
+      width: 160,
+      detailWidth: 500,
+      statsWidth: 50, // this is the default width for the distance view TODO: rename to distanceWidth
+      matrixWidth: 140,
+      padding: 2,
+      name: null
+      }, this.options);
 
     this.on('relayouted', this.relayoutAfterHandler);
     const numGroups = (<any>this.range.dim(0)).groups.length;
@@ -1127,6 +1133,7 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
               options:any = {}, within = -1)
   {
     super(stratomex, data, partitioning, dataRef, options, within);
+    this.options = C.mixin( { maxProb: 0.5 }, this.options);
 
     const numGroups = (<any>partitioning.dim(0)).groups.length;
     this.probsViews = Array.apply(null, Array(numGroups)).map( (_, i) => { return null; });
@@ -1326,7 +1333,8 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
       return (relayout) ? this.stratomex.relayout(within) : Promise.resolve([]);
     }
 
-    var probView = new clusterView.ClusterProbView(cluster, this.range, this.partitionMatrix, {});
+    var probView = new clusterView.ClusterProbView(cluster, this.range, this.partitionMatrix,
+      { maxProb: this.options.maxProb });
     probView.build(this.$parent, this);
     this.probsViews[cluster] = probView;
 

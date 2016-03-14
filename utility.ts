@@ -65,7 +65,8 @@ export class ClusterPopup
         },
         'fuzzy':
         {
-          fuzzifier: [1.001, 100, 1.5]
+          threshold: [0.01, 1.0],
+          fuzzifier: [1.001, 100, 1.2]
         },
         'general':
         {
@@ -162,24 +163,23 @@ export class ClusterPopup
 
     var row = $body.append('div').classed('method', true);
     var button = row.append('button').text('k-Means');
-    var input = row.append('input').attr({
+    var inputK = row.append('input').attr({
       class: 'k-number', type: 'number',
       min: this.options.general.numClusters[0], max: this.options.general.numClusters[1],
       value: this.options.general.numClusters[2], step: 1, title: "Number of Clusters"
     });
 
-    var select = row.append('select').attr({ title: 'Initialization Method' });
-    select.selectAll('option').data(this.options.kmeans.inits)
+    var inputInit = row.append('select').attr({ title: 'Initialization Method' });
+    inputInit.selectAll('option').data(this.options.kmeans.inits)
       .enter().append('option').attr('value', (d: any) => { return d; })
       .text( (d: string) => { return d });
 
-    select.property('value', this.options.kmeans.inits[this.options.kmeans.initSelect]);
+    inputInit.property('value', this.options.kmeans.inits[this.options.kmeans.initSelect]);
 
-    button.on('mouseup', (_ : any) => {
-      var input = $(row.node()).find('input');
-      var select = $(row.node()).find('select');
-      const k = parseInt($(input).val());
-      const initMethod = $(select).val();
+    button.on('mouseup', (_ : any) =>
+    {
+      const k = parseInt($(inputK.node()).val());
+      const initMethod = $(inputInit.node()).val();
 
       that.stratomex.clusterData(that.data, 'k-means', [k, initMethod]);
     });
@@ -194,34 +194,31 @@ export class ClusterPopup
 
     var row = $body.append('div').classed('method', true);
     var button = row.append('button').text('Hierarchical');
-    var input = row.append('input').attr({
+    var inputClusters = row.append('input').attr({
       class: 'k-number', type: 'number',
       min: this.options.general.numClusters[0], max: this.options.general.numClusters[1],
       value: this.options.general.numClusters[2], step: 1, title: "Number of Clusters"
     });
 
-    var select = row.append('select').attr({ title: 'Linkage Method' }).classed('linkage', true);
-    select.selectAll('option').data(this.options.hierarchical.methods)
+    var inputLinkage = row.append('select').attr({ title: 'Linkage Method' }).classed('linkage', true);
+    inputLinkage.selectAll('option').data(this.options.hierarchical.methods)
       .enter().append('option').attr('value', (d: any) => { return d; })
       .text( (d: string) => { return d });
 
-    select.property('value', this.options.hierarchical.methods[this.options.hierarchical.methodSelect]);
+    inputLinkage.property('value', this.options.hierarchical.methods[this.options.hierarchical.methodSelect]);
 
-    var selectDists = row.append('select').attr({ title: 'Distance Measurement' }).classed('dist', true);
-    selectDists.selectAll('option').data(this.options.general.distances)
+    var inputDistance = row.append('select').attr({ title: 'Distance Measurement' }).classed('dist', true);
+    inputDistance.selectAll('option').data(this.options.general.distances)
       .enter().append('option').attr('value', (d: any) => { return d; })
       .text( (d: string) => { return d });
 
-    selectDists.property('value', this.options.general.distances[this.options.hierarchical.distSelect]);
+    inputDistance.property('value', this.options.general.distances[this.options.hierarchical.distSelect]);
 
-    button.on('mouseup', (_ : any) => {
-      var input = $(row.node()).find('input');
-      var inputSelect = $(row.node()).find('select.linkage');
-      var inputDistance = $(row.node()).find('select.dist');
-
-      const k = parseInt($(input).val());
-      const method = $(inputSelect).val();
-      const dist = $(inputDistance).val();
+    button.on('mouseup', (_ : any) =>
+    {
+      const k = parseInt($(inputClusters.node()).val());
+      const method = $(inputLinkage.node()).val();
+      const dist = $(inputDistance.node()).val();
 
       that.stratomex.clusterData(that.data, 'hierarchical', [k, method, dist]);
     });
@@ -247,31 +244,26 @@ export class ClusterPopup
       value: this.options.affinity.rangeFactor[2], step: 0.05, title: "Factor Value"
     });
 
-    var select = row.append('select').attr({ title: 'Initial Preference' }).classed('init', true);
-    select.selectAll('option').data(this.options.affinity.prefs)
+    var inputSelect = row.append('select').attr({ title: 'Initial Preference' }).classed('init', true);
+    inputSelect.selectAll('option').data(this.options.affinity.prefs)
       .enter().append('option').attr('value', (d: any) => { return d; })
       .text( (d: string) => { return d });
 
-    select.property('value', this.options.affinity.prefs[this.options.affinity.prefSelect]);
+    inputSelect.property('value', this.options.affinity.prefs[this.options.affinity.prefSelect]);
 
-    var selectDists = row.append('select').attr({ title: 'Distance Measurement' }).classed('dist', true);
-    selectDists.selectAll('option').data(this.options.general.distances)
+    var inputDistance = row.append('select').attr({ title: 'Distance Measurement' }).classed('dist', true);
+    inputDistance.selectAll('option').data(this.options.general.distances)
       .enter().append('option').attr('value', (d: any) => { return d; })
       .text( (d: string) => { return d });
 
-    selectDists.property('value', this.options.general.distances[this.options.affinity.distSelect]);
+    inputDistance.property('value', this.options.general.distances[this.options.affinity.distSelect]);
 
     button.on('mouseup', (_ : any) =>
     {
-      var inputDamping = $(row.node()).find("input[name='damping']");
-      var inputFactor = $(row.node()).find("input[name='factor']");
-      var inputSelect = $(row.node()).find("select.init");
-      var inputDistance = $(row.node()).find("select.dist");
-
-      const affDamping = parseFloat($(inputDamping).val());
-      const affFactor = parseFloat($(inputFactor).val());
-      const affPref = $(inputSelect).val();
-      const dist = $(inputDistance).val();
+      const affDamping = parseFloat($(inputDamping.node()).val());
+      const affFactor = parseFloat($(inputFactor.node()).val());
+      const affPref = $(inputSelect.node()).val();
+      const dist = $(inputDistance.node()).val();
 
       that.stratomex.clusterData(that.data, 'affinity', [affDamping, affFactor, affPref, dist]);
     });
@@ -293,19 +285,39 @@ export class ClusterPopup
       value: this.options.general.numClusters[2], step: 1, title: "Number of Clusters"
     });
 
+    var inputT = row.append('input').attr({
+      class: 'threshold', type: 'number', name: 'threshold',
+      min: this.options.fuzzy.threshold[0], max: this.options.fuzzy.threshold[1],
+      value: 0.2, step: 0.01, title: "Probability Threshold"
+    });
+
     var inputM = row.append('input').attr({
       class: 'fuzzifier', type: 'number', name: 'fuzzifier',
       min: this.options.fuzzy.fuzzifier[0], max: this.options.fuzzy.fuzzifier[1],
       value: this.options.fuzzy.fuzzifier[2], step: 0.001, title: "Fuzzifier Factor"
     });
 
-    button.on('mouseup', (_ : any) => {
-      var inputC = $(row.node()).find("input[name='c-number']");
-      var inputM = $(row.node()).find("input[name='fuzzifier']");
-      const c = parseInt($(inputC).val());
-      const m = parseFloat($(inputM).val());
+    function onClusterChange()
+    {
+      var k = parseInt($(inputC.node()).val());
 
-      that.stratomex.clusterData(that.data, 'fuzzy', [c, m]);
+      if (isNaN(k)) { return; }
+
+      const threshold = d3.round(1.0 / k, 2);
+      $(inputT.node()).val(String(threshold));
+    }
+
+    inputC.on('keyup', onClusterChange);
+    inputC.on('mouseup', onClusterChange);
+    onClusterChange();
+
+    button.on('mouseup', (_ : any) =>
+    {
+      const c = parseInt($(inputC.node()).val());
+      const m = parseFloat($(inputM.node()).val());
+      const t = parseFloat($(inputT.node()).val());
+
+      that.stratomex.clusterData(that.data, 'fuzzy', [c, m, t]);
     });
   }
 

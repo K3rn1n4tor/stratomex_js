@@ -476,14 +476,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
   id: number;
   public destroyed: boolean; // signals if this column was destroyed
 
-  protected options = {
-    summaryHeight: 90,
-    width: 160,
-    detailWidth: 500,
-    padding: 2,
-    name: null
-  };
-
+  protected options: any;
   protected $parent: d3.Selection<any>;
   protected $toolbar: d3.Selection<any>;
   protected $summary: d3.Selection<any>;
@@ -523,7 +516,14 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
   constructor(protected stratomex, public data, partitioning:ranges.Range, public dataRef, options:any = {}, within = -1)
   {
     super();
-    C.mixin(this.options, options);
+    this.options = C.mixin(
+    {
+      summaryHeight: 90,
+      width: 160,
+      detailWidth: 500,
+      padding: 2,
+      name: null
+    }, options);
 
     var that = this;
     this.$parent = d3.select(stratomex.parent).append('div').attr('class', 'column').style('opacity', 0);

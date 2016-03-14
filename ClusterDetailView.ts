@@ -581,7 +581,7 @@ export class ClusterProbView
   constructor(private cluster: number, private range: ranges.Range, _partitionMatrix: any,
               private options: any)
   {
-    this.options = C.mixin({ probsWidth: 50 }, options);
+    this.options = C.mixin({ probsWidth: 50, maxProb: 0.5 }, options);
 
     this.labels = (<any>this.range.dims[0]).groups[cluster].asList();
     this.numGroups = (<any>this.range.dims[0]).groups.length;
@@ -589,8 +589,8 @@ export class ClusterProbView
     var partitionMatrix = _partitionMatrix.slice();
     this.partitionMatrix = [];
 
-    var test = [];
-    const maxProb = 1.0 / this.numGroups;
+    const maxProb = this.options.maxProb;
+
     // zip values and sort
     for (var j = 0; j < this.labels.length; ++j)
     {

@@ -208,7 +208,6 @@ class StratomeX extends views.AView {
       const distance = args[2];
 
       var argUrl = [k, method, distance, dataID].join('/');
-      console.log(argUrl);
       clusterResponse = ajax.getAPIJSON('/clustering/hierarchical/' + argUrl, {});
       methodName = 'Hierarchical';
     }
@@ -217,8 +216,9 @@ class StratomeX extends views.AView {
     {
       const c = String(args[0]);
       const m = String(args[1]);
+      const t = String(args[2]);
 
-      var argUrl = [c, m, dataID].join('/');
+      var argUrl = [c, m, t, dataID].join('/');
       clusterResponse = ajax.getAPIJSON('/clustering/fuzzy/' + argUrl, {});
       methodName = 'Fuzzy';
     }
@@ -305,10 +305,8 @@ class StratomeX extends views.AView {
           'red', clusterRanges[i].dim(0)));
         groupsDesc.push({name: String(i), size: clusterLabels[i].length});
       }
-      console.log(groups);
 
       var compositeRange = ranges.composite(dataName + 'cluster', groups);
-      console.log(compositeRange);
 
       // create new stratification with description
       var descStrati =
@@ -333,7 +331,8 @@ class StratomeX extends views.AView {
       else if (method == 'Fuzzy')
       {
         const partitionMatrix = result.partitionMatrix;
-        that.addFuzzyClusterData(strati, data, partitionMatrix, null);
+        const maxProb = result.maxProbability;
+        that.addFuzzyClusterData(strati, data, partitionMatrix, maxProb, null);
       }
       else
       {
@@ -455,6 +454,7 @@ class StratomeX extends views.AView {
   addFuzzyClusterData(rowStrat: stratification.IStratification,
               rowMatrix: datatypes.IDataType,
               partitionMatrix: any[],
+              maxProb: number,
               colStrat?: stratification.IStratification)
   {
     var that = this;
@@ -474,7 +474,7 @@ class StratomeX extends views.AView {
         const partitionData = new clustercolumns.PartitionMatrix(partitionMatrix, partitionDesc);
         const partitionRef = that.provGraph.findOrAddObject(partitionData, partitionName, 'data');
 
-        that.provGraph.push(clustercolumns.createFuzzyClusterColumnCmd(that.ref, mref, range, partitionRef,
+        that.provGraph.push(clustercolumns.createFuzzyClusterColumnCmd(that.ref, mref, range, partitionRef, maxProb,
           toName(rowMatrix.desc.name, rowStrat.desc.name)));
       });
   }
