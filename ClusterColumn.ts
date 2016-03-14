@@ -606,7 +606,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
       // tool to divide current cluster and create new divisions / stratifications displayed in a new column
       $toolbar.append('i').attr('class', 'fa fa-share-alt').on('click', () => {
-        that.showDivisions(cluster);
+        that.showDivisions(that.statsViews[cluster], cluster);
         // stop propagation to disable further event triggering
         d3.event.stopPropagation();
       });
@@ -727,7 +727,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
    * @param column
    * @returns {Promise<Array>}
      */
-  showDivisions(cluster, column : ClusterColumn = null)
+  showDivisions(view: any, cluster: number, column : ClusterColumn = null)
   {
     //const subData = (cluster < 0) ? this.data : this.grid.getData(cluster);
     const data = this.data;
@@ -735,102 +735,101 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     const dataFQ = data.desc.fqname;
     const dataID = data.desc.id;
 
-    var statsView = this.statsViews[cluster];
+    //var statsView = this.statsViews[cluster];
 
-    if (statsView == null)
+    if (view == null)
     {
       return Promise.resolve([]);
     }
 
-    var index = this.activeDivision.indexOf(statsView.column);
+    var index = this.activeDivision.indexOf(view.column);
     if (index != -1 && column == null)
     {
       return Promise.resolve([]);
     }
 
-    var divider = statsView.dividers[0];
+    var divider = (view instanceof clusterView.ClusterDetailView) ? view.dividers[0] : view.boxCharts[0];
+    const numDivs = divider.getNumberDivisions();
     var that = this;
 
-    if (cluster >= 0)
+    console.log(this.range.dim(0), view, cluster, column);
+    var dataClusters = <ranges.CompositeRange1D>this.range.dim(0);
+    var clusterName = dataClusters.groups[cluster].name;
+    var numClusters = dataClusters.groups.length;
+
+    var rStart = clusterName.search(/\(/);
+    var rEnd = clusterName.search(/\)/);
+
+    var groupName = (rStart == -1) ? clusterName : clusterName.slice(0, rStart);
+    var method = clusterName.slice(rStart, rEnd);
+
+    // obtain sub-ranges from cluster divider, either real labels or ranges (min:max) if there's no column
+    var subRanges = divider.getDivisionRanges(column == null);
+
+    // create new range groups
+    var rangeGroups = [];
+    var groups = [];
+    var groupsDesc = [];
+    var stratiSize = 0;
+    for (var i = 0; i < numDivs; ++i)
     {
-      var dataClusters = <ranges.CompositeRange1D>this.range.dim(0);
-      var clusterName = dataClusters.groups[cluster].name;
-      var numClusters = dataClusters.groups.length;
+      var groupSize = subRanges[i].length;
+      stratiSize += groupSize;
 
-      var rStart = clusterName.search(/\(/);
-      var rEnd = clusterName.search(/\)/);
+      rangeGroups.push(ranges.parse(subRanges[i]));
+      groups.push(new ranges.Range1DGroup(groupName + ' Div ' + String(i),
+        'grey', rangeGroups[i].dim(0)));
 
-      var groupName = (rStart == -1) ? clusterName : clusterName.slice(0, rStart);
-      var method = clusterName.slice(rStart, rEnd);
-
-      // obtain sub-ranges from cluster divider, either real labels or ranges (min:max) if there's no column
-      var subRanges = divider.getDivisionRanges(column == null);
-
-      // create new range groups
-      var rangeGroups = [];
-      var groups = [];
-      var groupsDesc = [];
-      var stratiSize = 0;
-      for (var i = 0; i < 3; ++i)
-      {
-        var groupSize = subRanges[i].length;
-        stratiSize += groupSize;
-
-        rangeGroups.push(ranges.parse(subRanges[i]));
-        groups.push(new ranges.Range1DGroup(groupName + ' Div ' + String(i),
-          'grey', rangeGroups[i].dim(0)));
-
-        groupsDesc.push({ name: 'Division ' + String(i), size: groupSize});
-      }
-
-      var compositeRange = ranges.composite(dataName + 'divisions', groups);
-
-      // create a new stratification description
-      var descStrati =
-      {
-        id: dataID + method + String(numClusters) + 'Division' + String(cluster),
-        fqname: 'none', name: dataName + '/' + method + '_' + String(numClusters) + '_Division_' + String(cluster),
-        origin: dataFQ, size: stratiSize, ngroups: 3, type: 'stratification', groups: groupsDesc,
-        idtype: 'patient',
-        ws: 'random' // TODO: figure out what this parameter is
-      };
-
-      Promise.all([(<any>data).rows(), (<any>data).rowIds()]).then((args) =>
-      {
-        // obtain the rows and rowIDs of the data
-        var rows = args[0];
-        var rowIds = args[1];
-
-        var rowLabels = rowIds.dim(0).asList();
-        var labels = dataClusters.groups[cluster].asList();
-
-        // create a new startification of the data
-        var strati : stratification.IStratification;
-
-        if (column == null)
-        {
-          // It is important to rearrange the rows and rowIds since we create a new column since matrix is resolved
-          // by means of these ids (rowMatrix.fromIds()), otherwise clusters are not displayed correctly
-          var newRows = [];
-          var newRowIds = [];
-
-          for (var j = 0; j < labels.length; ++j)
-          {
-            newRows.push(rows[labels[j]]);
-            newRowIds.push(rowLabels[labels[j]]);
-          }
-
-          // create the new stratification and add the column to StratomeX
-          strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, newRows, newRowIds, <any>compositeRange);
-          that.stratomex.addClusterData(strati, data, null);
-          that.connectSignal = { cluster: cluster };
-
-        } else {
-          //strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
-          column.updateGrid(compositeRange);
-        }
-      });
+      groupsDesc.push({ name: 'Division ' + String(i), size: groupSize});
     }
+
+    var compositeRange = ranges.composite(dataName + 'divisions', groups);
+
+    // create a new stratification description
+    var descStrati =
+    {
+      id: dataID + method + String(numClusters) + 'Division' + String(cluster),
+      fqname: 'none', name: dataName + '/' + method + '_' + String(numClusters) + '_Division_' + String(cluster),
+      origin: dataFQ, size: stratiSize, ngroups: numDivs, type: 'stratification', groups: groupsDesc,
+      idtype: 'patient',
+      ws: 'random' // TODO: figure out what this parameter is
+    };
+
+    Promise.all([(<any>data).rows(), (<any>data).rowIds()]).then((args) =>
+    {
+      // obtain the rows and rowIDs of the data
+      var rows = args[0];
+      var rowIds = args[1];
+
+      var rowLabels = rowIds.dim(0).asList();
+      var labels = dataClusters.groups[cluster].asList();
+
+      // create a new startification of the data
+      var strati : stratification.IStratification;
+
+      if (column == null)
+      {
+        // It is important to rearrange the rows and rowIds since we create a new column since matrix is resolved
+        // by means of these ids (rowMatrix.fromIds()), otherwise clusters are not displayed correctly
+        var newRows = [];
+        var newRowIds = [];
+
+        for (var j = 0; j < labels.length; ++j)
+        {
+          newRows.push(rows[labels[j]]);
+          newRowIds.push(rowLabels[labels[j]]);
+        }
+
+        // create the new stratification and add the column to StratomeX
+        strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, newRows, newRowIds, <any>compositeRange);
+        that.stratomex.addClusterData(strati, data, null);
+        that.connectSignal = { view: view, cluster: cluster };
+
+      } else {
+        //strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
+        column.updateGrid(compositeRange);
+      }
+    });
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -1013,36 +1012,38 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
             }
           }
         }
+      }
+    }
 
-        if (this.connectSignal != null && this.connectSignal.cluster == j) {
+    if (this.connectSignal != null)
+    {
+      var view = this.connectSignal.view;
+      var divider = (view instanceof clusterView.ClusterDetailView) ? view.dividers[0] : view.boxCharts[0];
 
-          function refreshColumn(cluster, column: ClusterColumn) {
-            var statsView = that.statsViews[cluster];
-
-            if (column == null) { return; }
-            if (statsView.dividers[0].hasChanged())
-            {
-              that.showDivisions(cluster, column);
-            }
-          }
-
-          function onClickSlider(cluster, column) {
-            return function (d) {
-              return refreshColumn(cluster, column);
-            }
-          }
-
-          var newColumn = this.stratomex.getLastColumn();
-          statsView.column = newColumn;
-
-          d3.select((<boxSlider.BoxSlider>statsView.dividers[0]).node)
-            .on('mouseup', onClickSlider(j, newColumn));
-
-          this.connectSignal = null;
-
-          this.activeDivision.push(newColumn);
+      function refreshColumn(view: any, cluster: number, column: ClusterColumn)
+      {
+        if (column == null) { return; }
+        if (divider.hasChanged())
+        {
+          that.showDivisions(view, cluster, column);
         }
       }
+
+      function onClickSlider(view: any, cluster: number, column: ClusterColumn) {
+        return function (d) {
+          return refreshColumn(view, cluster, column);
+        }
+      }
+
+      var newColumn = this.stratomex.getLastColumn();
+      view.column = newColumn;
+
+      d3.select(divider.node)
+        .on('mouseup', onClickSlider(view, this.connectSignal.cluster, newColumn));
+
+      this.connectSignal = null;
+
+      this.activeDivision.push(newColumn);
     }
   }
 

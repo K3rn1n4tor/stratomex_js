@@ -567,6 +567,7 @@ export class ClusterProbView
   public $nodes: d3.Selection<any>[] = [];
   public boxCharts: boxSlider.BoxSlider[] = [];
   public zooms: behaviors.ZoomLogic[] = [];
+  public column: any = null;
   private partitionMatrix: any[] = [];
 
   private labels: number[] = [];

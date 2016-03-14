@@ -92,6 +92,17 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
   // -------------------------------------------------------------------------------------------------------------------
 
   /**
+   * Return the number of divisions
+   * @returns {any}
+     */
+  public getNumberDivisions()
+  {
+    return this.options.numSlider + 1;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
    * Signals that the status has changed (e.g. slider was moved).
    * @returns {boolean}
      */
