@@ -27,6 +27,7 @@ import heatmap = require('../caleydo_vis/heatmap');
 // my own libraries
 import columns = require('./Column');
 import boxSlider = require('./boxslider');
+import {createToggleStatsCmd} from './ClusterColumn';
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -67,8 +68,47 @@ export function createToggleProbsCmd(column, cluster, show)
     });
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+
+function applyClustering(view: any, cluster: number, column: any)
+{
+  var clusterIndex = view.cluster;
+
+  var rangeColumn = <ranges.CompositeRange1D>view.column.getRange().dim(0);
+  var groupsColumn = rangeColumn.groups;
+  var newGroups = [];
+
+  var compRange = <ranges.CompositeRange1D>column.getRange().dim(0);
+
+  for (var i = 0; i < compRange.groups.length; ++i)
+  {
+    if (i == clusterIndex) { continue; }
+    var groupIndex = i;
+    if (i > clusterIndex) { groupIndex = i + groupsColumn.length - 1; }
+
+    compRange.groups[i].name = "Group " + String(groupIndex) + '(Custom)';
+    newGroups.push(compRange.groups[i]);
+  }
+
+  for (var k = groupsColumn.length - 1; k >= 0; --k)
+  {
+    groupsColumn[k].name = "Group " + String(k + clusterIndex) + '(Custom)';
+    newGroups.splice(clusterIndex, 0, groupsColumn[k]);
+  }
+
+  const dataName = column.data.desc.name;
+  var compositeRange = ranges.composite(dataName + 'cluster', newGroups);
+
+  column.updateGrid(compositeRange);
+
+  // stop propagation to disable further event triggering
+  d3.event.stopPropagation();
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // class definition
+
+
 
 /**
  * Represents a detailed view of the current cluster / stratification.
@@ -221,6 +261,7 @@ export class ClusterDetailView
 
       // create the toolbar of the detail view
       this.$toolbar = $elem.append('div').attr('class', 'gtoolbar');
+      this.createToolbar(column);
 
       // build title and body of all subviews -> build skeleton
       $elem.append('div').attr('class', 'title').text('Distances');
@@ -267,8 +308,100 @@ export class ClusterDetailView
 
       return Promise.resolve([newCompositeRange]);
     });
-
   }
+
+  private createToolbar(column: any)
+  {
+    const that = this;
+
+    // first remove all old icons
+    this.$toolbar.selectAll('i').remove();
+
+    // then build new icons
+    var icon = (this.matrixMode) ? 'fa fa-bar-chart' : 'fa fa-th';
+
+    this.$toolbar.append('i').attr('class', 'fa fa-chevron-circle-left').on('click', () =>
+    {
+      applyClustering(that, that.cluster, column);
+    });
+
+    this.$toolbar.append('i').attr('class', icon).on('click', () =>
+    {
+      var distHeatmap = that.matrix;
+
+      that.toggleMatrixMode();
+
+      d3.select(distHeatmap.node).classed('hidden', !that.matrixMode);
+
+      d3.select(that.dividers[0].node).classed('hidden', that.matrixMode);
+      for (var j = 1; j < that.$nodes.length; ++j)
+      {
+        that.$nodes[j].classed('hidden', that.matrixMode);
+      }
+
+      column.setColumnWidth();
+      column.stratomex.relayout();
+
+      that.createToolbar(column);
+    });
+
+    if (!this.matrixMode)
+    {
+      // tool to divide current cluster and create new divisions / stratifications displayed in a new column
+      this.$toolbar.append('i').attr('class', 'fa fa-share-alt').on('click', () => {
+        column.showDivisions(that, that.cluster);
+        // stop propagation to disable further event triggering
+        d3.event.stopPropagation();
+      });
+    }
+
+    // tool to recluster current column
+    this.$toolbar.append('i').attr('class', 'fa fa-refresh').on('click', () =>
+    {
+      column.regroupCluster(that.cluster);
+
+      // stop propagation to disable further event triggering
+      d3.event.stopPropagation();
+    });
+
+    if (!this.matrixMode)
+    {
+      // tool to show external distances
+      this.$toolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
+      {
+        const numGroups = (<any>column.range.dims[0]).groups.length;
+
+        that.externVisible = !that.externVisible;
+
+        for (var j = 1; j < numGroups; ++j)
+        {
+          var externNode = that.$nodes[j];
+          if (that.externVisible)
+          {
+            externNode.classed('hidden', false);
+            externNode.transition().duration(columns.animationTime(-1)).style('opacity', 1);
+          }
+          else
+          {
+            externNode.classed('hidden', true);
+            externNode.transition().duration(columns.animationTime(-1)).style('opacity', 0);
+          }
+        }
+
+        column.setColumnWidth();
+        column.stratomex.relayout();
+      });
+    }
+
+    // close / hide statistics views
+    this.$toolbar.append('i').attr('class', 'fa fa-close').on('click', () =>
+    {
+      var g = column.stratomex.provGraph;
+      var s = g.findObject(column);
+      g.push(createToggleStatsCmd(s, that.cluster, false));
+    });
+  }
+
 
   // -------------------------------------------------------------------------------------------------------------------
 
@@ -690,10 +823,15 @@ export class ClusterProbView
     this.update(probs, labels, occurs);
     this.updated = false;
 
+    // create toolbar
+    this.createToolbar(column);
+  }
+
+  private createToolbar(column: any)
+  {
     const that = this;
 
-    // show all nodes
-    for (var j = 0; j < probs.length; ++j)
+    for (var j = 0; j < that.numGroups; ++j)
     {
       // create the toolbar of the detail view
       var $gtoolbar = this.$nodes[j].append('div').attr('class', 'gtoolbar');
@@ -710,6 +848,11 @@ export class ClusterProbView
 
       if (j == 0)
       {
+        $gtoolbar.append('i').attr('class', 'fa fa-chevron-circle-left').on('click', () =>
+        {
+          applyClustering(that, that.cluster, column);
+        });
+
         $gtoolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
         {
           that.externVisible = !that.externVisible;
@@ -724,6 +867,13 @@ export class ClusterProbView
           column.stratomex.relayout();
         });
 
+        $gtoolbar.append('i').attr('class', 'fa fa-share-alt').on('click', () =>
+        {
+          column.showDivisions(that, that.cluster);
+          // stop propagation to disable further event triggering
+          d3.event.stopPropagation();
+        });
+
         $gtoolbar.append('i').attr('class', 'fa fa-close').on('click', () =>
         {
           var g = column.stratomex.provGraph;
@@ -734,12 +884,11 @@ export class ClusterProbView
     }
   }
 
+
   // -------------------------------------------------------------------------------------------------------------------
 
   public sortByClusterID(index: number, column: any)
   {
-    console.log('sort by cluster', index);
-
     var partitionMat = this.partitionMatrix.slice();
 
     function sortProbs(a, b)

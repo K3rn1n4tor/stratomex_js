@@ -443,43 +443,44 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     });
 
     // re-cluster column command
-    $toolbar.append('i').attr('class', 'fa fa-refresh').on('click', () =>
-    {
-      var clusterIndex = pos[0];
-
-      var statsView = that.statsViews[clusterIndex];
-      if (statsView == null) { return; }
-
-      var rangeColumn = <ranges.CompositeRange1D>statsView.column.getRange().dim(0);
-      var groupsColumn = rangeColumn.groups;
-      var newGroups = [];
-
-      var compRange = <ranges.CompositeRange1D>that.range.dim(0);
-
-      for (var i = 0; i < compRange.groups.length; ++i)
-      {
-        if (i == clusterIndex) { continue; }
-        var groupIndex = i;
-        if (i > clusterIndex) { groupIndex = i + groupsColumn.length - 1; }
-
-        compRange.groups[i].name = "Group " + String(groupIndex) + '(Custom)';
-        newGroups.push(compRange.groups[i]);
-      }
-
-      for (var k = groupsColumn.length - 1; k >= 0; --k)
-      {
-        groupsColumn[k].name = "Group " + String(k + clusterIndex) + '(Custom)';
-        newGroups.splice(clusterIndex, 0, groupsColumn[k]);
-      }
-
-      const dataName = that.data.desc.name;
-      var compositeRange = ranges.composite(dataName + 'cluster', newGroups);
-
-      that.updateGrid(compositeRange);
-
-      // stop propagation to disable further event triggering
-      d3.event.stopPropagation();
-    });
+    //$toolbar.append('i').attr('class', 'fa fa-refresh').on('click', () =>
+    //{
+    //  var clusterIndex = pos[0];
+    //
+    //  var view = (that.statsViews[clusterIndex].visible) ? that.statsViews[clusterIndex] : that.probsViews[clusterIndex];
+    //
+    //  if (statsView == null) { return; }
+    //
+    //  var rangeColumn = <ranges.CompositeRange1D>statsView.column.getRange().dim(0);
+    //  var groupsColumn = rangeColumn.groups;
+    //  var newGroups = [];
+    //
+    //  var compRange = <ranges.CompositeRange1D>that.range.dim(0);
+    //
+    //  for (var i = 0; i < compRange.groups.length; ++i)
+    //  {
+    //    if (i == clusterIndex) { continue; }
+    //    var groupIndex = i;
+    //    if (i > clusterIndex) { groupIndex = i + groupsColumn.length - 1; }
+    //
+    //    compRange.groups[i].name = "Group " + String(groupIndex) + '(Custom)';
+    //    newGroups.push(compRange.groups[i]);
+    //  }
+    //
+    //  for (var k = groupsColumn.length - 1; k >= 0; --k)
+    //  {
+    //    groupsColumn[k].name = "Group " + String(k + clusterIndex) + '(Custom)';
+    //    newGroups.splice(clusterIndex, 0, groupsColumn[k]);
+    //  }
+    //
+    //  const dataName = that.data.desc.name;
+    //  var compositeRange = ranges.composite(dataName + 'cluster', newGroups);
+    //
+    //  that.updateGrid(compositeRange);
+    //
+    //  // stop propagation to disable further event triggering
+    //  d3.event.stopPropagation();
+    //});
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -570,96 +571,96 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  private createClusterDetailToolbar(cluster: number, $toolbar: d3.Selection<any>, matrixMode: boolean, within)
-  {
-    const that = this;
-
-    // first remove all old icons
-    $toolbar.selectAll('i').remove();
-
-    // then build new icons
-    var icon = (matrixMode) ? 'fa fa-bar-chart' : 'fa fa-th';
-
-    $toolbar.append('i').attr('class', icon).on('click', () =>
-    {
-      var statsView = that.statsViews[cluster];
-      var distHeatmap = statsView.matrix;
-
-      statsView.toggleMatrixMode();
-
-      d3.select(distHeatmap.node).classed('hidden', !statsView.matrixMode);
-
-      d3.select(statsView.dividers[0].node).classed('hidden', statsView.matrixMode);
-      for (var j = 1; j < statsView.$nodes.length; ++j)
-      {
-        statsView.$nodes[j].classed('hidden', statsView.matrixMode);
-      }
-
-      that.setColumnWidth();
-      that.stratomex.relayout();
-
-      that.createClusterDetailToolbar(cluster, $toolbar, statsView.matrixMode, within);
-    });
-
-    if (!matrixMode)
-    {
-
-      // tool to divide current cluster and create new divisions / stratifications displayed in a new column
-      $toolbar.append('i').attr('class', 'fa fa-share-alt').on('click', () => {
-        that.showDivisions(that.statsViews[cluster], cluster);
-        // stop propagation to disable further event triggering
-        d3.event.stopPropagation();
-      });
-    }
-
-    // tool to recluster current column
-    $toolbar.append('i').attr('class', 'fa fa-refresh').on('click', () =>
-    {
-      that.regroupCluster(cluster);
-
-      // stop propagation to disable further event triggering
-      d3.event.stopPropagation();
-    });
-
-    if (!matrixMode)
-    {
-      // tool to show external distances
-      $toolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
-      {
-        var statsView = that.statsViews[cluster];
-        const numGroups = (<any>that.range.dims[0]).groups.length;
-
-        statsView.externVisible = !statsView.externVisible;
-
-        for (var j = 1; j < numGroups; ++j)
-        {
-          var externNode = statsView.$nodes[j];
-          if (statsView.externVisible)
-          {
-            externNode.classed('hidden', false);
-            externNode.transition().duration(columns.animationTime(within)).style('opacity', 1);
-          }
-          else
-          {
-            externNode.classed('hidden', true);
-            externNode.transition().duration(columns.animationTime(within)).style('opacity', 0);
-          }
-        }
-
-        that.setColumnWidth();
-
-        that.stratomex.relayout();
-      });
-    }
-
-    // close / hide statistics views
-    $toolbar.append('i').attr('class', 'fa fa-close').on('click', () =>
-    {
-      var g = that.stratomex.provGraph;
-      var s = g.findObject(that);
-      g.push(createToggleStatsCmd(s, cluster, false));
-    });
-  }
+  //private createClusterDetailToolbar(cluster: number, $toolbar: d3.Selection<any>, matrixMode: boolean, within)
+  //{
+  //  const that = this;
+  //
+  //  // first remove all old icons
+  //  $toolbar.selectAll('i').remove();
+  //
+  //  // then build new icons
+  //  var icon = (matrixMode) ? 'fa fa-bar-chart' : 'fa fa-th';
+  //
+  //  $toolbar.append('i').attr('class', icon).on('click', () =>
+  //  {
+  //    var statsView = that.statsViews[cluster];
+  //    var distHeatmap = statsView.matrix;
+  //
+  //    statsView.toggleMatrixMode();
+  //
+  //    d3.select(distHeatmap.node).classed('hidden', !statsView.matrixMode);
+  //
+  //    d3.select(statsView.dividers[0].node).classed('hidden', statsView.matrixMode);
+  //    for (var j = 1; j < statsView.$nodes.length; ++j)
+  //    {
+  //      statsView.$nodes[j].classed('hidden', statsView.matrixMode);
+  //    }
+  //
+  //    that.setColumnWidth();
+  //    that.stratomex.relayout();
+  //
+  //    that.createClusterDetailToolbar(cluster, $toolbar, statsView.matrixMode, within);
+  //  });
+  //
+  //  if (!matrixMode)
+  //  {
+  //
+  //    // tool to divide current cluster and create new divisions / stratifications displayed in a new column
+  //    $toolbar.append('i').attr('class', 'fa fa-share-alt').on('click', () => {
+  //      that.showDivisions(that.statsViews[cluster], cluster);
+  //      // stop propagation to disable further event triggering
+  //      d3.event.stopPropagation();
+  //    });
+  //  }
+  //
+  //  // tool to recluster current column
+  //  $toolbar.append('i').attr('class', 'fa fa-refresh').on('click', () =>
+  //  {
+  //    that.regroupCluster(cluster);
+  //
+  //    // stop propagation to disable further event triggering
+  //    d3.event.stopPropagation();
+  //  });
+  //
+  //  if (!matrixMode)
+  //  {
+  //    // tool to show external distances
+  //    $toolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
+  //    {
+  //      var statsView = that.statsViews[cluster];
+  //      const numGroups = (<any>that.range.dims[0]).groups.length;
+  //
+  //      statsView.externVisible = !statsView.externVisible;
+  //
+  //      for (var j = 1; j < numGroups; ++j)
+  //      {
+  //        var externNode = statsView.$nodes[j];
+  //        if (statsView.externVisible)
+  //        {
+  //          externNode.classed('hidden', false);
+  //          externNode.transition().duration(columns.animationTime(within)).style('opacity', 1);
+  //        }
+  //        else
+  //        {
+  //          externNode.classed('hidden', true);
+  //          externNode.transition().duration(columns.animationTime(within)).style('opacity', 0);
+  //        }
+  //      }
+  //
+  //      that.setColumnWidth();
+  //
+  //      that.stratomex.relayout();
+  //    });
+  //  }
+  //
+  //  // close / hide statistics views
+  //  $toolbar.append('i').attr('class', 'fa fa-close').on('click', () =>
+  //  {
+  //    var g = that.stratomex.provGraph;
+  //    var s = g.findObject(that);
+  //    g.push(createToggleStatsCmd(s, cluster, false));
+  //  });
+  //}
 
   // -------------------------------------------------------------------------------------------------------------------
 
@@ -695,7 +696,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
     return promise.then( (args) =>
     {
-      that.createClusterDetailToolbar(cluster, newStatsView.$toolbar, matrixMode, within);
+      //that.createClusterDetailToolbar(cluster, newStatsView.$toolbar, matrixMode, within);
       if (!relayout) { newStatsView.$nodes.forEach((d: d3.Selection<any>) => {d.classed('hidden', true); }); }
       const compositeRange = args[0];
       return (relayout) ? that.updateGrid(compositeRange, true) : Promise.resolve([]);
@@ -1261,6 +1262,26 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
 
       const width = Math.max(groupWidth - maxStatsWidth, 0);
       restSize = Math.max(restSize, width);
+    }
+
+    // remove pointer to destroyed columns related to any prob view
+    for (var j = 0; j < numGroups; ++j)
+    {
+      var probView = this.probsViews[j];
+      if (probView == null)
+      {
+        continue;
+      }
+
+      if (probView.column != null)
+      {
+        if (probView.column.destroyed)
+        {
+          var index = this.activeDivision.indexOf(probView.column);
+          probView.column = null;
+          this.activeDivision.splice(index, 1);
+        }
+      }
     }
 
     size.x -= restSize;
