@@ -276,6 +276,10 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
   protected activeDivision: ClusterColumn[] = []; // TODO!: check if we still need the tracking of active divisions
   protected distancesRange: [number, number] = null;
 
+  // NEW collect all previous / preceding stratifications
+  public prevStratis: any[] = [];
+  public nextStratis: any[] = [];
+
   constructor(protected stratomex, public data, partitioning:ranges.Range, public dataRef, options:any = {}, within = -1)
   {
     super(stratomex, data, partitioning, dataRef, options, within);
@@ -310,7 +314,6 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
       const dataID = this.data.desc.id;
       const dataDiffID = dataID.replace('Mean', 'Difference');
 
-      //var response = ajax.getAPIJSON('/dataset/' + dataDiffID);
       datas.list().then( (list) =>
       {
         for (var i = 0; i < list.length; ++i)
@@ -322,6 +325,34 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
           }
         }
       });
+    });
+
+    $t.insert('i', '.fa-close').attr('class', 'fa fa-rotate-left').on('click', () =>
+    {
+      var compositeRange = that.prevStratis.splice(0, 1)[0];
+
+      if (compositeRange != null || typeof compositeRange !== 'undefined')
+      {
+        // copy composite range
+        var oldCompositeRange = <any>that.range.dim(0);
+        var copyCompositeRange = $.extend(true, {}, oldCompositeRange);
+        that.nextStratis.splice(0, 0, copyCompositeRange);
+        that.updateGrid(compositeRange);
+      }
+    });
+
+    $t.insert('i', '.fa-close').attr('class', 'fa fa-rotate-right').on('click', () =>
+    {
+      var compositeRange = that.nextStratis.splice(0, 1)[0];
+
+      if (compositeRange != null || typeof compositeRange !== 'undefined')
+      {
+        // copy composite range
+        var oldCompositeRange = <any>that.range.dim(0);
+        var copyCompositeRange = $.extend(true, {}, oldCompositeRange);
+        that.prevStratis.splice(0, 0, copyCompositeRange);
+        that.updateGrid(compositeRange);
+      }
     });
   }
 
@@ -415,6 +446,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
   protected createGridToolbar(elem, data, cluster, pos, $toolbar: d3.Selection<any>)
   {
     const that = this;
+    const numGroups = (<any>this.range.dim(0)).groups.length;
 
     // create new cluster stats command
     $toolbar.append('i').attr('class', 'fa fa-sort-amount-asc').on('click', () =>
@@ -428,6 +460,27 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
       // stop propagation to disable further event triggering
       d3.event.stopPropagation();
     });
+
+    if (numGroups > 1)
+    {
+      // enable possibility to remove group from column
+      $toolbar.append('i').attr('class', 'fa fa-times-circle').on('click', () =>
+      {
+        const groupID = pos[0];
+
+        var oldCompositeRange = (<any>that.range.dim(0));
+        var copyCompositeRange = $.extend(true, {}, oldCompositeRange);
+        that.prevStratis.splice(0, 0, copyCompositeRange);
+        var groups = oldCompositeRange.groups.slice();
+        groups.splice(groupID, 1);
+
+        var compositeRange = ranges.composite(oldCompositeRange.name, groups);
+
+        that.updateGrid(compositeRange);
+
+        d3.event.stopPropagation();
+      });
+    }
 
     // add new command with symbol fa-expand
     $toolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
@@ -728,8 +781,11 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     // insert cluster into distance vectors
     distanceVec.splice(cluster, 0, statsView.dividers[0].data);
 
-    var compositeRange = <ranges.CompositeRange1D>this.range.dim(0);
-    const numGroups = compositeRange.groups.length;
+    var oldCompositeRange = <ranges.CompositeRange1D>this.range.dim(0);
+    var copyCompositeRange = $.extend(true, {}, oldCompositeRange);
+    that.prevStratis.splice(0, 0, copyCompositeRange);
+
+    const numGroups = oldCompositeRange.groups.length;
     //compositeRange.groups.splice(cluster, 1);
 
     var newLabels: any[] = Array.apply(null, Array(numGroups)).map((_, i) => { return []; });
@@ -754,7 +810,7 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
       if (i != cluster)
       {
         // create new group
-        var labels = compositeRange.groups[i].asList();
+        var labels = oldCompositeRange.groups[i].asList();
         newLabels[i] = labels.concat(newLabels[i]);
       }
     }
@@ -1017,7 +1073,7 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
 
     if (!this.noProbs)
     {
-      $toolbar.insert('i', '.fa-expand').attr('class', 'fa fa-align-left').on('click', () =>
+      $toolbar.insert('i', '.fa-sort-amount-asc').attr('class', 'fa fa-align-left').on('click', () =>
       {
         // first obtain the provenance graph
         var graph = that.stratomex.provGraph;

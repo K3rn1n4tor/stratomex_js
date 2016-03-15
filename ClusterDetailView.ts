@@ -75,6 +75,8 @@ function applyDivisions(view: any, cluster: number, column: any)
   var clusterIndex = view.cluster;
 
   var rangeColumn = <ranges.CompositeRange1D>view.column.getRange().dim(0);
+  var copyCompositeRange = $.extend(true, {}, column.getRange().dim(0));
+  column.prevStratis.splice(0, 0, copyCompositeRange);
   var groupsColumn = rangeColumn.groups;
   var newGroups = [];
 
@@ -107,8 +109,6 @@ function applyDivisions(view: any, cluster: number, column: any)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // class definition
-
-
 
 /**
  * Represents a detailed view of the current cluster / stratification.
