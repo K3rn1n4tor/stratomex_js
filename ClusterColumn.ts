@@ -461,6 +461,19 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
       d3.event.stopPropagation();
     });
 
+    // add new command with symbol fa-expand
+    $toolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
+    {
+      // first obtain the provenance graph
+      var graph = that.stratomex.provGraph;
+      // next find the current object / selection / cluster
+      var obj = graph.findObject(that);
+      // push new command to graph
+      graph.push(columns.createToggleDetailCmd(obj, pos[0], true));
+      // stop propagation to disable further event triggering
+      d3.event.stopPropagation();
+    });
+
     if (numGroups > 1)
     {
       // enable possibility to remove group from column
@@ -481,19 +494,6 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
         d3.event.stopPropagation();
       });
     }
-
-    // add new command with symbol fa-expand
-    $toolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
-    {
-      // first obtain the provenance graph
-      var graph = that.stratomex.provGraph;
-      // next find the current object / selection / cluster
-      var obj = graph.findObject(that);
-      // push new command to graph
-      graph.push(columns.createToggleDetailCmd(obj, pos[0], true));
-      // stop propagation to disable further event triggering
-      d3.event.stopPropagation();
-    });
   }
 
   // -------------------------------------------------------------------------------------------------------------------

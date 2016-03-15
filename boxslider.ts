@@ -47,7 +47,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
       rotate: 0,
       numAvg: 10, // default number of elements averaged and grouped in one box element
       numSlider: 2, // number of sliders
-      sliderColor: 'grey', // default color for sliders
+      sliderColor: 'black', // default color for sliders
       sliderHeight: 4, // height of slider in px
       duration: 50, // duration of animations in ms
       precision: 2, // precision of values in tooltip box
@@ -229,6 +229,9 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
     // set new values for options
     this.options.scale = scale;
     this.options.rotate = rotate;
+
+    this.zoomSlider();
+
     return newSize;
   }
 
@@ -433,7 +436,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
       x: 0, y: 0,
       width: (d: any) => { return scaleX(d); }, height: barHeight,
       'fill': this.options.sliderColor, id: 'bar', class: (_: any, i: number) => { return 'bar' + String(i);},
-      'shape-rendering': 'crispEdges', stroke: 'black', 'stroke-width': '2px', 'stroke-alignment': 'inner',
+      /*'shape-rendering': 'crispEdges',*/ stroke: 'black', 'stroke-width': '2px', 'stroke-alignment': 'inner',
       'stroke-opacity': 0.05
     }).on('mousemove', this._mouseHandler('mousemove', $root, [scaleY]))
       .on('mouseout', this._mouseHandler('mouseout', $root, []));
@@ -632,14 +635,14 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
    * @param $root
    * @param vec
      */
-  private buildSlider($root: d3.Selection<any>, vec: any)
+  private buildSlider($root: d3.Selection<any>, vec: any, currSliderStarts: number[] = null)
   {
     const that = this;
 
     const rawSize = this.rawSize;
     const scaling = this.options.scale;
-
     if (scaling[1] == 0) { scaling[1] = 1; }
+
     const barHeight = this.options.sliderHeight / scaling[1];
     const barCover = 3 * barHeight;
 
@@ -657,7 +660,6 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
     sliderIndices.push(this.numBars);
     sliderTicks.push(rawSize[1]);
 
-
     var scaleY = d3.scale.linear().domain(sliderIndices).range(sliderTicks);
 
     var dragSlider = d3.behavior.drag()
@@ -666,7 +668,8 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
       .on('dragend', this._dragHandler('dragend', $root, []));
 
     // find starting indices of each slider
-    var sliderStarts = this._findSliderStarts(vec);
+    var sliderStarts = currSliderStarts;
+    if (!sliderStarts) { sliderStarts = this._findSliderStarts(vec); }
 
     // create slider element
     for (var i = 0; i < this.options.numSlider; ++i)
@@ -676,30 +679,73 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
 
       var group = $root.append('g').attr(
       {
-        id: 'slider' + String(i),
+        id: 'slider' + String(i), class: 'sliderGroup',
         'transform': 'translate(0,' + (scaleY(sliderIndex) - barCover / 2) + ')',
       });
 
       var container = group.append('rect').attr(
       {
-        id: 'slider' + String(i),
+        id: 'slider' + String(i), class: 'sliderRect' + String(i),
         width: rawSize[0], height: barCover, opacity: 0
-      }).on('mouseover', this._mouseHandler('mouseover', $root, [scaleY]))
+      }).on('mousemove', this._mouseHandler('mousemove', $root, [scaleY]))
         .on('mouseout', this._mouseHandler('mouseout', $root, []));
 
       var slider = group.append('rect').attr(
       {
         id: 'slider' + String(i), class: 'sliderBar' + String(i),
-        y: barCover / 2 - barHeight / 2, height: barHeight + 'px', width: rawSize[0], fill: that.options.sliderColor,
+        y: barCover / 2 - barHeight / 2, height: String(barHeight) + 'px', width: rawSize[0], fill: that.options.sliderColor,
         rx: sliderRadius, ry: sliderRadius, opacity: 0.75
       });
 
       container.call(dragSlider);
       slider.call(dragSlider);
-      this.sliders.push(group);
-      this.divisions.push(sliderIndex);
+
+      this.sliders[i] = group;
+
+      if (!currSliderStarts)
+      {
+        this.divisions.push(sliderIndex);
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Rebuild slider if any transformation is applied.
+   */
+  zoomSlider()
+  {
+    var that = this;
+
+    var $root = this.$node.select('g');
+    console.log($root);
+
+    for (var i = 0; i < this.options.numSlider; ++i)
+    {
+      $root.selectAll('g.sliderBar' + String(i)).remove();
+      $root.selectAll('g.sliderRect' + String(i)).remove();
     }
 
+    $root.selectAll('g.sliderGroup').remove();
+
+    if (this.data instanceof Array)
+    {
+      that.buildSlider($root, that.data, this.divisions);
+      that.colorizeBars();
+
+      that.markReady();
+    }
+    else
+    {
+      this.data.data().then( (vec: any) =>
+      {
+        that.buildSlider($root, vec, this.divisions);
+        that.colorizeBars();
+
+        that.markReady();
+      });
+    }
   }
 
   // -------------------------------------------------------------------------------------------------------------------
