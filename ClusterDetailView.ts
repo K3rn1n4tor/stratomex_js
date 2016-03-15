@@ -70,7 +70,7 @@ export function createToggleProbsCmd(column, cluster, show)
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-function applyClustering(view: any, cluster: number, column: any)
+function applyDivisions(view: any, cluster: number, column: any)
 {
   var clusterIndex = view.cluster;
 
@@ -310,6 +310,12 @@ export class ClusterDetailView
     });
   }
 
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Create toolbar of cluster detail view.
+   * @param column
+     */
   private createToolbar(column: any)
   {
     const that = this;
@@ -320,10 +326,14 @@ export class ClusterDetailView
     // then build new icons
     var icon = (this.matrixMode) ? 'fa fa-bar-chart' : 'fa fa-th';
 
-    this.$toolbar.append('i').attr('class', 'fa fa-chevron-circle-left').on('click', () =>
+
+    if (this.column)
     {
-      applyClustering(that, that.cluster, column);
-    });
+      this.$toolbar.append('i').attr('class', 'fa fa-chevron-circle-left').on('click', () =>
+      {
+        applyDivisions(that, that.cluster, column);
+      });
+    }
 
     this.$toolbar.append('i').attr('class', icon).on('click', () =>
     {
@@ -350,6 +360,12 @@ export class ClusterDetailView
       // tool to divide current cluster and create new divisions / stratifications displayed in a new column
       this.$toolbar.append('i').attr('class', 'fa fa-share-alt').on('click', () => {
         column.showDivisions(that, that.cluster);
+
+        C.resolveIn(400).then( () =>
+        {
+          that.createToolbar(column);
+        });
+
         // stop propagation to disable further event triggering
         d3.event.stopPropagation();
       });
@@ -488,7 +504,7 @@ export class ClusterDetailView
    * @returns {function(): undefined}
      * @private
      */
-  private _onClickMatrix(rawMatrix, numGroups, rawLabels, column: any)
+  private _onClickMatrix(rawMatrix: any, numGroups: number, rawLabels: any[], column: any)
   {
     const that = this;
 
@@ -506,17 +522,23 @@ export class ClusterDetailView
       // 1) sort matrix by selected column
       function sortMatrix(a, b)
       {
-        if (a[0] == 'ID') { return -1; }
-        if (b[0] == 'ID') { return 1; }
-
         return a[index] - b[index];
       }
 
       var sortedMatrix = rawMatrix.slice();
+
+      // insert header again as latest implementation removes header after matrix creation
+      var header = ['ID'];
+      for (var j = 0; j < numGroups; ++j)
+      {
+        header.push(String(j));
+      }
       sortedMatrix.sort(sortMatrix);
+      sortedMatrix.splice(0, 0, header);
+
       var newDistMatrix = parser.parseMatrix(sortedMatrix);
 
-      var $body = that.$nodes[0].select('.body');
+      //var $body = that.$nodes[0].select('.body');
 
       // 2) resort corresponding group and its labels and redraw grid
       var oldGroups = (<any>that.range.dim(0)).groups;
@@ -527,11 +549,11 @@ export class ClusterDetailView
 
       for (var j = 0; j < rawLabels.length; ++j)
       {
-        var ID = parseInt(sortedMatrix[j + 1][0]);
+        var ID = parseInt(sortedMatrix[j][0]);
         newLabels.push(rawLabels[ID]);
         for (var i = 0; i < newDistances.length; ++i)
         {
-          newDistances[i].push(sortedMatrix[j + 1][i + 1]);
+          newDistances[i].push(sortedMatrix[j][i + 1]);
         }
       }
 
@@ -553,6 +575,14 @@ export class ClusterDetailView
         column.updateGrid(newCompositeRange, true);
       });
     };
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  public removeColumn(column: any)
+  {
+    this.column = null;
+    this.createToolbar(column);
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -827,12 +857,21 @@ export class ClusterProbView
     this.createToolbar(column);
   }
 
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Create toolbar of cluster probability view.
+   * @param column
+     */
   private createToolbar(column: any)
   {
     const that = this;
 
     for (var j = 0; j < that.numGroups; ++j)
     {
+      // remove old toolbar first
+      this.$nodes[j].select('.gtoolbar').remove();
+
       // create the toolbar of the detail view
       var $gtoolbar = this.$nodes[j].append('div').attr('class', 'gtoolbar');
 
@@ -844,15 +883,18 @@ export class ClusterProbView
         }
       }
 
+      if (j == 0 && this.column != null)
+      {
+        $gtoolbar.append('i').attr('class', 'fa fa-chevron-circle-left').on('click', () =>
+        {
+          applyDivisions(that, that.cluster, column);
+        });
+      }
+
       $gtoolbar.append('i').attr('class', 'fa fa-sort-amount-desc').on('click', OnSortDesc(j, column));
 
       if (j == 0)
       {
-        $gtoolbar.append('i').attr('class', 'fa fa-chevron-circle-left').on('click', () =>
-        {
-          applyClustering(that, that.cluster, column);
-        });
-
         $gtoolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
         {
           that.externVisible = !that.externVisible;
@@ -870,6 +912,11 @@ export class ClusterProbView
         $gtoolbar.append('i').attr('class', 'fa fa-share-alt').on('click', () =>
         {
           column.showDivisions(that, that.cluster);
+          // recreate toolbar
+          C.resolveIn(400).then(() =>
+          {
+            that.createToolbar(column);
+          });
           // stop propagation to disable further event triggering
           d3.event.stopPropagation();
         });
@@ -973,6 +1020,14 @@ export class ClusterProbView
     }
 
     this.updated = true;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  public removeColumn(column: any)
+  {
+    this.column = null;
+    this.createToolbar(column);
   }
 
   // -------------------------------------------------------------------------------------------------------------------

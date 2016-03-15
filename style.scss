@@ -250,11 +250,17 @@ div.clusterPopup
         cursor: pointer;
       }
       i.fa-close {
-        color: red;
+        color: darkred;
       }
       i.fa-bar-chart
       {
-        color: black;
+        color: midnightblue;
+        top: -1.2em;
+        right: -1.2em;
+      }
+      i.fa-th
+      {
+        color: midnightblue;
         top: -1.2em;
         right: -1.2em;
       }
@@ -284,7 +290,23 @@ div.clusterPopup
         top: -1.2em;
         right: -1.2em;
       }
+      i.fa-sort-amount-desc
+      {
+        top: -1.2em;
+        right: -1.2em;
+      }
       i.fa-refresh
+      {
+        top: -1.2em;
+        right: -1.2em;
+      }
+      i.fa-chevron-circle-left
+      {
+        color: darkorange;
+        top: -1.2em;
+        right: -1.2em;
+      }
+      i.fa-expand
       {
         top: -1.2em;
         right: -1.2em;
