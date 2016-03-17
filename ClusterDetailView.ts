@@ -141,7 +141,8 @@ export class ClusterDetailView
   constructor(private cluster: number, private data: datatypes.IDataType, private range: ranges.Range,
               private options: any)
   {
-    this.options = C.mixin({ matrixMode: false, matrixWidth: 140, statsWidth: 50 }, options);
+    this.options = C.mixin({
+      matrixMode: false, matrixWidth: 140, statsWidth: 50, distanceMetric: 'euclidean' }, options);
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -190,7 +191,8 @@ export class ClusterDetailView
       {
         var labelList = compositeRange.groups[j].asList();
         var request = { group: JSON.stringify({ labels: labelList }) };
-        responses.push(ajax.send('/api/clustering/distances/' + data.desc.id, request, 'post'));
+        responses.push(ajax.send('/api/clustering/distances/' + this.options.distanceMetric + '/' + data.desc.id,
+          request, 'post'));
       }
 
       // concat all distances and compute min/max value along all distances
@@ -223,7 +225,8 @@ export class ClusterDetailView
     // request cluster distance data from server
     $('body').addClass('waiting');
     var request = { group: JSON.stringify({ labels: labelList, externLabels: externLabelList }) };
-    var response = ajax.send('/api/clustering/distances/' + this.data.desc.id, request, 'post');
+    var response = ajax.send('/api/clustering/distances/' + this.options.distanceMetric + '/' + this.data.desc.id,
+      request, 'post');
     console.log("Requested distances of data set:", this.data.desc.id);
 
     // resolve all promises, including the promises where the distance range is determined

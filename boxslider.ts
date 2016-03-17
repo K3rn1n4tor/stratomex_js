@@ -271,9 +271,10 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
   /**
    * Build all the graphical components.
    * @param $parent
+   * @param sliderStarts
    * @returns {Selection<any>}
      */
-  private build($parent: d3.Selection<any>)
+  private build($parent: d3.Selection<any>, sliderStarts: number[] = null)
   {
     var scaling = this.options.scale;
     var size = this.size;
@@ -291,7 +292,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
     function buildComponents(vec: any)
     {
       that.buildBoxChart($root, vec);
-      that.buildSlider($root, vec);
+      that.buildSlider($root, vec, sliderStarts);
 
       that.markReady();
     }
@@ -524,7 +525,6 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
           that.colorizeBars();
         }
 
-
         const value = d3.round((that.boxValues[minIndex] + that.boxValues[maxIndex]) / 2, that.options.precision);
         //const sliderPosY = $(that.sliders[number].node()).position().top;
         //console.log('SliderPosY', sliderPosY);
@@ -536,7 +536,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
         const sliderHeight = barHeight * scaling[1];
 
         that.$tooltip.style('opacity', 1);
-        that.$tooltip.html('Distance: ' + String(value));
+        that.$tooltip.html(that.options.valueName + ': ' + String(value));
         that.$tooltip.style({ left: width + 'px', top: (sliderPosY + sliderHeight * 1.5 - tooltipHeight / 2) + 'px' });
 
         that.$node.select('.bar' + minIndex).datum(that.boxValues[minIndex])
@@ -562,6 +562,19 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
             .attr('fill', that.options.sliderColor);
       }
     }
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Update vector data and rebuild boxchart and sliders again.
+   * @param data
+     */
+  public updateData(data: any)
+  {
+    this.$node.remove();
+    this.$node = this.build(d3.select(this.parent), this.divisions);
+    this.$node.datum(data);
   }
 
   // -------------------------------------------------------------------------------------------------------------------

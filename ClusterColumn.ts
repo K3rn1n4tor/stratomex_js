@@ -58,7 +58,8 @@ function createClusterColumn(inputs, parameter, graph, within)
   var stratomex = inputs[0].value,
     partitioning = ranges.parse(parameter.partitioning),
     index = parameter.hasOwnProperty('index') ? parameter.index : -1,
-    name = parameter.name || inputs[1].name;
+    name = parameter.name || inputs[1].name,
+    distMetric = parameter.distMetric;
 
   //console.log(ranges.parse(parameter.partitioning));
 
@@ -67,7 +68,7 @@ function createClusterColumn(inputs, parameter, graph, within)
     //console.log(new Date(), 'create column', data.desc.name, index);
     var c = new ClusterColumn(stratomex, data, partitioning, inputs[1], {
       width: (data.desc.type === 'stratification') ? 60 : (data.desc.name.toLowerCase().indexOf('death') >= 0 ? 110 : 160),
-      name: name
+      name: name, distanceMetric: distMetric
     }, within);
     var r = prov.ref(c, c.name, prov.cat.visual, c.hashString);
     c.changeHandler = function (event, to, from)
@@ -105,14 +106,15 @@ function createHierarchicalClusterColumn(inputs, parameter, graph, within)
     partitioning = ranges.parse(parameter.partitioning),
     index = parameter.hasOwnProperty('index') ? parameter.index : -1,
     name = parameter.name || inputs[1].name,
-    dendrogram = inputs[2].value.tree;
+    dendrogram = inputs[2].value.tree,
+    distMetric = parameter.distMetric;
 
   return inputs[1].v.then(function (data)
   {
     //console.log(new Date(), 'create column', data.desc.name, index);
     var c = new HierarchicalClusterColumn(stratomex, data, partitioning, dendrogram, inputs[1], {
       width: (data.desc.type === 'stratification') ? 60 : (data.desc.name.toLowerCase().indexOf('death') >= 0 ? 110 : 160),
-      name: name
+      name: name, distanceMetric: distMetric
     }, within);
     var r = prov.ref(c, c.name, prov.cat.visual, c.hashString);
     c.changeHandler = function (event, to, from)
@@ -151,14 +153,15 @@ function createFuzzyClusterColumn(inputs, parameter, graph, within)
     index = parameter.hasOwnProperty('index') ? parameter.index : -1,
     name = parameter.name || inputs[1].name,
     partitionMatrix = inputs[2].value.partition,
-    maxProbability = parameter.maxProb;
+    maxProbability = parameter.maxProb,
+    distMetric = parameter.distMetric;
 
   return inputs[1].v.then(function (data)
   {
     //console.log(new Date(), 'create column', data.desc.name, index);
     var c = new FuzzyClusterColumn(stratomex, data, partitioning, partitionMatrix, inputs[1], {
       width: (data.desc.type === 'stratification') ? 60 : (data.desc.name.toLowerCase().indexOf('death') >= 0 ? 110 : 160),
-      name: name, maxProb: maxProbability
+      name: name, maxProb: maxProbability, distanceMetric: distMetric
     }, within);
     var r = prov.ref(c, c.name, prov.cat.visual, c.hashString);
     c.changeHandler = function (event, to, from)
@@ -190,40 +193,44 @@ function createFuzzyClusterColumn(inputs, parameter, graph, within)
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function createClusterColumnCmd(stratomex, data, partitioning, name:string, index:number = -1)
+export function createClusterColumnCmd(stratomex, data, partitioning, distMetric: string,
+                                       name:string, index:number = -1)
 {
   return prov.action(prov.meta(name, prov.cat.data, prov.op.create),
     'createStratomeXClusterColumn', createClusterColumn, [stratomex, data], {
     partitioning: partitioning.toString(),
     name: name,
-    index: index
+    index: index,
+    distMetric: distMetric
   });
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function createHierarchicalClusterColumnCmd(stratomex, data, partitioning, dendrogram, name:string,
-                                                   index:number = -1)
+export function createHierarchicalClusterColumnCmd(stratomex, data, partitioning, distMetric: string, dendrogram,
+                                                   name:string, index:number = -1)
 {
   return prov.action(prov.meta(name, prov.cat.data, prov.op.create),
     'createStratomeXHierarchicalClusterColumn', createHierarchicalClusterColumn, [stratomex, data, dendrogram], {
     partitioning: partitioning.toString(),
     name: name,
-    index: index
+    index: index,
+    distMetric: distMetric
   });
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function createFuzzyClusterColumnCmd(stratomex, data, partitioning, partitionMatrix, maxProb:number,
-                                            name:string, index:number = -1)
+export function createFuzzyClusterColumnCmd(stratomex, data, partitioning, distMetric: string, partitionMatrix,
+                                            maxProb: number, name: string, index: number = -1)
 {
   return prov.action(prov.meta(name, prov.cat.data, prov.op.create),
     'createStratomeXFuzzyClusterColumn', createFuzzyClusterColumn, [stratomex, data, partitionMatrix], {
     partitioning: partitioning.toString(),
     name: name,
     index: index,
-    maxProb: maxProb
+    maxProb: maxProb,
+    distMetric: distMetric
   });
 }
 
@@ -245,7 +252,7 @@ export function regroupColumn(inputs, parameter, graph, within)
   return r.then(() =>
   {
     return {
-      inverse: createRegroupColumnCmd(inputs[0], oldRange, !noStatsUpdate),
+      inverse: createRegroupColumnCmd(inputs[0], oldRange, false),
       consumed: within
     };
   });
@@ -325,7 +332,8 @@ export class ClusterColumn extends columns.Column
       statsWidth: 50, // this is the default width for the distance view TODO: rename to distanceWidth
       matrixWidth: 140,
       padding: 2,
-      name: null
+      name: null,
+      distanceMetric: 'euclidean'
       }, this.options);
 
     this.on('relayouted', this.relayoutAfterHandler);
@@ -656,7 +664,7 @@ export class ClusterColumn extends columns.Column
     const that = this;
 
     var newStatsView: clusterView.ClusterDetailView = new clusterView.ClusterDetailView(cluster, this.data, this.range,
-      { matrixWidth: this.options.matrixWidth, matrixMode: matrixMode });
+      { matrixWidth: this.options.matrixWidth, matrixMode: matrixMode, distanceMetric: this.options.distanceMetric });
     var promise = newStatsView.build(this.$parent, this);
 
     this.statsViews[cluster] = newStatsView;
@@ -799,7 +807,7 @@ export class ClusterColumn extends columns.Column
 
         // create the new stratification and add the column to StratomeX
         strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, newRows, newRowIds, <any>compositeRange);
-        that.stratomex.addClusterData(strati, data, null);
+        that.stratomex.addClusterData(strati, data, that.options.distanceMetric);
         that.connectSignal = { view: view, cluster: cluster };
 
       } else {
