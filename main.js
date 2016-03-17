@@ -103,7 +103,6 @@ define(function (require) {
     // methods called per Orly's data tab
 
 
-
     var lineupOrlyData = lineupModule.createData(document.getElementById('tab_orlydata'),
       function (vector) { stratomex.addDependentOrlyData(vector); }, openClusterMenu);
 

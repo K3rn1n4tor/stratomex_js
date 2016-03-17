@@ -634,6 +634,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
    * Build all the sliders for the bar chart to divide bars into numSlider + 1 groups.
    * @param $root
    * @param vec
+   * @param currSliderStarts
      */
   private buildSlider($root: d3.Selection<any>, vec: any, currSliderStarts: number[] = null)
   {

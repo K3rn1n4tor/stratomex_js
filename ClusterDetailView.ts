@@ -28,6 +28,7 @@ import heatmap = require('../caleydo_vis/heatmap');
 import columns = require('./Column');
 import boxSlider = require('./boxslider');
 import {createToggleStatsCmd} from './ClusterColumn';
+import {createRegroupColumnCmd} from './ClusterColumn';
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -101,7 +102,11 @@ function applyDivisions(view: any, cluster: number, column: any)
   const dataName = column.data.desc.name;
   var compositeRange = ranges.composite(dataName + 'cluster', newGroups);
 
-  column.updateGrid(compositeRange);
+  var graph = column.stratomex.provGraph;
+  var obj = graph.findObject(column);
+
+  // regroup column
+  graph.push(createRegroupColumnCmd(obj, compositeRange));
 
   // stop propagation to disable further event triggering
   d3.event.stopPropagation();
@@ -413,7 +418,7 @@ export class ClusterDetailView
     this.$toolbar.append('i').attr('class', 'fa fa-close').on('click', () =>
     {
       var g = column.stratomex.provGraph;
-      var s = g.findObject(column);
+      var s = g.findObject(<columns.Column>column);
       g.push(createToggleStatsCmd(s, that.cluster, false));
     });
   }
@@ -572,7 +577,11 @@ export class ClusterDetailView
       // 4) finally update the grid
       C.resolveIn(5).then( () =>
       {
-        column.updateGrid(newCompositeRange, true);
+        var graph = column.stratomex.provGraph;
+        var obj = graph.findObject(column);
+
+        // regroup column
+        graph.push(createRegroupColumnCmd(obj, newCompositeRange, true));
       });
     };
   }
@@ -979,7 +988,11 @@ export class ClusterProbView
 
     const newCompositeRange = ranges.composite(oldGroups.name, oldGroups);
 
-    column.updateGrid(newCompositeRange, true);
+    var graph = column.stratomex.provGraph;
+    var obj = graph.findObject(column);
+
+    // regroup column
+    graph.push(createRegroupColumnCmd(obj, newCompositeRange, true));
   }
 
   // -------------------------------------------------------------------------------------------------------------------

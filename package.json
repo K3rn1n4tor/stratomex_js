@@ -47,7 +47,7 @@
           "id": "stratomex-clustercolumn",
           "file": "ClusterColumn",
           "factory": "createCmd",
-          "creates": "(createStratomeXClusterColumn|showStratomeXStats|showStratomeXProbs|createStratomeXHierarchicalClusterColumn|createStratomeXFuzzyClusterColumn)"
+          "creates": "(createStratomeXClusterColumn|showStratomeXStats|showStratomeXProbs|createStratomeXHierarchicalClusterColumn|createStratomeXFuzzyClusterColumn|regroupStratomeXColumn)"
         },
         {
           "type": "actionCompressor",

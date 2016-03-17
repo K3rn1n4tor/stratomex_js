@@ -45,6 +45,8 @@ export function createCmd(id:string)
       return showStats;
     case 'showStratomeXProbs' :
       return clusterView.showProbs;
+    case 'regroupStratomeXColumn':
+      return regroupColumn;
   }
   return null;
 }
@@ -225,6 +227,38 @@ export function createFuzzyClusterColumnCmd(stratomex, data, partitioning, parti
   });
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+
+export function regroupColumn(inputs, parameter, graph, within)
+{
+  var column: any = inputs[0].value;
+
+  const noStatsUpdate = parameter.noStatsUpdate;
+  var rangeString = parameter.range;
+  var range: ranges.CompositeRange1D = <ranges.CompositeRange1D>ranges.parse(rangeString).dim(0);
+
+  var r: Promise<any>;
+
+  var oldRange = column.getRange().dim(0);
+  r = column.updateGrid(range, noStatsUpdate);
+
+  return r.then(() =>
+  {
+    return {
+      inverse: createRegroupColumnCmd(inputs[0], oldRange, !noStatsUpdate),
+      consumed: within
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export function createRegroupColumnCmd(column, range, noStatsUpdate=false)
+{
+  return prov.action(prov.meta('Regrouping of ' + column.toString(), prov.cat.layout),
+    'regroupStratomeXColumn', regroupColumn, [column], {
+      noStatsUpdate: noStatsUpdate, range: range.toString() });
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -270,7 +304,7 @@ export function createToggleStatsCmd(column, cluster, show)
  * Represents a column created by any cluster algorithm. Provides tools to analyze clusters / stratifications within
  * that column.
  */
-export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueId, link_m.IDataVis
+export class ClusterColumn extends columns.Column
 {
   protected statsViews: clusterView.ClusterDetailView[] = []; // array of all distance views for this column TODO: rename to distanceViews
   protected activeDivision: ClusterColumn[] = []; // TODO!: check if we still need the tracking of active divisions
@@ -337,7 +371,12 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
         var oldCompositeRange = <any>that.range.dim(0);
         var copyCompositeRange = $.extend(true, {}, oldCompositeRange);
         that.nextStratis.splice(0, 0, copyCompositeRange);
-        that.updateGrid(compositeRange);
+
+        var graph = that.stratomex.provGraph;
+        var obj = graph.findObject(that);
+
+        // regroup column
+        graph.push(createRegroupColumnCmd(obj, compositeRange));
       }
     });
 
@@ -351,7 +390,12 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
         var oldCompositeRange = <any>that.range.dim(0);
         var copyCompositeRange = $.extend(true, {}, oldCompositeRange);
         that.prevStratis.splice(0, 0, copyCompositeRange);
-        that.updateGrid(compositeRange);
+
+        var graph = that.stratomex.provGraph;
+        var obj = graph.findObject(that);
+
+        // regroup column
+        graph.push(createRegroupColumnCmd(obj, compositeRange));
       }
     });
   }
@@ -489,7 +533,12 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
         var compositeRange = ranges.composite(oldCompositeRange.name, groups);
 
-        that.updateGrid(compositeRange);
+        var graph = that.stratomex.provGraph;
+        var obj = graph.findObject(that);
+        console.log(obj);
+
+        // regroup column
+        graph.push(createRegroupColumnCmd(obj, compositeRange));
 
         d3.event.stopPropagation();
       });
@@ -619,7 +668,15 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
       //that.createClusterDetailToolbar(cluster, newStatsView.$toolbar, matrixMode, within);
       if (!relayout) { newStatsView.$nodes.forEach((d: d3.Selection<any>) => {d.classed('hidden', true); }); }
       const compositeRange = args[0];
-      return (relayout) ? that.updateGrid(compositeRange, true) : Promise.resolve([]);
+      if (relayout)
+      {
+        var graph = that.stratomex.provGraph;
+        var obj = graph.findObject(that);
+
+        // regroup column
+        graph.push(createRegroupColumnCmd(obj, compositeRange, true));
+      }
+      else { Promise.resolve([]); }
     });
   }
 
@@ -747,7 +804,11 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
 
       } else {
         //strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
-        column.updateGrid(compositeRange);
+        var graph = that.stratomex.provGraph;
+        var obj = graph.findObject(column);
+
+        // regroup column
+        graph.push(createRegroupColumnCmd(obj, compositeRange));
       }
     });
   }
@@ -833,7 +894,11 @@ export class ClusterColumn extends columns.Column implements idtypes.IHasUniqueI
     var compositeRange = ranges.composite(dataName + 'cluster', groups);
 
     // update this column
-    this.updateGrid(compositeRange);
+    var graph = that.stratomex.provGraph;
+    var obj = graph.findObject(that);
+
+    // regroup column
+    graph.push(createRegroupColumnCmd(obj, compositeRange));
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -1432,7 +1497,13 @@ export class HierarchicalClusterColumn extends ClusterColumn implements idtypes.
       }
 
       var compositeRange = ranges.composite(dataName + 'groups', groups);
-      that.updateGrid(compositeRange);
+
+      var graph = that.stratomex.provGraph;
+      var obj = graph.findObject(that);
+
+      // regroup column
+      graph.push(createRegroupColumnCmd(obj, compositeRange));
+      that.prevStratis.splice(0, 0, compositeRange);
     });
   }
 }
