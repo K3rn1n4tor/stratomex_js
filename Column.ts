@@ -510,7 +510,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   protected highlightMe = (event:events.IEvent, type:string, act:ranges.Range) =>
   {
-    this.$parent.classed('select-' + type, act.dim(0).contains(this.id));
+    this.$parent.classed('caleydo-select-' + type, act.dim(0).contains(this.id));
   };
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -568,7 +568,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     this.$summary.on('click', () =>
     {
-      manager.select([this.id], idtypes.toSelectOperation(d3.event));
+      manager.select([that.id], idtypes.toSelectOperation(d3.event));
     });
 
     this.createMultiGrid(partitioning, data);
@@ -614,7 +614,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
       const toggleSelection = () =>
       {
-        var isSelected = $elem.classed('select-selected');
+        var isSelected = $elem.classed('caleydo-select-selected');
         if (isSelected)
         {
           data.select(0, ranges.none());
@@ -623,7 +623,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         {
           data.select(0, ranges.all());
         }
-        $elem.classed('select-selected', !isSelected);
+        $elem.classed('caleydo-select-selected', !isSelected);
       };
 
       $elem.append('div').attr('class', 'title').style('max-width', (that.options.width - that.options.padding * 2) + 'px')

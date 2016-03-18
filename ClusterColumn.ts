@@ -577,10 +577,10 @@ export class ClusterColumn extends columns.Column
 
       const toggleSelection = () =>
       {
-        var isSelected = $elem.classed('select-selected');
+        var isSelected = $elem.classed('caleydo-select-selected');
         if (isSelected) { data.select(0, ranges.none()); }
         else { data.select(0, ranges.all()); }
-        $elem.classed('select-selected', !isSelected);
+        $elem.classed('caleydo-select-selected', !isSelected);
       };
 
       $elem.append('div').attr('class', 'title').style('max-width', (that.options.width - that.options.padding * 2) + 'px')

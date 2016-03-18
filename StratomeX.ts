@@ -111,7 +111,6 @@ class StratomeX extends views.AView {
      */
   addDependentData(m: datatypes.IDataType) {
     const base = columns.manager.selectedObjects()[0];
-    console.log(base);
     //nothing selected
     if (!base) {
       return false;
