@@ -172,6 +172,11 @@ class StratomeX extends views.AView {
       return;
     }
 
+    //if (data.desc.type == 'vector')
+    //{
+    //  (<any>data).stratification().then( (d) => { console.log(d); })
+    //}
+
     const dataID = data.desc.id;
     console.log('Cluster data set:', dataID);
     var that = this;
