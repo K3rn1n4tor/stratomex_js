@@ -50,7 +50,7 @@ function guessInitial(desc):any
 {
   if (desc.type === 'matrix')
   {
-    return 'caleydo-vis-heatmap-custom';
+    return 'caleydo-vis-heatmap';
   }
   if (desc.type === 'vector' && desc.value.type === 'int' && desc.name.toLowerCase().indexOf('daystodeath') >= 0)
   {
@@ -445,8 +445,10 @@ function shiftBy(r, shift)
  * utility to sync histograms over multiple instances
  * @param expectedNumberOfHists
  */
-function groupTotalAggregator(expectedNumberOfPlots:number, agg:(v:any) => number)
+function groupTotalAggregator(column: Column, agg: (v: any) => number)//expectedNumberOfPlots:number, agg:(v:any) => number)
 {
+  const expectedNumberOfPlots = (<ranges.CompositeRange1D>column.getRange().dim(0)).groups.length;
+
   var acc = 0;
   var resolvers = [];
   return (v) =>
@@ -659,7 +661,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       wrap: this.multiGridWrapper(partitioning),
       all: {
         selectAble: false,
-        total: groupTotalAggregator((<ranges.CompositeRange1D>partitioning.dim(0)).groups.length, (v) => v.largestBin),
+        total: groupTotalAggregator(this, (v) => v.largestBin),
         nbins: Math.sqrt(data.dim[0]),
         heightTo: initialHeight
       },
@@ -669,14 +671,13 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       'caleydo-vis-heatmap1d': {
         width: this.options.width - this.options.padding * 2
       },
-      'caleydo-vis-heatmap-custom': {
+      'caleydo-vis-heatmap': {
         scaleTo: [this.options.width - this.options.padding * 2, initialHeight],
         forceThumbnails: true,
-        customSelectAble: true,
         selectAble: false
       },
       'caleydo-vis-kaplanmeier': {
-        maxTime: groupTotalAggregator((<ranges.CompositeRange1D>partitioning.dim(0)).groups.length, (v) => v.length === 0 ? 0 : v[v.length - 1])
+        maxTime: groupTotalAggregator(this, (v) => v.length === 0 ? 0 : v[v.length - 1])
       }
     });
     //zooming

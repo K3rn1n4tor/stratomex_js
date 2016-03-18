@@ -733,7 +733,6 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
     var that = this;
 
     var $root = this.$node.select('g');
-    console.log($root);
 
     for (var i = 0; i < this.options.numSlider; ++i)
     {
