@@ -15,6 +15,12 @@ fit into one cluster.
 including incrementing/reducing number of clusters of a hierarchical clustering based on its histogram.
 - Enables re-sorting of cluster groups by distance / probability
 
+Installation:
+------------
+- Checkout this and the caleydo_clustering repository.
+- Update all other repos to the latest version (at least from March 21st).
+- Make sure you have the caleydo_data_hdf plugin (required for TCGA data).
+
 Future Work:
 -----------
 - See Issues section for further information.
