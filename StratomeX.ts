@@ -400,7 +400,7 @@ class StratomeX extends views.AView {
      */
   addClusterData(rowStrat: stratification.IStratification,
                 rowMatrix: datatypes.IDataType,
-                distanceMetric: string)
+                distanceMetric: string = 'euclidean')
   {
     var that = this;
     const objectName = rowMatrix.desc.name;
