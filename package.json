@@ -1,8 +1,8 @@
 {
-  "name": "stratomex_js",
+  "name": "stratomex_clustering",
   "version": "0.0.1",
   "license" : "SEE LICENSE IN LICENSE",
-  "repository": "Caleydo/stratomex_js",
+  "repository": "K3rn1n4tor/stratomex_clustering",
   "dependencies": {
   },
   "peerDependencies": {
@@ -18,13 +18,13 @@
       "web": [
         {
           "type": "view",
-          "id": "stratomex",
+          "id": "stratomex_clustering",
           "file": "stratomex",
           "location": "center"
         },
         {
           "type": "view",
-          "id": "stratomex-lineup",
+          "id": "stratomex-lineup_clustering",
           "file": "lineup",
           "location": "bottom"
         },
@@ -77,7 +77,7 @@
         },
         {
           "type": "app",
-          "name": "Stratomex.js"
+          "name": "Stratomex Clustering"
         }
       ]
     },
@@ -89,10 +89,10 @@
     },
     "products": [
       {
-        "name": "StratomeX",
+        "name": "StratomeX Clustering",
         "type": "python",
-        "app": "stratomex_js",
-        "plugins": ["stratomex_js", "caleydo_data_mongo", "caleydo_data_redis", "caleydo_data_hdf"]
+        "app": "stratomex_clustering",
+        "plugins": ["stratomex_clustering", "caleydo_data_mongo", "caleydo_data_redis", "caleydo_data_hdf", "caleydo_clustering"]
       }
     ],
     "requirejs-config": {
