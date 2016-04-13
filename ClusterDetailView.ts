@@ -89,13 +89,13 @@ function applyDivisions(view: any, cluster: number, column: any)
     var groupIndex = i;
     if (i > clusterIndex) { groupIndex = i + groupsColumn.length - 1; }
 
-    compRange.groups[i].name = "Group " + String(groupIndex) + '(Custom)';
+    compRange.groups[i].name = "Group " + String(groupIndex);
     newGroups.push(compRange.groups[i]);
   }
 
   for (var k = groupsColumn.length - 1; k >= 0; --k)
   {
-    groupsColumn[k].name = "Group " + String(k + clusterIndex) + '(Custom)';
+    groupsColumn[k].name = "Group " + String(k + clusterIndex);
     newGroups.splice(clusterIndex, 0, groupsColumn[k]);
   }
 

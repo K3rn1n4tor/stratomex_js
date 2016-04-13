@@ -111,6 +111,8 @@ class StratomeX extends views.AView {
      */
   addDependentData(m: datatypes.IDataType) {
     const base = columns.manager.selectedObjects()[0];
+
+    console.log(base);
     //nothing selected
     if (!base) {
       return false;
@@ -323,9 +325,9 @@ class StratomeX extends views.AView {
       {
         id: dataID + 'method', fqname: 'none', name: dataName + '/' + method,
         origin: dataFQ, size: (<any>data).dim[0], ngroups: numClusters,
-        type: 'stratification', groups: groupsDesc, // TODO: use this as desc
+        type: 'stratification', groups: groupsDesc,
         idtype: 'patient',
-        ws: 'random' // TODO: figure out what this parameter is
+        ws: 'random'
       };
 
       // create a new startification of the data
@@ -368,9 +370,9 @@ class StratomeX extends views.AView {
     {
       id: dataID + 'method', fqname: 'none', name: dataName,
       origin: dataFQ, size: (<any>data).dim[0], ngroups: numGroups,
-      type: 'stratification', groups: compositeRange.groups, // TODO: use this as desc
+      type: 'stratification', groups: compositeRange.groups,
       idtype: 'patient',
-      ws: 'random' // TODO: figure out what this parameter is
+      ws: 'random'
     };
 
     Promise.all([(<any>data).rows(), (<any>data).rowIds()]).then((args) =>
@@ -394,14 +396,15 @@ class StratomeX extends views.AView {
    * Add new (custom) cluster column
    * @param rowStrat
    * @param rowMatrix
+   * @param distanceMetric
      */
   addClusterData(rowStrat: stratification.IStratification,
                 rowMatrix: datatypes.IDataType,
-                distanceMetric: string)
+                distanceMetric: string = 'euclidean')
   {
     var that = this;
-    var mref = this.provGraph.findOrAddObject(rowMatrix, rowMatrix.desc.name, 'data');
-
+    const objectName = rowMatrix.desc.name;
+    var mref = this.provGraph.findOrAddObject(rowMatrix, objectName, 'data');
 
     Promise.all<ranges.Range1D>([rowStrat.idRange(), ranges.Range1D.all()])
       .then((range_list:ranges.Range1D[]) =>
@@ -412,7 +415,7 @@ class StratomeX extends views.AView {
       }).then((range) =>
       {
         that.provGraph.push(clustercolumns.createClusterColumnCmd(that.ref, mref, range, distanceMetric,
-          toName(rowMatrix.desc.name, rowStrat.desc.name)));
+          toName(objectName, rowStrat.desc.name)));
       });
   }
 
@@ -422,6 +425,8 @@ class StratomeX extends views.AView {
    * Add new (custom) cluster column
    * @param rowStrat
    * @param rowMatrix
+   * @param distanceMetric
+   * @param dendrogram
      */
   addHierarchicalClusterData(rowStrat: stratification.IStratification,
                             rowMatrix: datatypes.IDataType,
@@ -429,7 +434,8 @@ class StratomeX extends views.AView {
                             dendrogram: any)
   {
     var that = this;
-    var mref = this.provGraph.findOrAddObject(rowMatrix, rowMatrix.desc.name, 'data');
+    const objectName = rowMatrix.desc.name;
+    var mref = this.provGraph.findOrAddObject(rowMatrix, objectName, 'data');
 
     Promise.all<ranges.Range1D>([rowStrat.idRange(), ranges.Range1D.all()])
       .then((range_list:ranges.Range1D[]) =>
@@ -447,7 +453,7 @@ class StratomeX extends views.AView {
         var dendrogramRef = that.provGraph.findOrAddObject(dendrogramData, dendrogramName, 'data');
 
         that.provGraph.push(clustercolumns.createHierarchicalClusterColumnCmd(that.ref, mref, range, distanceMetric,
-          dendrogramRef, toName(rowMatrix.desc.name, rowStrat.desc.name)));
+          dendrogramRef, toName(objectName, rowStrat.desc.name)));
       });
   }
 
@@ -457,6 +463,9 @@ class StratomeX extends views.AView {
    * Add new (custom) cluster column
    * @param rowStrat
    * @param rowMatrix
+   * @param distanceMetric
+   * @param partitionMatrix
+   * @param maxProb
      */
   addFuzzyClusterData(rowStrat: stratification.IStratification,
                       rowMatrix: datatypes.IDataType,
@@ -465,7 +474,8 @@ class StratomeX extends views.AView {
                       maxProb: number)
   {
     var that = this;
-    var mref = this.provGraph.findOrAddObject(rowMatrix, rowMatrix.desc.name, 'data');
+    const objectName = rowMatrix.desc.name;
+    var mref = this.provGraph.findOrAddObject(rowMatrix, objectName, 'data');
 
     Promise.all<ranges.Range1D>([rowStrat.idRange(), ranges.Range1D.all()])
       .then((range_list:ranges.Range1D[]) =>
@@ -482,7 +492,7 @@ class StratomeX extends views.AView {
         const partitionRef = that.provGraph.findOrAddObject(partitionData, partitionName, 'data');
 
         that.provGraph.push(clustercolumns.createFuzzyClusterColumnCmd(that.ref, mref, range, distanceMetric,
-          partitionRef, maxProb, toName(rowMatrix.desc.name, rowStrat.desc.name)));
+          partitionRef, maxProb, toName(objectName, rowStrat.desc.name)));
       });
   }
 
@@ -553,13 +563,32 @@ class StratomeX extends views.AView {
     if (i >= 0) {
       //console.log('remove '+column.id);
       this._columns.splice(i, 1);
-      this._columns.forEach((col: any, _: number) => {
-        if (col.id > i) { col.id -= 1; }
-      });
 
       this._links.remove(false, column);
       column.destroy(within);
-      return this.relayout(within).then(() => i);
+
+      // kernm: modification to keep track of ids for each column.
+      // First remove all columns from manager and add them with new ids.
+      this._columns.forEach((col: any, _: number) =>
+      {
+          columns.manager.remove(col);
+      });
+
+      this._columns.forEach((col: any, _: number) => {
+        col.setColumnId(col.id);
+
+        if (col.id > i)
+        {
+          col.setColumnId(col.id - 1);
+        }
+      });
+
+      return this.relayout(within).then(() =>
+      {
+        columns.manager.select([]);
+
+        return i;
+      });
     } else {
       console.error('cant find column');
     }
@@ -576,9 +605,14 @@ class StratomeX extends views.AView {
     const i = this.indexOf(columnA);
     const j = this.indexOf(columnB);
 
+    columns.manager.remove(columnA);
+    columns.manager.remove(columnB);
+
+    console.log(i, j);
+
     // swap column ids
-    columnA.id = j;
-    columnB.id = i;
+    columnA.setColumnId(j);
+    columnB.setColumnId(i);
 
     // swap columns
     this._columns[i] = columnB;
@@ -589,7 +623,13 @@ class StratomeX extends views.AView {
     } else {
       this.parent.insertBefore(columnA.layoutNode, columnB.layoutNode);
     }
-    return this.relayout(within);
+    var promise = this.relayout(within);
+
+    return promise.then(() =>
+    {
+      columns.manager.select([j]);
+      return Promise.resolve([]);
+    });
   }
 
   indexOf(column:columns.Column) {

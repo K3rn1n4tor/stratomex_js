@@ -445,7 +445,7 @@ function shiftBy(r, shift)
  * utility to sync histograms over multiple instances
  * @param expectedNumberOfHists
  */
-function groupTotalAggregator(column: Column, agg: (v: any) => number)//expectedNumberOfPlots:number, agg:(v:any) => number)
+function groupTotalAggregator(column: any, agg: (v: any) => number)//expectedNumberOfPlots:number, agg:(v:any) => number)
 {
   const expectedNumberOfPlots = (<ranges.CompositeRange1D>column.getRange().dim(0)).groups.length;
 
@@ -568,6 +568,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     this.$summary.on('click', () =>
     {
+      //console.log('Select column:', that.id);
       manager.select([that.id], idtypes.toSelectOperation(d3.event));
     });
 
@@ -661,7 +662,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       wrap: this.multiGridWrapper(partitioning),
       all: {
         selectAble: false,
-        total: groupTotalAggregator(this, (v) => v.largestBin),
+        total: groupTotalAggregator(this, (v) => v.largestBin ),
         nbins: Math.sqrt(data.dim[0]),
         heightTo: initialHeight
       },
@@ -702,6 +703,28 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     this.$parent.selectAll('.gtoolbar').style('display', interactive ? null : 'none');
 
     this.$parent.selectAll('.group .title, .group .body').classed('readonly', !interactive);
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  setColumnId(newID: number)
+  {
+    // remove current column with old id from selection manager
+    //manager.off('select', this.highlightMe);
+
+    // set new column id
+    this.id = newID;
+    const that = this;
+
+    // reassign column to manager
+    manager.push(<Column>this);
+    //manager.on('select', this.highlightMe);
+
+    this.$summary.on('click', () =>
+    {
+      console.log('Select column', that.id);
+      manager.select([that.id], idtypes.toSelectOperation(d3.event));
+    });
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -1051,44 +1074,3 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// class for detail view
-// TODO! Is this obsolete?
-
-export class DetailView
-{
-  private $node:d3.Selection<any>;
-  private multi:multiform.IMultiForm;
-
-  constructor($parent:d3.Selection<any>, private cluster:number, private data:datatypes.IDataType)
-  {
-
-  }
-
-  destroy()
-  {
-    this.multi.destroy();
-    this.$node.remove();
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// class for statistics view
-// TODO! Is this obsolete?
-
-export class StatsView
-{
-  private $node : d3.Selection<any>;
-  private divider : boxSlider.BoxSlider;
-
-  constructor($parent: d3.Selection<any>, private cluster: number, private data : datatypes.IDataType)
-  {
-
-  }
-
-  destroy()
-  {
-    this.divider.destroy();
-    this.$node.remove();
-  }
-}

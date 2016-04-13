@@ -83,7 +83,7 @@ define(function (require) {
             stratomex.addData(rowStrat, rowStrat);
           } else {
             // TODO! and call addData to draw connection
-            stratomex.addData(rowStrat, d, null);
+            stratomex.addClusterData(rowStrat, d);
           }
         });
       } else if (rowStrat.desc.type === 'vector') {

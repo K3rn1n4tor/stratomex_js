@@ -709,6 +709,7 @@ export class ClusterColumn extends columns.Column
 
   /**
    * Divides current stratification into three groups and creates new column.
+   * @param view
    * @param cluster
    * @param column
    * @returns {Promise<Array>}
