@@ -28,6 +28,7 @@ import heatmap = require('../caleydo_vis/heatmap');
 import columns = require('./Column');
 import clusterView = require('./ClusterDetailView');
 import boxSlider = require('./boxslider');
+import utility = require('./utility');
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -528,6 +529,21 @@ export class ClusterColumn extends columns.Column
 
     if (numGroups > 1)
     {
+      // create new cluster merge command
+      $toolbar.append('i').attr('class', 'fa fa-link').on('click', () =>
+      {
+        // first obtain the provenance graph
+        var graph = that.stratomex.provGraph;
+        // next find the current object / selection / cluster
+        var obj = graph.findObject(that);
+        // push new command to graph
+        //graph.push(createToggleStatsCmd(obj, pos[0], true));
+        utility.createMergePopup(data, elem, this, pos[0], numGroups, {});
+
+        // stop propagation to disable further event triggering
+        d3.event.stopPropagation();
+      });
+
       // enable possibility to remove group from column
       $toolbar.append('i').attr('class', 'fa fa-times-circle').on('click', () =>
       {
@@ -543,7 +559,6 @@ export class ClusterColumn extends columns.Column
 
         var graph = that.stratomex.provGraph;
         var obj = graph.findObject(that);
-        console.log(obj);
 
         // regroup column
         graph.push(createRegroupColumnCmd(obj, compositeRange));
@@ -637,6 +652,13 @@ export class ClusterColumn extends columns.Column
 
     this.$parent.style('width', layoutWidth + 'px');
     this.$layoutHelper.style('width', layoutWidth + 'px');
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  mergeClusters(clusterID: number, otherClusterID: number)
+  {
+    console.log('Merge clusters ' + clusterID + ' and ' + otherClusterID);
   }
 
   // -------------------------------------------------------------------------------------------------------------------

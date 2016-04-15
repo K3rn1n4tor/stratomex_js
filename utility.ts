@@ -12,7 +12,7 @@ import C = require('../caleydo_core/main');
 import matrix = require('../caleydo_core/matrix');
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// class definition
+// class definition of cluster popup
 
 /**
  * Implementation of a simple popup to select a cluster algorithm applied to any matrix with
@@ -20,7 +20,7 @@ import matrix = require('../caleydo_core/matrix');
  */
 export class ClusterPopup
 {
-  private $node : d3.Selection<any> = null;
+  private $node: d3.Selection<any> = null;
   private destroyed: boolean = false;
   public height: number = 0;
 
@@ -36,7 +36,7 @@ export class ClusterPopup
    * @param options options for algorithms
    */
   constructor(private data: datatypes.IDataType, private parent: Element,
-              private stratomex : any, rowID : number,
+              private stratomex: any, rowID: number,
               private options: any)
   {
     this.options = C.mixin(
@@ -98,7 +98,7 @@ export class ClusterPopup
    * @returns {Selection<any>}
      * @private
      */
-  private _build($parent : d3.Selection<any>, rowID : number)
+  private _build($parent: d3.Selection<any>, rowID: number)
   {
     var that = this;
 
@@ -141,7 +141,7 @@ export class ClusterPopup
     // create fuzzy row
     this._buildFuzzyRow($body);
 
-    // compute offsets
+    // use custom offsets
     const offsetX = 5;
     const offsetY = 15;
 
@@ -336,6 +336,114 @@ export class ClusterPopup
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Class definition of mergePopup
+
+export class MergePopup
+{
+  private $node: d3.Selection<any> = null;
+  private destroyed: boolean = false;
+  private height: number = 100;
+
+  constructor(private data: datatypes.IDataType, private parent: Element,
+              private column: any, clusterID: number, private numClusters: number,
+              private options: any)
+  {
+    this.options = C.mixin(
+      {
+        width: 150,
+        animationTime: 200
+      }, options);
+
+    this.$node = this._build(d3.select(parent), clusterID);
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  get node()
+  {
+    return this.$node;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  private _build($parent : d3.Selection<any>, clusterID : number)
+  {
+    var that = this;
+
+    // this works for both Firefox and Chrome
+    var mousePos = d3.mouse($parent.node());
+
+    // create root division
+    var $root = $parent.append('div').classed('mergePopup', true);
+    // start animation of popup
+    $root.transition().duration(this.options.animationTime).style('opacity', 1.0);
+
+    // create title
+    var $titleBar = $root.append('div').classed('title', true);
+    $titleBar.append('text').text("Merge cluster " + clusterID);
+
+    // create toolbar
+    var $toolbar = $root.append('div').classed('toolbar', true);
+    $toolbar.append('i').attr('class', 'fa fa-close')
+      .on('click', (_ : any) => { that.destroy(); });
+
+    // create body
+    var $body = $root.append('div').classed('body', true);
+    $body.transition().duration(this.options.animationTime).style('width', String(this.options.width) + 'px');
+
+    // button to trigger merge
+    var button = $root.append('button').text('Merge');
+
+    var clusterNums = Array.apply(null, Array(this.numClusters)).map((_, i) => { return i });
+    clusterNums.splice(clusterID, 1);
+
+    // create selection of cluster ids
+    var clusterSelect = $body.append('select').attr({ title: 'with cluster' }).classed('clusterSelect', true);
+    clusterSelect.selectAll('option').data(clusterNums)
+      .enter().append('option').attr('value', (d: any) => { return d; })
+      .text( (d: string) => { return d });
+
+    // select first cluster by default
+    clusterSelect.property('value', clusterNums[0]);
+
+    // button event
+    button.on('mouseup', (_: any) =>
+    {
+      // obtain selected cluster index
+      const otherClusterID = parseFloat($(clusterSelect.node()).val());
+
+      // merge clusters
+      this.column.mergeClusters(clusterID, otherClusterID);
+
+      // remove this window
+      this.destroy();
+    });
+
+    // use custom offsets
+    const offsetX = 5;
+    const offsetY = 15;
+
+    // move window to cluster button
+    $root.style({
+      'opacity': 0, left: String(mousePos[0] - offsetX) + 'px',
+      top: String(mousePos[1] - this.height - offsetY) + 'px'
+    });
+
+    return $root;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  destroy()
+  {
+    if (this.destroyed) { return; }
+
+    this.$node.transition().duration(this.options.animationTime).style('opacity', 0).remove();
+    this.destroyed = true;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Creation methods
 
 /**
@@ -347,8 +455,14 @@ export class ClusterPopup
  * @param options
  * @returns {ClusterPopup}
  */
-export function createClusterPopup(data: matrix.IMatrix, parent: Element, clusterCallBack : any, rowID : number,
+export function createClusterPopup(data: matrix.IMatrix, parent: Element, stratomex: any, rowID: number,
               options: any)
 {
-  return new ClusterPopup(data, parent, clusterCallBack, rowID, options);
+  return new ClusterPopup(data, parent, stratomex, rowID, options);
+}
+
+export function createMergePopup(data: matrix.IMatrix, parent: Element, column: any, rowID: number, numClusters: number,
+              options: any)
+{
+  return new MergePopup(data, parent, column, rowID, numClusters, options);
 }

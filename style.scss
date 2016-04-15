@@ -85,6 +85,84 @@ div.clusterPopup:hover
   -webkit-animation: opacityAnimIn 200ms forwards;
 }
 
+div.mergePopup
+{
+  position: absolute !important;
+  background-color: white;
+  border: 2px solid $exploration-stage;
+  border-radius: 4px;
+
+  div.title
+  {
+    //text-align: center;
+    background-color: $exploration-stage;
+    padding: 0 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 14px;
+    color: white;
+  }
+
+  div.toolbar
+  {
+    position: absolute;
+    height: 16px;
+    top: 0;
+    right: 0;
+
+    i
+    {
+      background-size: 100%;
+    }
+
+    i:hover
+    {
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    i.fa-close
+    {
+      color: darkgreen;
+    }
+  }
+
+  div.body
+  {
+    display: flex;
+    flex-flow: row;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #f9fff9;
+
+    > button
+    {
+      border: 1px solid $exploration-stage;
+      border-radius: 4px;
+      box-shadow: none !important;
+      background-color: $header-menu-bg-color;
+      min-width: 100px;
+    }
+
+    > button:hover
+    {
+      background-color: $select-color-bright;
+      //border-color: $select-color-bright !important;
+      font-weight: bold;
+    }
+
+    > select
+    {
+      text-align: center;
+      border: 1px solid $exploration-stage;
+      border-radius: 4px;
+      background-color: $header-menu-bg-color;
+      min-width: 100px;
+      min-height: 24px;
+    }
+  }
+}
+
 div.clusterPopup
 {
   position: absolute !important;
