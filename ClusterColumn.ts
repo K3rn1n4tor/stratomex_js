@@ -30,6 +30,9 @@ import clusterView = require('./ClusterDetailView');
 import boxSlider = require('./boxslider');
 import utility = require('./utility');
 
+// popup manager helper pointer
+var mergePopupHelper = null;
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export function createCmd(id:string)
@@ -538,7 +541,9 @@ export class ClusterColumn extends columns.Column
         var obj = graph.findObject(that);
         // push new command to graph
         //graph.push(createToggleStatsCmd(obj, pos[0], true));
-        utility.createMergePopup(data, elem, this, pos[0], numGroups, {});
+
+        if (mergePopupHelper != null) { mergePopupHelper.destroy(); }
+        mergePopupHelper = utility.createMergePopup(data, elem, this, pos[0], numGroups, {});
 
         // stop propagation to disable further event triggering
         d3.event.stopPropagation();
@@ -554,6 +559,13 @@ export class ClusterColumn extends columns.Column
         that.prevStratis.splice(0, 0, copyCompositeRange);
         var groups = oldCompositeRange.groups.slice();
         groups.splice(groupID, 1);
+
+        for (var i = groupID; i < numGroups - 1; ++i)
+        {
+          var groupCopy = $.extend(true, {}, groups[i]);
+          groupCopy.name = 'Group ' + i;
+          groups[i] = groupCopy;
+        }
 
         var compositeRange = ranges.composite(oldCompositeRange.name, groups);
 
@@ -658,7 +670,41 @@ export class ClusterColumn extends columns.Column
 
   mergeClusters(clusterID: number, otherClusterID: number)
   {
-    console.log('Merge clusters ' + clusterID + ' and ' + otherClusterID);
+    // get old stratification
+    var oldCompositeRange = (<any>this.range.dim(0));
+    var numGroups = oldCompositeRange.groups.length;
+    // make a copy of the composite range via JQuery
+    var copyCompositeRange = $.extend(true, {}, oldCompositeRange);
+    // add to previous stratifications
+    this.prevStratis.splice(0, 0, copyCompositeRange);
+    // make copy of groups
+    var groups = oldCompositeRange.groups.slice();
+    // merge clusters
+    var group1 = groups[clusterID];
+    var group2 = groups[otherClusterID];
+
+    // create new group
+    var newLabels = group1.asList().concat(group2.asList());
+    groups[clusterID] = new ranges.Range1DGroup("Group " + clusterID, 'grey', ranges.parse(newLabels).dim(0));
+    // remove other group
+    groups.splice(otherClusterID, 1);
+
+    for (var i = otherClusterID; i < numGroups - 1; ++i)
+    {
+      var groupCopy = $.extend(true, {}, groups[i]);
+      groupCopy.name = 'Group ' + i;
+      groups[i] = groupCopy;
+    }
+
+    var compositeRange = ranges.composite(oldCompositeRange.name, groups);
+
+    var graph = this.stratomex.provGraph;
+    var obj = graph.findObject(this);
+
+    // regroup column
+    graph.push(createRegroupColumnCmd(obj, compositeRange));
+
+    d3.event.stopPropagation();
   }
 
   // -------------------------------------------------------------------------------------------------------------------

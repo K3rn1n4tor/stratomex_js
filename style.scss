@@ -91,74 +91,89 @@ div.mergePopup
   background-color: white;
   border: 2px solid $exploration-stage;
   border-radius: 4px;
+  z-index: 2;
 
   div.title
   {
     //text-align: center;
-    background-color: $exploration-stage;
-    padding: 0 2px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 14px;
-    color: white;
+    background-color: $exploration-stage !important;
+    padding: 0 2px !important;
+    overflow: hidden  !important;
+    text-overflow: ellipsis  !important;
+    font-size: 14px  !important;
+    color: white  !important;
   }
 
-  div.toolbar
+  div.gtoolbar
   {
-    position: absolute;
-    height: 16px;
-    top: 0;
-    right: 0;
+    position: absolute !important;
+    height: 16px !important;
+    top: 0px !important;
+    right: 0px !important;
 
     i
     {
-      background-size: 100%;
+      background-size: 100% !important;
     }
 
     i:hover
     {
-      font-weight: bold;
-      cursor: pointer;
+      font-weight: bold !important;
+      cursor: pointer !important;
     }
 
     i.fa-close
     {
-      color: darkgreen;
+      color: darkgreen !important;
     }
   }
 
   div.body
   {
     display: flex;
-    flex-flow: row;
+    flex-flow: column;
     justify-content: space-between;
     align-items: center;
     background-color: #f9fff9;
 
-    > button
+    > .content
     {
-      border: 1px solid $exploration-stage;
-      border-radius: 4px;
-      box-shadow: none !important;
-      background-color: $header-menu-bg-color;
-      min-width: 100px;
-    }
+      width: 100%;
+      display: flex;
+      flex: 1 1 20px;
+      flex-flow: row;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 35px;
+      padding-left: 10px;
+      padding-right: 10px;
 
-    > button:hover
-    {
-      background-color: $select-color-bright;
-      //border-color: $select-color-bright !important;
-      font-weight: bold;
-    }
+      > button
+      {
+        border: 1px solid $exploration-stage;
+        border-radius: 4px;
+        box-shadow: none !important;
+        background-color: $header-menu-bg-color;
+        min-width: 50px;
+        min-height: 24px;
+      }
 
-    > select
-    {
-      text-align: center;
-      border: 1px solid $exploration-stage;
-      border-radius: 4px;
-      background-color: $header-menu-bg-color;
-      min-width: 100px;
-      min-height: 24px;
+      > button:hover
+      {
+        background-color: $select-color-bright;
+        //border-color: $select-color-bright !important;
+        font-weight: bold;
+      }
+
+      > select
+      {
+        text-align: center;
+        border: 1px solid $exploration-stage;
+        border-radius: 4px;
+        background-color: $header-menu-bg-color;
+        min-width: 50px;
+        min-height: 24px;
+      }
     }
   }
 }

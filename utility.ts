@@ -342,7 +342,7 @@ export class MergePopup
 {
   private $node: d3.Selection<any> = null;
   private destroyed: boolean = false;
-  private height: number = 100;
+  private height: number = 60;
 
   constructor(private data: datatypes.IDataType, private parent: Element,
               private column: any, clusterID: number, private numClusters: number,
@@ -380,10 +380,10 @@ export class MergePopup
 
     // create title
     var $titleBar = $root.append('div').classed('title', true);
-    $titleBar.append('text').text("Merge cluster " + clusterID);
+    $titleBar.append('text').text("Merge Group " + clusterID);
 
     // create toolbar
-    var $toolbar = $root.append('div').classed('toolbar', true);
+    var $toolbar = $root.append('div').classed('gtoolbar', true);
     $toolbar.append('i').attr('class', 'fa fa-close')
       .on('click', (_ : any) => { that.destroy(); });
 
@@ -391,14 +391,17 @@ export class MergePopup
     var $body = $root.append('div').classed('body', true);
     $body.transition().duration(this.options.animationTime).style('width', String(this.options.width) + 'px');
 
+    // row
+    var row = $body.append('div').classed('content', true);
+
     // button to trigger merge
-    var button = $root.append('button').text('Merge');
+    var button = row.append('button').text('Merge');
 
     var clusterNums = Array.apply(null, Array(this.numClusters)).map((_, i) => { return i });
     clusterNums.splice(clusterID, 1);
 
     // create selection of cluster ids
-    var clusterSelect = $body.append('select').attr({ title: 'with cluster' }).classed('clusterSelect', true);
+    var clusterSelect = row.append('select').attr({ title: 'select second group' }).classed('clusterSelect', true);
     clusterSelect.selectAll('option').data(clusterNums)
       .enter().append('option').attr('value', (d: any) => { return d; })
       .text( (d: string) => { return d });
@@ -420,8 +423,8 @@ export class MergePopup
     });
 
     // use custom offsets
-    const offsetX = 5;
-    const offsetY = 15;
+    const offsetX = 10;
+    const offsetY = -6;
 
     // move window to cluster button
     $root.style({
