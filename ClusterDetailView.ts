@@ -549,7 +549,6 @@ export class ClusterDetailView
 
       var index = 0;
       for (var pos = 0; pos < mousePosX; pos += columnWidth) { index++; }
-      console.log(index);
 
       // 1) sort matrix by selected column
       function sortMatrix(a, b)
@@ -598,7 +597,7 @@ export class ClusterDetailView
       that.update(newDistances, newLabels, newDistMatrix);
       d3.select(that.matrixView.node).on('click', that._onClickMatrix(rawMatrix, numGroups, rawLabels, column));
 
-      that.$mainNode.on('mouseup', that._mouseOutHandler());
+      that.$matrixNode.on('mouseup', that._mouseOutHandler());
       that._mouseOutHandler()({});
 
       // 4) finally update the grid
@@ -781,11 +780,20 @@ export class ClusterDetailView
 
 export class ClusterProbView
 {
-  public $nodes: d3.Selection<any>[] = [];
-  public boxCharts: boxSlider.BoxSlider[] = [];
-  public zooms: behaviors.ZoomLogic[] = [];
+  public $mainNode: d3.Selection<any> = null;
+  public $extNodes: d3.Selection<any>[] = [];
+
+  public probabilityView: boxSlider.BoxSlider = null;
+  public externalViews: boxSlider.BoxSlider[] = [];
+
+  public mainZoom: behaviors.ZoomLogic = null;
+  public extZooms: behaviors.ZoomLogic[] = [];
+
   public column: any = null;
   private partitionMatrix: any[] = [];
+
+  public matrixView: heatmap.HeatMap;
+  public zoomMatrixView: behaviors.ZoomLogic;
 
   private labels: number[] = [];
   private numGroups: number = 0;
@@ -796,10 +804,10 @@ export class ClusterProbView
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  constructor(private cluster: number, private range: ranges.Range, _partitionMatrix: any,
+  constructor(public cluster: number, private range: ranges.Range, _partitionMatrix: any,
               private options: any)
   {
-    this.options = C.mixin({ probsWidth: 50, maxProb: 0.5 }, options);
+    this.options = C.mixin({ probsWidth: 50, extOffset: 30, maxProb: 0.5 }, options);
 
     this.labels = (<any>this.range.dims[0]).groups[cluster].asList();
     this.numGroups = (<any>this.range.dims[0]).groups.length;
@@ -814,8 +822,10 @@ export class ClusterProbView
     {
       const labelID = this.labels[j];
       let labelProbs = partitionMatrix[labelID].slice();
-      var prob = labelProbs.splice(cluster, 1)[0];
-      labelProbs.splice(0, 0, prob);
+
+      // do not sort matrix
+      //var prob = labelProbs.splice(cluster, 1)[0];
+      //labelProbs.splice(0, 0, prob);
 
       var numOccurs = 0;
       for (var i = 0; i < this.numGroups; ++i) { numOccurs += (labelProbs[i] >= maxProb) ? 1 : 0; }
@@ -830,7 +840,11 @@ export class ClusterProbView
   {
     if (this.visible)
     {
-      return (this.externVisible) ? (this.numGroups * this.options.probsWidth) : this.options.probsWidth;
+      var width = this.options.probsWidth;
+
+      if (this.externVisible) { width += (this.numGroups * this.options.probsWidth) + this.options.extOffset; }
+
+      return width;
     }
     else { return 0; }
   }
@@ -891,17 +905,22 @@ export class ClusterProbView
       }
     }
 
-    // build main nodes of the view
+    this.$mainNode = $parent.append('div').classed('stats', true).style('opacity', 1);
+    this.$mainNode.classed('group', true).datum(probs[this.cluster]);
+    this.$mainNode.append('div').attr('class', 'title').text('Probs' + String(IDs[j]));
+    this.$mainNode.append('div').attr('class', 'body');
+
+    // build external view nodes of the view
     for (var j = 0; j < numGroups; ++j)
     {
       const index = j;
       let probabilities = probs[index];
 
-      const $elem = $parent.append('div').classed('stats', true).style('opacity', 0);
+      const $elem = $parent.append('div').classed('stats', true).classed('hidden', true).style('opacity', 0);
       $elem.classed('group', true).datum(probabilities);
       $elem.append('div').attr('class', 'title').text('Probs' + String(IDs[j]));
       $elem.append('div').attr('class', 'body');
-      this.$nodes.push($elem);
+      this.$extNodes.push($elem);
     }
 
     this.update(probs, labels, occurs);
@@ -909,6 +928,9 @@ export class ClusterProbView
 
     // create toolbar
     this.createToolbar(column);
+
+    // sort by prob
+    this.sortByClusterID(this.cluster, column);
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -921,67 +943,74 @@ export class ClusterProbView
   {
     const that = this;
 
+    // function for sorting
+    function OnSortDesc(index, column)
+    {
+      return () =>
+      {
+        that.sortByClusterID(index, column);
+      }
+    }
+
+    // set-up toolbar for main prob view
+    this.$mainNode.select('.gtoolbar').remove();
+    var $gtoolbar = this.$mainNode.append('div').attr('class', 'gtoolbar');
+
+    if (this.column != null)
+    {
+      $gtoolbar.append('i').attr('class', 'fa fa-chevron-circle-left').on('click', () =>
+      {
+        applyDivisions(that, that.cluster, column);
+      });
+    }
+
+    $gtoolbar.append('i').attr('class', 'fa fa-sort-amount-desc').on('click', OnSortDesc(this.cluster, column));
+
+    $gtoolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
+    {
+      that.externVisible = !that.externVisible;
+
+      for (var i = 0; i < that.numGroups; ++i)
+      {
+        that.$extNodes[i].classed('hidden', !that.externVisible);
+        that.$extNodes[i].style('opacity', 1);
+      }
+
+      column.setColumnWidth();
+      column.stratomex.relayout();
+    });
+
+    $gtoolbar.append('i').attr('class', 'fa fa-share-alt').on('click', () =>
+    {
+      column.showDivisions(that, that.cluster);
+      // recreate toolbar
+      C.resolveIn(400).then(() =>
+      {
+        that.createToolbar(column);
+      });
+      // stop propagation to disable further event triggering
+      d3.event.stopPropagation();
+    });
+
+    $gtoolbar.append('i').attr('class', 'fa fa-close').on('click', () =>
+    {
+      var g = column.stratomex.provGraph;
+      var s = g.findObject(column);
+      g.push(createToggleProbsCmd(s, that.cluster, false));
+    });
+
+    // create toolbars for external views
     for (var j = 0; j < that.numGroups; ++j)
     {
+      if (j == this.cluster) { continue; }
+
       // remove old toolbar first
-      this.$nodes[j].select('.gtoolbar').remove();
+      this.$extNodes[j].select('.gtoolbar').remove();
 
       // create the toolbar of the detail view
-      var $gtoolbar = this.$nodes[j].append('div').attr('class', 'gtoolbar');
-
-      function OnSortDesc(index, column)
-      {
-        return () =>
-        {
-          that.sortByClusterID(index, column);
-        }
-      }
-
-      if (j == 0 && this.column != null)
-      {
-        $gtoolbar.append('i').attr('class', 'fa fa-chevron-circle-left').on('click', () =>
-        {
-          applyDivisions(that, that.cluster, column);
-        });
-      }
+      var $gtoolbar = this.$extNodes[j].append('div').attr('class', 'gtoolbar');
 
       $gtoolbar.append('i').attr('class', 'fa fa-sort-amount-desc').on('click', OnSortDesc(j, column));
-
-      if (j == 0)
-      {
-        $gtoolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
-        {
-          that.externVisible = !that.externVisible;
-
-          for (var i = 1; i < that.numGroups; ++i)
-          {
-            that.$nodes[i].classed('hidden', !that.externVisible);
-            that.$nodes[i].style('opacity', 1);
-          }
-
-          column.setColumnWidth();
-          column.stratomex.relayout();
-        });
-
-        $gtoolbar.append('i').attr('class', 'fa fa-share-alt').on('click', () =>
-        {
-          column.showDivisions(that, that.cluster);
-          // recreate toolbar
-          C.resolveIn(400).then(() =>
-          {
-            that.createToolbar(column);
-          });
-          // stop propagation to disable further event triggering
-          d3.event.stopPropagation();
-        });
-
-        $gtoolbar.append('i').attr('class', 'fa fa-close').on('click', () =>
-        {
-          var g = column.stratomex.provGraph;
-          var s = g.findObject(column);
-          g.push(createToggleProbsCmd(s, that.cluster, false));
-        });
-      }
     }
   }
 
@@ -1042,39 +1071,55 @@ export class ClusterProbView
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  public update(probabilities: any, labels: any, occurs: any)
+  public update(probabilities: any[], labels: any, occurs: any)
   {
     this.labels = labels;
     var that = this;
 
+    // function to color the bars
+    function colorBars(numOccurs)
+    {
+      var cScale = d3.scale.linear().domain([0,1]).range(<any>['#449944', '#bbbb22']);
+
+      return function(d: any, i: number)
+      {
+        return cScale(numOccurs[i] > 1 ? 1 : 0);
+      }
+    }
+
+    // create box chart for main view
+    var $mainBody = this.$mainNode.select('.body');
+    // destroy old prob view
+    if (this.probabilityView) { this.probabilityView.destroy(); }
+
+    this.probabilityView = <boxSlider.BoxSlider>boxSlider.createRaw(probabilities[this.cluster],
+        <Element>$mainBody.node(), {
+        range: [0.0, 1.0], numAvg: 1, numSlider: 1, precision: 4, valueName: 'Prob.',
+        colorFunction: colorBars(occurs)});
+
+    this.probabilityView.setLabels(labels);
+    this.mainZoom = new behaviors.ZoomLogic(this.probabilityView, null);
+    this.$mainNode.classed('hidden', !this.visible);
+
     for (var i = 0; i < this.numGroups; ++i)
     {
-      var $body = this.$nodes[i].select('.body');
+      if (i == this.cluster) { continue; }
 
-      var oldBoxChart = this.boxCharts[i];
+      var $body = this.$extNodes[i].select('.body');
+
+      var oldBoxChart = this.externalViews[i];
       if (oldBoxChart) { oldBoxChart.destroy(); }
 
-      function colorBars(numOccurs)
-      {
-        var cScale = d3.scale.linear().domain([0,1]).range(<any>['#449944', '#bbbb22']);
-
-        return function(d: any, i: number)
-        {
-          return cScale(numOccurs[i] > 1 ? 1 : 0);
-        }
-      }
-
       var boxChart = <boxSlider.BoxSlider>boxSlider.createRaw(probabilities[i], <Element>$body.node(), {
-        range: [0.0, 1.0], numAvg: 1, numSlider: (i == 0) ? 1 : 0, precision: 4, valueName: 'Prob.',
+        range: [0.0, 1.0], numAvg: 1, numSlider: 0, precision: 4, valueName: 'Prob.',
         colorFunction: colorBars(occurs)});
       boxChart.setLabels(labels);
 
-      this.boxCharts[i] = boxChart;
-      this.zooms[i] = new behaviors.ZoomLogic(boxChart, null);
+      this.externalViews[i] = boxChart;
+      this.extZooms[i] = new behaviors.ZoomLogic(boxChart, null);
 
-      if (i == 0) { this.$nodes[i].classed('hidden', !this.visible); }
-      else { this.$nodes[i].classed('hidden', !this.externVisible); }
-      this.$nodes[i].transition().duration(columns.animationTime(-1)).style('opacity', 1);
+      this.$extNodes[i].classed('hidden', !this.externVisible);
+      this.$extNodes[i].transition().duration(columns.animationTime(-1)).style('opacity', 1);
     }
 
     this.updated = true;
@@ -1094,10 +1139,11 @@ export class ClusterProbView
   {
     this.visible = true;
 
+    this.$mainNode.classed('hidden', false);
+
     for (var i = 0; i < this.numGroups; ++i)
     {
-      if (i == 0) { this.$nodes[i].classed('hidden', !this.visible); }
-      else { this.$nodes[i].classed('hidden', !this.externVisible); }
+      this.$extNodes[i].classed('hidden', !this.externVisible);
     }
   }
 
@@ -1107,9 +1153,11 @@ export class ClusterProbView
   {
     this.visible = false;
 
+    this.$mainNode.classed('hidden', true);
+
     for (var i = 0; i < this.numGroups; ++i)
     {
-      this.$nodes[i].classed('hidden', true);
+      this.$extNodes[i].classed('hidden', true);
     }
   }
 }

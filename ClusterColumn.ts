@@ -815,7 +815,7 @@ export class ClusterColumn extends columns.Column
       return Promise.resolve([]);
     }
 
-    var divider = (view instanceof clusterView.ClusterDetailView) ? view.distanceView : view.boxCharts[0];
+    var divider = (view instanceof clusterView.ClusterDetailView) ? view.distanceView : view.probabilityView;
     const numDivs = divider.getNumberDivisions();
     var that = this;
 
@@ -1109,7 +1109,7 @@ export class ClusterColumn extends columns.Column
     if (this.connectSignal != null)
     {
       var view = this.connectSignal.view;
-      var divider = (view instanceof clusterView.ClusterDetailView) ? view.distanceView : view.boxCharts[0];
+      var divider = (view instanceof clusterView.ClusterDetailView) ? view.distanceView : view.probabilityView;
 
       function refreshColumn(view: any, cluster: number, column: ClusterColumn)
       {
@@ -1274,10 +1274,16 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
 
       if (probsView != null)
       {
-        for (var k = 0; k < probsView.$nodes.length; ++k)
+        probsView.probabilityView.destroy();
+        probsView.$mainNode.remove();
+
+        for (var k = 0; k < probsView.$extNodes.length; ++k)
         {
-          probsView.boxCharts[k].destroy();
-          probsView.$nodes[k].remove();
+          if (k != probsView.cluster)
+          {
+            probsView.externalViews[k].destroy();
+          }
+          probsView.$extNodes[k].remove();
         }
 
         if (probsView.visible && !groupsChanged)
@@ -1400,26 +1406,62 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
         var clusterHeight = $(clusterGrid).height() - 10;
         var boxChartHeight = $(clusterGrid).height() - 18 - 10 - 2 * this.options.padding;
 
+        probsView.mainZoom.zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
+        // position of view in x-dimension
+        var viewPosX = size.x + this.options.padding * 2;
+        // check if distance views are visible at the same time
+        const statsView = that.statsViews[j];
+        viewPosX += (statsView != null) ? statsView.getWidth() : 0;
+
+        // shift main probability view
+        probsView.$mainNode.style(
+        {
+          width: (this.options.statsWidth) + 'px',
+          height: clusterHeight + 'px',
+          top: clusterPosY + 'px',
+          left: String(viewPosX) + 'px'
+        });
+
+        viewPosX += this.options.extOffset;
+
         for (var i = 0; i < numGroups; ++i)
         {
-          if (!probsView.$nodes[i]) { continue; }
-          if (i > 0 && !probsView.externVisible) { break; }
+          if (i != probsView.cluster)
+          {
+            probsView.extZooms[i].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
+          }
 
-          probsView.zooms[i].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
+          viewPosX += this.options.statsWidth;
 
-          var viewPosX = size.x + this.options.padding * 2 + this.options.statsWidth * i;
-          const statsView = this.statsViews[j];
-          const statsWidth = (statsView != null) ? statsView.getWidth() : 0;
-          viewPosX += statsWidth;
-
-          probsView.$nodes[i].style(
-            {
-              width: (this.options.statsWidth) + 'px',
-              height: clusterHeight + 'px',
-              top: clusterPosY + 'px',
-              left: String(viewPosX) + 'px'
-            });
+          probsView.$extNodes[i].style(
+          {
+            width: (this.options.statsWidth) + 'px',
+            height: clusterHeight + 'px',
+            top: clusterPosY + 'px',
+            left: String(viewPosX) + 'px'
+          });
         }
+
+        //for (var i = 0; i < numGroups; ++i)
+        //{
+        //  if (!probsView.$nodes[i]) { continue; }
+        //  if (i > 0 && !probsView.externVisible) { break; }
+        //
+        //  probsView.zooms[i].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
+        //
+        //  var viewPosX = size.x + this.options.padding * 2 + this.options.statsWidth * i;
+        //  const statsView = this.statsViews[j];
+        //  const statsWidth = (statsView != null) ? statsView.getWidth() : 0;
+        //  viewPosX += statsWidth;
+        //
+        //  probsView.$nodes[i].style(
+        //    {
+        //      width: (this.options.statsWidth) + 'px',
+        //      height: clusterHeight + 'px',
+        //      top: clusterPosY + 'px',
+        //      left: String(viewPosX) + 'px'
+        //    });
+        //}
       }
     }
   }
