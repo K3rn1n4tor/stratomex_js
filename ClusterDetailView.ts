@@ -289,7 +289,7 @@ export class ClusterDetailView
 
       // create the toolbar of the detail view
       this.$toolbar = $elem.append('div').attr('class', 'gtoolbar');
-      this.createToolbar(column);
+      this.createToolbar(column, rawDistMatrix, numGroups, labels);
 
       // build title and body of all subviews -> build skeleton
       $elem.append('div').attr('class', 'title').text('Distances');
@@ -305,6 +305,22 @@ export class ClusterDetailView
           $elemNext.classed('group', true);//.datum(rawDistMatrix);
           $elemNext.append('div').attr('class', 'title').text('Group ' + String(j));
           $elemNext.append('div').attr('class', 'body');
+          var $toolbar = $elemNext.append('div').attr('class', 'gtoolbar');
+
+          function onClickSort(index: number, rawDistMatrix: any, numGroups: number, labels: any, column: any)
+          {
+            return () =>
+            {
+              that._sortClusterByID(index, rawDistMatrix, numGroups, labels, column);
+            };
+          }
+
+          if (j != this.cluster)
+          {
+            $toolbar.append('i').attr('class', 'fa fa-sort-amount-desc')
+              .on('click', onClickSort(j + 1, rawDistMatrix, numGroups, labels, column));
+          }
+
           that.$extNodes.push($elemNext);
         }
       }
@@ -353,7 +369,7 @@ export class ClusterDetailView
    * Create toolbar of cluster detail view.
    * @param column
      */
-  private createToolbar(column: any)
+  private createToolbar(column: any, rawDistMatrix: any, numGroups: number, labels: any)
   {
     const that = this;
 
@@ -390,7 +406,7 @@ export class ClusterDetailView
       column.setColumnWidth();
       column.stratomex.relayout();
 
-      that.createToolbar(column);
+      that.createToolbar(column, rawDistMatrix, numGroups, labels);
     });
 
     if (!this.matrixMode)
@@ -401,7 +417,7 @@ export class ClusterDetailView
 
         C.resolveIn(400).then( () =>
         {
-          that.createToolbar(column);
+          that.createToolbar(column, rawDistMatrix, numGroups, labels);
         });
 
         // stop propagation to disable further event triggering
@@ -436,6 +452,12 @@ export class ClusterDetailView
         column.setColumnWidth();
         column.stratomex.relayout();
       });
+
+      this.$toolbar.insert('i', '.fa-close').attr('class', 'fa fa-sort-amount-desc').on('click', () =>
+      {
+        const index = this.cluster + 1;
+        that._sortClusterByID(index, rawDistMatrix, numGroups, labels, column);
+      });
     }
 
     // close / hide statistics views
@@ -461,10 +483,9 @@ export class ClusterDetailView
 
     return (_: any) =>
     {
-      //var extDividers = that.dividers.slice(1, that.dividers.length);
       var externalViews = that.externalViews.slice();
       externalViews.splice(that.cluster, 1);
-      var distanceView = that.distanceView;//that.dividers[0];
+      var distanceView = that.distanceView;
 
       var divs = distanceView.getCurrentDivisions();
       externalViews.forEach((d: boxSlider.BoxSlider) => { d.setDivisions(divs); });
@@ -526,6 +547,76 @@ export class ClusterDetailView
 
   // -------------------------------------------------------------------------------------------------------------------
 
+  private _sortClusterByID(id: number, rawMatrix: any, numGroups: number, rawLabels: any[], column: any)
+  {
+    var that = this;
+
+    // destroy old matrix heatmap
+    that.matrixView.destroy();
+
+    // 1) sort matrix by selected column
+    function sortMatrix(a, b)
+    {
+      return a[id] - b[id];
+    }
+
+    var sortedMatrix = rawMatrix.slice();
+
+    // insert header again as latest implementation removes header after matrix creation
+    var header = ['ID'];
+    for (var j = 0; j < numGroups; ++j)
+    {
+      header.push(String(j));
+    }
+    sortedMatrix.sort(sortMatrix);
+    sortedMatrix.splice(0, 0, header);
+
+    var newDistMatrix = parser.parseMatrix(sortedMatrix);
+
+    //var $body = that.$nodes[0].select('.body');
+
+    // 2) resort corresponding group and its labels and redraw grid
+    var oldGroups = (<any>that.range.dim(0)).groups;
+
+    var newLabels = [];
+    // copy old distances to new distances
+    var newDistances = Array.apply(null, Array(numGroups)).map( (d,i) => { return []; });
+
+    for (var j = 0; j < rawLabels.length; ++j)
+    {
+      var ID = parseInt(sortedMatrix[j][0]);
+      newLabels.push(rawLabels[ID]);
+      for (var i = 0; i < newDistances.length; ++i)
+      {
+        newDistances[i].push(sortedMatrix[j][i + 1]);
+      }
+    }
+
+    var newRange = ranges.parse(newLabels);
+    var newGroup = new ranges.Range1DGroup('Group ' + String(that.cluster), 'grey', newRange.dim(0));
+    oldGroups.splice(that.cluster, 1, newGroup);
+
+    const newCompositeRange = ranges.composite(oldGroups.name, oldGroups);
+
+    that.update(newDistances, newLabels, newDistMatrix);
+    d3.select(that.matrixView.node).on('click', that._onClickMatrix(rawMatrix, numGroups, rawLabels, column));
+
+    that.$matrixNode.on('mouseup', that._mouseOutHandler());
+    that._mouseOutHandler()({});
+
+    // 4) finally update the grid
+    C.resolveIn(5).then( () =>
+    {
+      var graph = column.stratomex.provGraph;
+      var obj = graph.findObject(column);
+
+      // regroup column
+      graph.push(createRegroupColumnCmd(obj, newCompositeRange, true));
+    });
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
   /**
    * Handle click event of matrix view.
    * @param rawMatrix
@@ -541,7 +632,6 @@ export class ClusterDetailView
 
     return function()
     {
-      that.matrixView.destroy();
       var mousePos = d3.mouse(that.$matrixNode.node());
       const mousePosX = mousePos[0];
       const padding = 4;
@@ -550,65 +640,7 @@ export class ClusterDetailView
       var index = 0;
       for (var pos = 0; pos < mousePosX; pos += columnWidth) { index++; }
 
-      // 1) sort matrix by selected column
-      function sortMatrix(a, b)
-      {
-        return a[index] - b[index];
-      }
-
-      var sortedMatrix = rawMatrix.slice();
-
-      // insert header again as latest implementation removes header after matrix creation
-      var header = ['ID'];
-      for (var j = 0; j < numGroups; ++j)
-      {
-        header.push(String(j));
-      }
-      sortedMatrix.sort(sortMatrix);
-      sortedMatrix.splice(0, 0, header);
-
-      var newDistMatrix = parser.parseMatrix(sortedMatrix);
-
-      //var $body = that.$nodes[0].select('.body');
-
-      // 2) resort corresponding group and its labels and redraw grid
-      var oldGroups = (<any>that.range.dim(0)).groups;
-
-      var newLabels = [];
-      // copy old distances to new distances
-      var newDistances = Array.apply(null, Array(numGroups)).map( (d,i) => { return []; });
-
-      for (var j = 0; j < rawLabels.length; ++j)
-      {
-        var ID = parseInt(sortedMatrix[j][0]);
-        newLabels.push(rawLabels[ID]);
-        for (var i = 0; i < newDistances.length; ++i)
-        {
-          newDistances[i].push(sortedMatrix[j][i + 1]);
-        }
-      }
-
-      var newRange = ranges.parse(newLabels);
-      var newGroup = new ranges.Range1DGroup('Group ' + String(that.cluster), 'grey', newRange.dim(0));
-      oldGroups.splice(that.cluster, 1, newGroup);
-
-      const newCompositeRange = ranges.composite(oldGroups.name, oldGroups);
-
-      that.update(newDistances, newLabels, newDistMatrix);
-      d3.select(that.matrixView.node).on('click', that._onClickMatrix(rawMatrix, numGroups, rawLabels, column));
-
-      that.$matrixNode.on('mouseup', that._mouseOutHandler());
-      that._mouseOutHandler()({});
-
-      // 4) finally update the grid
-      C.resolveIn(5).then( () =>
-      {
-        var graph = column.stratomex.provGraph;
-        var obj = graph.findObject(column);
-
-        // regroup column
-        graph.push(createRegroupColumnCmd(obj, newCompositeRange, true));
-      });
+      that._sortClusterByID(index, rawMatrix, numGroups, rawLabels, column);
     };
   }
 
