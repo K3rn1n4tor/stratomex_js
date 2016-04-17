@@ -334,6 +334,7 @@ export class ClusterColumn extends columns.Column
       width: 160,
       detailWidth: 500,
       statsWidth: 50, // this is the default width for the distance view TODO: rename to distanceWidth
+      extOffset: 30,
       matrixWidth: 140,
       padding: 2,
       name: null,
@@ -476,10 +477,16 @@ export class ClusterColumn extends columns.Column
 
       if (statsView != null)
       {
-        for (var k = 0; k < statsView.$nodes.length; ++k)
+        statsView.distanceView.destroy();
+        statsView.$mainNode.remove();
+
+        statsView.matrixView.destroy();
+        statsView.$matrixNode.remove();
+
+        for (var k = 0; k < statsView.$extNodes.length; ++k)
         {
-          statsView.dividers[k].destroy();
-          statsView.$nodes[k].remove();
+          if (statsView.externalViews[k]) { statsView.externalViews[k].destroy(); }
+          statsView.$extNodes[k].remove();
         }
 
         if (statsView.visible && !groupsChanged)
@@ -742,7 +749,12 @@ export class ClusterColumn extends columns.Column
     return promise.then( (args) =>
     {
       //that.createClusterDetailToolbar(cluster, newStatsView.$toolbar, matrixMode, within);
-      if (!relayout) { newStatsView.$nodes.forEach((d: d3.Selection<any>) => {d.classed('hidden', true); }); }
+      if (!relayout)
+      {
+        newStatsView.$mainNode.classed('hidden', true);
+        newStatsView.$matrixNode.classed('hidden', true);
+        newStatsView.$extNodes.forEach((d: d3.Selection<any>) => {d.classed('hidden', true); });
+      }
       const compositeRange = args[0];
       if (relayout)
       {
@@ -803,7 +815,7 @@ export class ClusterColumn extends columns.Column
       return Promise.resolve([]);
     }
 
-    var divider = (view instanceof clusterView.ClusterDetailView) ? view.dividers[0] : view.boxCharts[0];
+    var divider = (view instanceof clusterView.ClusterDetailView) ? view.distanceView : view.boxCharts[0];
     const numDivs = divider.getNumberDivisions();
     var that = this;
 
@@ -907,17 +919,19 @@ export class ClusterColumn extends columns.Column
       return Promise.resolve([]);
     }
 
-    const clusterLabels = statsView.dividers[0].getLabels();
+    const clusterLabels = statsView.distanceView.getLabels();
 
     var distanceVec: any[] = [];
 
-    for (var j = 1; j < statsView.dividers.length; ++j)
+    for (var j = 0; j < statsView.externalViews.length; ++j)
     {
-      distanceVec.push(statsView.dividers[j].data);
+      if (j == cluster) { continue; }
+
+      distanceVec.push(statsView.externalViews[j].data);
     }
 
     // insert cluster into distance vectors
-    distanceVec.splice(cluster, 0, statsView.dividers[0].data);
+    distanceVec.splice(cluster, 0, statsView.distanceView.data);
 
     var oldCompositeRange = <ranges.CompositeRange1D>this.range.dim(0);
     var copyCompositeRange = $.extend(true, {}, oldCompositeRange);
@@ -1045,34 +1059,46 @@ export class ClusterColumn extends columns.Column
         var clusterHeight = $(clusterGrid).height() - 10;
         var boxChartHeight = $(clusterGrid).height() - 18 - 10 - 2 * this.options.padding;
 
-        if (!statsView.$nodes[0]) { continue; }
+        if (!statsView.$mainNode) { continue; }
 
-        statsView.$nodes[0].style(
+        statsView.$mainNode.style(
           {
-            width: ((statsView.matrixMode) ? this.options.matrixWidth : this.options.statsWidth) + 'px',
-            height: clusterHeight + 'px', // TODO Hack for matrix bug!
+            width: this.options.statsWidth + 'px',
+            height: clusterHeight + 'px', // TODO Hack for matri(x bug!
             top: clusterPosY + 'px',
             left: (size.x + this.options.padding * 2) + 'px'
           });
 
+        statsView.mainZoom.zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
+
         if (statsView.matrixMode)
         {
-            statsView.zoomMatrix.zoomTo(this.options.matrixWidth - this.options.padding * 2, boxChartHeight);
+          statsView.$matrixNode.style(
+          {
+            width: this.options.matrixWidth + 'px',
+            height: clusterHeight + 'px', // TODO Hack for matri(x bug!
+            top: clusterPosY + 'px',
+            left: (size.x + this.options.statsWidth + this.options.extOffset + this.options.padding * 2) + 'px'
+          });
+
+          statsView.zoomMatrixView.zoomTo(this.options.matrixWidth - this.options.padding * 2, boxChartHeight);
         }
         else
         {
-          statsView.zooms[0].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
-
           if (statsView.externVisible)
           {
-            for (var k = 1; k < statsView.$nodes.length; ++k)
+            for (var k = 0; k < statsView.$extNodes.length; ++k)
             {
-              statsView.zooms[k].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
-              statsView.$nodes[k].style({
+              if (k != statsView.cluster)
+              {
+                statsView.extZooms[k].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
+              }
+
+              statsView.$extNodes[k].style({
                 width: this.options.statsWidth + 'px',
                 height: clusterHeight + 'px',
                 top: clusterPosY + 'px',
-                left: (size.x + this.options.padding * 2 + this.options.statsWidth * (k)) + 'px'
+                left: (size.x + this.options.statsWidth + this.options.padding * 2 + this.options.statsWidth * k + this.options.extOffset) + 'px'
               });
             }
           }
@@ -1083,7 +1109,7 @@ export class ClusterColumn extends columns.Column
     if (this.connectSignal != null)
     {
       var view = this.connectSignal.view;
-      var divider = (view instanceof clusterView.ClusterDetailView) ? view.dividers[0] : view.boxCharts[0];
+      var divider = (view instanceof clusterView.ClusterDetailView) ? view.distanceView : view.boxCharts[0];
 
       function refreshColumn(view: any, cluster: number, column: ClusterColumn)
       {

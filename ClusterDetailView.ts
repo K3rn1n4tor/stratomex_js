@@ -120,15 +120,29 @@ function applyDivisions(view: any, cluster: number, column: any)
  */
 export class ClusterDetailView
 {
-  public dividers: boxSlider.BoxSlider[] = [];
-  public $nodes: d3.Selection<any>[] = [];
+  // views that support cluster assignments distance analysis
+  public distanceView: boxSlider.BoxSlider = null;
+  public externalViews: boxSlider.BoxSlider[] = [];
+
+  // zooms of external vies
+  public mainZoom: behaviors.ZoomLogic = null;
+  public extZooms: behaviors.ZoomLogic[] = [];
+
+  // nodes of view windows
+  public $mainNode: d3.Selection<any> = null;
+  public $extNodes: d3.Selection<any>[] = [];
+  public $matrixNode: d3.Selection<any> = null;
+
+  // column associated with this view
   public column: any = null;
-  public zooms: behaviors.ZoomLogic[] = [];
-  public matrix: heatmap.HeatMap;
-  public zoomMatrix: behaviors.ZoomLogic;
+
+  public matrixView: heatmap.HeatMap;
+  public zoomMatrixView: behaviors.ZoomLogic;
   public $tooltipMatrix: d3.Selection<any>;
+
   public visible: boolean = true;
   public externVisible: boolean = false;
+
   public $toolbar: d3.Selection<any>;
 
   private distancesRange: [number, number];
@@ -138,11 +152,11 @@ export class ClusterDetailView
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  constructor(private cluster: number, private data: datatypes.IDataType, private range: ranges.Range,
+  constructor(public cluster: number, private data: datatypes.IDataType, private range: ranges.Range,
               private options: any)
   {
     this.options = C.mixin({
-      matrixMode: false, matrixWidth: 140, statsWidth: 50, distanceMetric: 'euclidean' }, options);
+      matrixMode: false, matrixWidth: 140, statsWidth: 50, extOffset: 30, distanceMetric: 'euclidean' }, options);
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -151,11 +165,15 @@ export class ClusterDetailView
   {
     if (this.visible)
     {
-      if (this.matrixMode) { return this.options.matrixWidth; }
+      var width = this.options.statsWidth;
+
+      if (this.matrixMode) { width += this.options.extOffset + this.options.matrixWidth; }
       else
       {
-        return (this.externVisible) ? this.numGroups * this.options.statsWidth : this.options.statsWidth;
+        if (this.externVisible) { width += this.options.extOffset + this.numGroups * this.options.statsWidth; }
       }
+
+      return width;
     }
     else { return 0; }
   }
@@ -252,10 +270,12 @@ export class ClusterDetailView
 
       for (var i = 0; i < distances.length; ++i)
       {
-        var row = [String(i), distances[i]];
+        var row = [String(i)];//, distances[i]];
+        row[that.cluster + 1] = distances[i];
         for (var j = 0; j < externDistances.length; ++j)
         {
-          row.push(externDistances[j][i])
+          const extDist = externDistances[j][i];
+          row[externLabelIDs[j] + 1] = extDist;
         }
 
         rawDistMatrix.push(row);
@@ -274,27 +294,36 @@ export class ClusterDetailView
       // build title and body of all subviews -> build skeleton
       $elem.append('div').attr('class', 'title').text('Distances');
       const $body = $elem.append('div').attr('class', 'body');
-      that.$nodes.push($elem);
+      that.$mainNode = $elem;
 
+      // check if external distances are available
       if (externDistances != null)
       {
-        for (var j = 0; j < externDistances.length; ++j)
+        for (var j = 0; j < numGroups; ++j)
         {
           const $elemNext = $parent.append('div').classed('stats', true).style('opacity', 0);
-          $elemNext.classed('group', true).datum(rawDistMatrix);
-          $elemNext.append('div').attr('class', 'title').text('Ext ' + String(externLabelIDs[j]));
+          $elemNext.classed('group', true);//.datum(rawDistMatrix);
+          $elemNext.append('div').attr('class', 'title').text('Group ' + String(j));
           $elemNext.append('div').attr('class', 'body');
-          that.$nodes.push($elemNext);
+          that.$extNodes.push($elemNext);
         }
       }
+      // create hidden group for matrix view
+      that.$matrixNode = $parent.append('div').classed('stats', true).classed('hidden', true);
+      that.$matrixNode.classed('group', true);//.datum(rawDistMatrix);
+      that.$matrixNode.append('div').attr('class', 'title').text('All Distances');
+      that.$matrixNode.append('div').attr('class', 'body');
 
       // update statistics view
-      var allDistances = [distances].concat(externDistances);
+      var allDistances = externDistances.slice();
+      allDistances.splice(that.cluster, 0, distances);//[distances].concat(externDistances);
+      console.log(allDistances);
+
       that.update(allDistances, labels, distMatrix);
       that.updated = false;
 
       // activate matrix handler
-      d3.select(that.matrix.node).on('click', that._onClickMatrix(rawDistMatrix, numGroups, labels, column));
+      d3.select(that.matrixView.node).on('click', that._onClickMatrix(rawDistMatrix, numGroups, labels, column));
 
       // update all dividers after mouse click
       $elem.on('mouseup', that._mouseOutHandler());
@@ -304,7 +333,7 @@ export class ClusterDetailView
       // remove waiting icon
       $('body').removeClass('waiting');
       // make first view visible
-      that.$nodes[0].transition().duration(columns.animationTime(within)).style('opacity', 1);
+      that.$mainNode.transition().duration(columns.animationTime(within)).style('opacity', 1);
 
       // re-sort labels so that patients correspond to bar rows / matrix rows
       var rangeGroup = ranges.parse(labels);
@@ -345,16 +374,17 @@ export class ClusterDetailView
 
     this.$toolbar.append('i').attr('class', icon).on('click', () =>
     {
-      var distHeatmap = that.matrix;
+      var distHeatmap = that.matrixView;
 
       that.toggleMatrixMode();
 
-      d3.select(distHeatmap.node).classed('hidden', !that.matrixMode);
+      //d3.select(distHeatmap.node).classed('hidden', !that.matrixMode);
+      that.$matrixNode.classed('hidden', !that.matrixMode);
 
-      d3.select(that.dividers[0].node).classed('hidden', that.matrixMode);
-      for (var j = 1; j < that.$nodes.length; ++j)
+      //d3.select(that.distanceView.node).classed('hidden', that.matrixMode);
+      for (var j = 0; j < that.$extNodes.length; ++j)
       {
-        that.$nodes[j].classed('hidden', that.matrixMode);
+        that.$extNodes[j].classed('hidden', that.matrixMode);
       }
 
       column.setColumnWidth();
@@ -397,19 +427,10 @@ export class ClusterDetailView
 
         that.externVisible = !that.externVisible;
 
-        for (var j = 1; j < numGroups; ++j)
+        for (var j = 0; j < numGroups; ++j)
         {
-          var externNode = that.$nodes[j];
-          if (that.externVisible)
-          {
-            externNode.classed('hidden', false);
-            externNode.transition().duration(columns.animationTime(-1)).style('opacity', 1);
-          }
-          else
-          {
-            externNode.classed('hidden', true);
-            externNode.transition().duration(columns.animationTime(-1)).style('opacity', 0);
-          }
+          that.$extNodes[j].classed('hidden', !that.externVisible);
+          that.$extNodes[j].transition().duration(columns.animationTime(-1)).style('opacity', that.externVisible ? 1 : 0);
         }
 
         column.setColumnWidth();
@@ -440,11 +461,13 @@ export class ClusterDetailView
 
     return (_: any) =>
     {
-      var extDividers = that.dividers.slice(1, that.dividers.length);
-      var innerDivider = that.dividers[0];
+      //var extDividers = that.dividers.slice(1, that.dividers.length);
+      var externalViews = that.externalViews.slice();
+      externalViews.splice(that.cluster, 1);
+      var distanceView = that.distanceView;//that.dividers[0];
 
-      var divs = innerDivider.getCurrentDivisions();
-      extDividers.forEach((d: boxSlider.BoxSlider) => { d.setDivisions(divs); });
+      var divs = distanceView.getCurrentDivisions();
+      externalViews.forEach((d: boxSlider.BoxSlider) => { d.setDivisions(divs); });
     };
   }
 
@@ -460,9 +483,9 @@ export class ClusterDetailView
   {
     const that = this;
 
-    var IDs = Array.apply(null, Array(that.numGroups)).map( (_, i) => { return i; });
-    IDs.splice(that.cluster, 1);
-    IDs.splice(0, 0, that.cluster);
+    //var IDs = Array.apply(null, Array(that.numGroups)).map( (_, i) => { return i; });
+    //IDs.splice(that.cluster, 1);
+    //IDs.splice(0, 0, that.cluster);
 
     if (mode == 'mousemove')
     {
@@ -473,7 +496,7 @@ export class ClusterDetailView
         var $target = $(event.target);
         if ($target.is('.title') || $target.is('.gtoolbar') || $target.is('.fa')) { return; }
 
-        var mousePos = d3.mouse(that.$nodes[0].node());
+        var mousePos = d3.mouse(that.$matrixNode.node());
 
         that.$tooltipMatrix.style('opacity', 0.75);
         that.$tooltipMatrix.style({ left: (mousePos[0] - 25) + 'px', top: (mousePos[1] - 20) + 'px' });
@@ -486,7 +509,7 @@ export class ClusterDetailView
         for (var pos = 0; pos <= mousePosX; pos += columnWidth) { index++; }
 
         if (index < 0 || index >= that.numGroups) { return; }
-        that.$tooltipMatrix.html('Group ' + String(IDs[index]));
+        that.$tooltipMatrix.html('Group ' + String(index));
       }
     }
 
@@ -518,14 +541,15 @@ export class ClusterDetailView
 
     return function()
     {
-      that.matrix.destroy();
-      var mousePos = d3.mouse(that.$nodes[0].node());
+      that.matrixView.destroy();
+      var mousePos = d3.mouse(that.$matrixNode.node());
       const mousePosX = mousePos[0];
       const padding = 4;
       var columnWidth = (that.options.matrixWidth - padding) / numGroups;
 
       var index = 0;
       for (var pos = 0; pos < mousePosX; pos += columnWidth) { index++; }
+      console.log(index);
 
       // 1) sort matrix by selected column
       function sortMatrix(a, b)
@@ -572,9 +596,9 @@ export class ClusterDetailView
       const newCompositeRange = ranges.composite(oldGroups.name, oldGroups);
 
       that.update(newDistances, newLabels, newDistMatrix);
-      d3.select(that.matrix.node).on('click', that._onClickMatrix(rawMatrix, numGroups, rawLabels, column));
+      d3.select(that.matrixView.node).on('click', that._onClickMatrix(rawMatrix, numGroups, rawLabels, column));
 
-      that.$nodes[0].on('mouseup', that._mouseOutHandler());
+      that.$mainNode.on('mouseup', that._mouseOutHandler());
       that._mouseOutHandler()({});
 
       // 4) finally update the grid
@@ -648,39 +672,54 @@ export class ClusterDetailView
 
     const that = this;
 
-    var $body = this.$nodes[0].select('.body');
+    // create matix view heatmap
+    var $matrixBody = this.$matrixNode.select('.body');
 
-    this.matrix = heatmap.create(distMatrix, <Element>$body.node(), { selectAble: false });
-    this.zoomMatrix = new behaviors.ZoomLogic(this.matrix, null);
-    d3.select(this.matrix.node).classed('hidden', true);
+    this.matrixView = heatmap.create(distMatrix, <Element>$matrixBody.node(), { selectAble: false });
+    this.zoomMatrixView = new behaviors.ZoomLogic(this.matrixView, null);
+    this.$matrixNode.classed('hidden', true);
+    //d3.select(this.matrixView.node).classed('hidden', true);
 
     if (this.$tooltipMatrix) { this.$tooltipMatrix.remove(); }
-    this.$tooltipMatrix = $body.append('div').classed('tooltip', true)
+    this.$tooltipMatrix = $matrixBody.append('div').classed('tooltip', true)
       .style({ opacity: 0, position: 'absolute !important', left: 0, top: 0, color: 'black', width: '50px',
             padding: 0, margin: 0, 'text-align': 'center', 'border-radius': '4px', 'background': '#60AA85'});
 
-    this.$nodes[0].on('mousemove', this._matrixMouseHandler('mousemove'));
-    this.$nodes[0].on('mouseout', this._matrixMouseHandler('mouseout'));
+    this.$matrixNode.on('mousemove', this._matrixMouseHandler('mousemove'));
+    this.$matrixNode.on('mouseout', this._matrixMouseHandler('mouseout'));
 
+    // create distanceView for current cluster
+    var $mainBody = this.$mainNode.select('.body');
+
+    if (this.distanceView) { d3.select(this.distanceView.node).remove(); }
+    this.distanceView = <boxSlider.BoxSlider>boxSlider.createRaw(distances[this.cluster],
+        <Element>this.$mainNode.node(), { range: this.distancesRange, numAvg: 1, numSlider: 2 });
+    this.mainZoom = new behaviors.ZoomLogic(this.distanceView, null);
+    this.distanceView.setLabels(labels);
+
+    // create distanceViews for external distances
     for (var i = 0; i < distances.length; ++i)
     {
-      var divider = <boxSlider.BoxSlider>this.dividers[i];
-      if (divider) { d3.select(divider.node).remove(); }
+      if (i == this.cluster) { continue; }
 
-      var $currentNode = this.$nodes[i].select('.body');
-      this.dividers[i] = <boxSlider.BoxSlider>boxSlider.createRaw(distances[i], <Element>$currentNode.node(), {
-        range: this.distancesRange, numAvg: 1, numSlider: (i == 0) ? 2 : 0 });
-      this.zooms[i] = new behaviors.ZoomLogic(this.dividers[i], null);
-      this.dividers[i].setLabels(labels);
+      var extView = <boxSlider.BoxSlider>this.externalViews[i];
+      if (extView) { d3.select(extView.node).remove(); }
+
+      var $currentNode = this.$extNodes[i].select('.body');
+      this.externalViews[i] = <boxSlider.BoxSlider>boxSlider.createRaw(distances[i], <Element>$currentNode.node(), {
+        range: this.distancesRange, numAvg: 1, numSlider: 0 });
+      this.extZooms[i] = new behaviors.ZoomLogic(this.externalViews[i], null);
+      this.externalViews[i].setLabels(labels);
     }
 
     if (this.options.matrixMode)
     {
-      d3.select(this.dividers[0].node).classed('hidden', true);
+      //d3.select(this.distanceView.node).classed('hidden', true);
 
       C.resolveIn(5).then( () =>
       {
-        d3.select(that.matrix.node).classed('hidden', false);
+        that.$matrixNode.classed('hidden', false);
+        //d3.select(that.matrixView.node).classed('hidden', false);
       });
     }
 
@@ -696,18 +735,18 @@ export class ClusterDetailView
   show(within=-1)
   {
     this.visible = true;
-    this.$nodes[0].classed('hidden', false);
-    this.$nodes[0].transition().duration(columns.animationTime(within)).style('opacity', 1);
+    this.$mainNode.classed('hidden', false);
+    this.$mainNode.transition().duration(columns.animationTime(within)).style('opacity', 1);
 
-    d3.select(this.dividers[0].node).classed('hidden', this.matrixMode);
-    d3.select(this.matrix.node).classed('hidden', !this.matrixMode);
+    //d3.select(this.distanceView.node).classed('hidden', this.matrixMode);
+    this.$matrixNode.classed('hidden', !this.matrixMode);
 
-    if (this.$nodes.length - 1 > 0 && this.externVisible)
+    if (this.$extNodes.length - 1 > 0 && this.externVisible)
     {
-      for (var k = 1; k < this.$nodes.length; ++k)
+      for (var k = 0; k < this.$extNodes.length; ++k)
       {
-        this.$nodes[k].transition().duration(columns.animationTime(within)).style('opacity', 1);
-        this.$nodes[k].classed('hidden', this.matrixMode);
+        this.$extNodes[k].transition().duration(columns.animationTime(within)).style('opacity', 1);
+        this.$extNodes[k].classed('hidden', this.matrixMode);
       }
     }
   }
@@ -721,15 +760,18 @@ export class ClusterDetailView
   hide(within=-1)
   {
     this.visible = false;
-    this.$nodes[0].transition().duration(columns.animationTime(within)).style('opacity', 0);
-    this.$nodes[0].classed('hidden', true);
+    this.$mainNode.transition().duration(columns.animationTime(within)).style('opacity', 0);
+    this.$mainNode.classed('hidden', true);
 
-    if (this.$nodes.length - 1 > 0)
+    // hide matrix view
+    this.$matrixNode.classed('hidden', true);
+
+    if (this.$extNodes.length - 1 > 0)
     {
-      for (var k = 1; k < this.$nodes.length; ++k)
+      for (var k = 0; k < this.$extNodes.length; ++k)
       {
-        this.$nodes[k].transition().duration(columns.animationTime(within)).style('opacity', 0);
-        this.$nodes[k].classed('hidden', true);
+        this.$extNodes[k].transition().duration(columns.animationTime(within)).style('opacity', 0);
+        this.$extNodes[k].classed('hidden', true);
       }
     }
   }
