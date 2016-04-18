@@ -51,7 +51,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
       sliderHeight: 4, // height of slider in px
       duration: 50, // duration of animations in ms
       precision: 2, // precision of values in tooltip box
-      valueName: 'Distance' // name of data element
+      valueName: 'Distance', // name of data element
     }, options);
 
     if (this.options.scaleTo)
@@ -414,7 +414,11 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
     var scaleX = d3.scale.linear().domain(range).range([0, rawSize[0]]);
 
     // create dummy rect to detect hovering event
-    $root.append('rect').attr({ width: rawSize[0], height: rawSize[1], opacity: 1, fill: 'white' })
+    var dummyData = Array.apply(null, new Array(this.options.numSlider + 1)).map((_, i) => { return i; });
+
+    $root.selectAll('rect').data(dummyData).enter()
+      .append('rect').attr({width: rawSize[0], height: rawSize[1], opacity: 1,
+                            class: (_, i) => { return 'sliderBack' + String(i);}, fill: 'white' })
       .on('mousemove', this._mouseHandler('mousemove', $root, [scaleY]))
       .on('mouseout', this._mouseHandler('mouseout', $root, []));
 
@@ -523,6 +527,18 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
 
           // colorize bars before recoloring
           that.colorizeBars();
+
+          // color backgrounds
+          for (var i = 0; i < (that.options.numSlider + 1); ++i)
+          {
+            var prevSliderPos = (i == 0) ? 0 : scaleY(that.divisions[i - 1]);
+            var currSliderPos = (i == that.options.numSlider) ? rawSize[1] : scaleY(that.divisions[i]);
+
+            $root.select('.sliderBack' + String(i)).attr({
+              y: prevSliderPos, height: (currSliderPos - prevSliderPos),
+              fill: (that.options.backgrounds) ? that.options.backgrounds[i] : 'white'
+            });
+          }
         }
 
         const value = d3.round((that.boxValues[minIndex] + that.boxValues[maxIndex]) / 2, that.options.precision);
@@ -720,6 +736,19 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
       {
         this.divisions.push(sliderIndex);
       }
+    }
+
+    // color backgrounds
+    for (var i = 0; i < (this.options.numSlider + 1); ++i)
+    {
+      var prevSliderPos = (i == 0) ? 0 : scaleY(sliderStarts[i - 1]);
+      var currSliderPos = (i == this.options.numSlider) ? rawSize[1] : scaleY(sliderStarts[i]);
+
+
+      $root.select('.sliderBack' + String(i)).attr({
+        y: prevSliderPos, height: (currSliderPos - prevSliderPos),
+        fill: (that.options.backgrounds)? this.options.backgrounds[i] : 'white'
+      });
     }
   }
 

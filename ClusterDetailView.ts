@@ -732,7 +732,9 @@ export class ClusterDetailView
     if (this.distanceView) { d3.select(this.distanceView.node).remove(); }
     this.distanceView = <boxSlider.BoxSlider>boxSlider.createRaw(distances[this.cluster],
         <Element>this.$mainNode.node(), { range: this.distancesRange, numAvg: 1, numSlider: 2,
-        colorScheme: ['#636363', '#636363','#636363']/*['#cccccc', '#969696', '#636363']*/ /*['#cbc9e2', '#9e9ac8', '#756bb1']*/ });
+        colorScheme: ['#636363', '#636363','#636363']/*['#cccccc', '#969696', '#636363']*/
+        /*['#cbc9e2', '#9e9ac8', '#756bb1']*/,
+        backgrounds: ['#66c2a4', '#b2e2e2', '#edf8fb']});
     this.mainZoom = new behaviors.ZoomLogic(this.distanceView, null);
     this.distanceView.setLabels(labels);
 
@@ -1258,7 +1260,8 @@ export class ClusterProbView
     // matrix view
     var $matrixBody = this.$matrixNode.select('.body');
 
-    this.matrixView = heatmap.create(probMatrix, <Element>$matrixBody.node(), { selectAble: false });
+    this.matrixView = heatmap.create(probMatrix, <Element>$matrixBody.node(), { selectAble: false,
+                                    color: ['#f0f0f0', '#252525'] });
     this.zoomMatrixView = new behaviors.ZoomLogic(this.matrixView, null);
     this.$matrixNode.classed('hidden', true);
 
@@ -1302,9 +1305,14 @@ export class ClusterProbView
 
     this.$mainNode.classed('hidden', false);
 
-    for (var i = 0; i < this.numGroups; ++i)
+    this.$matrixNode.classed('hidden', !this.matrixMode);
+
+    if (this.externVisible)
     {
-      this.$extNodes[i].classed('hidden', !this.externVisible);
+      for (var i = 0; i < this.numGroups; ++i)
+      {
+        this.$extNodes[i].classed('hidden', this.matrixMode);
+      }
     }
   }
 
@@ -1315,6 +1323,8 @@ export class ClusterProbView
     this.visible = false;
 
     this.$mainNode.classed('hidden', true);
+
+    this.$matrixNode.classed('hidden', true);
 
     for (var i = 0; i < this.numGroups; ++i)
     {

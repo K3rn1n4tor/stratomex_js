@@ -1201,9 +1201,12 @@ export class ClusterColumn extends columns.Column
             // sort bands by means of their y-position
             divBands.sort( (l: any, r: any) => { return $(l).position().top - $(r).position().top; });
 
-            d3.select(divBands[0]).style('fill', 'darkgreen');
-            d3.select(divBands[1]).style('fill', '#aa8800');
-            d3.select(divBands[2]).style('fill', 'darkred');
+            var tempBackgrounds = ['#66c2a4', '#b2e2e2', '#edf8fb'];
+
+            for (var j = 0; j < 3; ++j)
+            {
+              d3.select(divBands[j]).style('fill', tempBackgrounds[j]);
+            }
           });
         });
       }
@@ -1276,6 +1279,7 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
       {
         probsView.probabilityView.destroy();
         probsView.$mainNode.remove();
+        probsView.$matrixNode.remove();
 
         for (var k = 0; k < probsView.$extNodes.length; ++k)
         {
