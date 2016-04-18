@@ -920,6 +920,7 @@ export class ClusterColumn extends columns.Column
     }
 
     const clusterLabels = statsView.distanceView.getLabels();
+    console.log('Labels of current cluster ', cluster, clusterLabels);
 
     var distanceVec: any[] = [];
 
@@ -937,7 +938,7 @@ export class ClusterColumn extends columns.Column
     var copyCompositeRange = $.extend(true, {}, oldCompositeRange);
     that.prevStratis.splice(0, 0, copyCompositeRange);
 
-    const numGroups = oldCompositeRange.groups.length;
+    const numGroups = copyCompositeRange.groups.length;
     //compositeRange.groups.splice(cluster, 1);
 
     var newLabels: any[] = Array.apply(null, Array(numGroups)).map((_, i) => { return []; });
@@ -957,27 +958,57 @@ export class ClusterColumn extends columns.Column
       newLabels[minIndex].push(clusterLabels[i]);
     }
 
+    //console.log("New sorted labels:", newLabels);
+
+    var finalLabels = Array.apply(null, new Array(numGroups)).map( (_, i) => { return []; });
+
     for (var i = 0; i < numGroups; ++i)
     {
       if (i != cluster)
       {
         // create new group
-        var labels = oldCompositeRange.groups[i].asList();
-        newLabels[i] = labels.concat(newLabels[i]);
+        let labels = copyCompositeRange.groups[i].asList();
+        finalLabels[i] = labels.concat(newLabels[i]);
+        //console.log("New labels of cluster ", i, finalLabels);
       }
+      else
+      {
+        finalLabels[i] = newLabels[i];
+      }
+
+      // remove redundant entries for fuzzy-clustering case
+      function sortNumbers(a, b) { return a - b; }
+      finalLabels[i].sort(sortNumbers);
+
+      // for that purpose, use an hash table
+      var seen = {};
+      // and filter all unique indices
+      // see http://stackoverflow.com/questions/9229645/remove-duplicates-from-javascript-array
+      finalLabels[i] = finalLabels[i].filter( (item: any) =>
+        {
+          return seen.hasOwnProperty(item) ? false : (seen[item] = true);
+        });
     }
+
+    console.log('Final labels:', finalLabels);
 
     // first from groups
     var groups = <any>[];
     var groupsDesc = <any>[];
     var clusterRanges = <any>[];
 
+    for (var j = 0; j < numGroups; ++j)
+    {
+      let labels = finalLabels[j];
+      clusterRanges.push(ranges.parse(labels));
+    }
+
     for (var i = 0; i < numGroups; ++i)
     {
-      clusterRanges.push(ranges.parse(newLabels[i]));
+      //clusterRanges.push(ranges.parse(finalLabels[i]));
       groups.push(new ranges.Range1DGroup('Group ' + String(i),
         'red', clusterRanges[i].dim(0)));
-      groupsDesc.push({name: String(i), size: newLabels[i].length});
+      groupsDesc.push({name: 'Group ' + String(i), size: finalLabels[i].length});
     }
 
     const dataName = this.data.desc.name;

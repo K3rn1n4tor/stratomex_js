@@ -338,7 +338,7 @@ export class ClusterDetailView
       // update statistics view
       var allDistances = externDistances.slice();
       allDistances.splice(that.cluster, 0, distances);//[distances].concat(externDistances);
-      console.log(allDistances);
+      //console.log(allDistances);
 
       that.update(allDistances, labels, distMatrix);
       that.updated = false;
@@ -859,7 +859,6 @@ export class ClusterProbView
 
     var partitionMatrix = _partitionMatrix.slice();
     this.partitionMatrix = [];
-    console.log(partitionMatrix);
 
     const maxProb = this.options.maxProb;
 
@@ -1230,7 +1229,6 @@ export class ClusterProbView
   {
     this.labels = labels;
     var that = this;
-    console.log(probabilities);
 
     // function to color the bars
     function colorBars(numOccurs)
