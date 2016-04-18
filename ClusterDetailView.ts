@@ -405,7 +405,7 @@ export class ClusterDetailView
       //d3.select(that.distanceView.node).classed('hidden', that.matrixMode);
       for (var j = 0; j < that.$extNodes.length; ++j)
       {
-        that.$extNodes[j].classed('hidden', that.matrixMode);
+        that.$extNodes[j].classed('hidden', that.matrixMode || !that.externVisible);
       }
 
       column.setColumnWidth();
@@ -702,13 +702,13 @@ export class ClusterDetailView
    * @param labels
    * @param distMatrix
      */
-  update(distances: any, labels: number[], distMatrix)
+  update(distances: any, labels: number[], distMatrix: any)
   {
     this.labels = labels;
 
     const that = this;
 
-    // create matix view heatmap
+    // create matrix view heatmap
     var $matrixBody = this.$matrixNode.select('.body');
 
     this.matrixView = heatmap.create(distMatrix, <Element>$matrixBody.node(), { selectAble: false });
@@ -819,6 +819,7 @@ export class ClusterProbView
 {
   public $mainNode: d3.Selection<any> = null;
   public $extNodes: d3.Selection<any>[] = [];
+  public $matrixNode: d3.Selection<any> = null;
 
   public probabilityView: boxSlider.BoxSlider = null;
   public externalViews: boxSlider.BoxSlider[] = [];
@@ -844,13 +845,15 @@ export class ClusterProbView
   constructor(public cluster: number, private range: ranges.Range, _partitionMatrix: any,
               private options: any)
   {
-    this.options = C.mixin({ probsWidth: 50, extOffset: 30, maxProb: 0.5 }, options);
+    this.options = C.mixin({
+      matrixMode: false, probsWidth: 50, extOffset: 30, matrixWidth: 140, maxProb: 0.5 }, options);
 
     this.labels = (<any>this.range.dims[0]).groups[cluster].asList();
     this.numGroups = (<any>this.range.dims[0]).groups.length;
 
     var partitionMatrix = _partitionMatrix.slice();
     this.partitionMatrix = [];
+    console.log(partitionMatrix);
 
     const maxProb = this.options.maxProb;
 
@@ -879,11 +882,36 @@ export class ClusterProbView
     {
       var width = this.options.probsWidth;
 
-      if (this.externVisible) { width += (this.numGroups * this.options.probsWidth) + this.options.extOffset; }
+      if (this.matrixMode) { width += this.options.extOffset + this.options.matrixWidth; }
+      else
+      {
+        if (this.externVisible) { width += (this.numGroups * this.options.probsWidth) + this.options.extOffset; }
+      }
 
       return width;
     }
     else { return 0; }
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Obtain current mode of view.
+   * @returns {boolean|any}
+     */
+  get matrixMode()
+  {
+    return this.options.matrixMode;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Switch matrix mode.
+   */
+  toggleMatrixMode()
+  {
+    this.options.matrixMode = !this.options.matrixMode;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -932,9 +960,10 @@ export class ClusterProbView
       occurs.push(zip.occurs);
     }
 
+    // build array for every cluster [...], [...], [...]
     for (var j = 0; j < labels.length; ++j)
     {
-      var labelProbs = clusterProbs[j];
+      var labelProbs = clusterProbs[j].slice();
 
       for (var i = 0; i < numGroups; ++i)
       {
@@ -942,10 +971,48 @@ export class ClusterProbView
       }
     }
 
+    // build matrix for heatmap / matrix view
+    //var rawProbMatrix = [];
+
+    var header = ['ID'];
+    for (var j = 0; j < numGroups; ++j)
+    {
+      header.push(String(j));
+    }
+    //rawProbMatrix.push(header);
+    var rawProbMatrix = [];//$.extend(true, {}, clusterProbs);
+
+    for (var j = 0; j < clusterProbs.length; ++j)
+    {
+      var row = clusterProbs[j].slice();
+      row.splice(0, 0, String(j));
+
+      rawProbMatrix.push(row);
+    }
+
+    rawProbMatrix.splice(0, 0, header);
+
+    //for (var j = 0; j < clusterProbs.length; ++j)
+    //{
+    //  var row = [String(j)];
+    //  row.concat(clusterProbs[j]);
+    //
+    //  rawProbMatrix.push(row);
+    //}
+
+    var probMatrix = parser.parseMatrix(rawProbMatrix);
+
+    // create window for main view
     this.$mainNode = $parent.append('div').classed('stats', true).style('opacity', 1);
     this.$mainNode.classed('group', true).datum(probs[this.cluster]);
     this.$mainNode.append('div').attr('class', 'title').text('Probs' + String(IDs[j]));
     this.$mainNode.append('div').attr('class', 'body');
+
+    // create hidden group for matrix view
+    this.$matrixNode = $parent.append('div').classed('stats', true).classed('hidden', true);
+    this.$matrixNode.classed('group', true);//.datum(rawDistMatrix);
+    this.$matrixNode.append('div').attr('class', 'title').text('All Probabilities');
+    this.$matrixNode.append('div').attr('class', 'body');
 
     // build external view nodes of the view
     for (var j = 0; j < numGroups; ++j)
@@ -960,14 +1027,14 @@ export class ClusterProbView
       this.$extNodes.push($elem);
     }
 
-    this.update(probs, labels, occurs);
+    this.update(probs, labels, occurs, probMatrix);
     this.updated = false;
 
     // create toolbar
     this.createToolbar(column);
 
     // sort by prob
-    this.sortByClusterID(this.cluster, column);
+    this.sortClusterByID(this.cluster, column);
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -985,7 +1052,7 @@ export class ClusterProbView
     {
       return () =>
       {
-        that.sortByClusterID(index, column);
+        that.sortClusterByID(index, column);
       }
     }
 
@@ -1000,6 +1067,29 @@ export class ClusterProbView
         applyDivisions(that, that.cluster, column);
       });
     }
+
+    var icon = (this.matrixMode) ? 'fa fa-bar-chart' : 'fa fa-th';
+
+    $gtoolbar.append('i').attr('class', icon).on('click', () =>
+    {
+      //var distHeatmap = that.matrixView;
+
+      that.toggleMatrixMode();
+
+      //d3.select(distHeatmap.node).classed('hidden', !that.matrixMode);
+      that.$matrixNode.classed('hidden', !that.matrixMode);
+
+      //d3.select(that.distanceView.node).classed('hidden', that.matrixMode);
+      for (var j = 0; j < that.$extNodes.length; ++j)
+      {
+        that.$extNodes[j].classed('hidden', that.matrixMode || !that.externVisible);
+      }
+
+      column.setColumnWidth();
+      column.stratomex.relayout();
+
+      that.createToolbar(column);
+    });
 
     $gtoolbar.append('i').attr('class', 'fa fa-sort-amount-desc').on('click', OnSortDesc(this.cluster, column));
 
@@ -1054,9 +1144,12 @@ export class ClusterProbView
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  public sortByClusterID(index: number, column: any)
+  public sortClusterByID(index: number, column: any)
   {
     var partitionMat = this.partitionMatrix.slice();
+
+    // destroy old matrix heatmap
+    this.matrixView.destroy();
 
     function sortProbs(a, b)
     {
@@ -1090,7 +1183,26 @@ export class ClusterProbView
       }
     }
 
-    this.update(probs, labels, occurs);
+    var rawProbMatrix = [];//$.extend(true, {}, clusterProbs);
+
+    var header = ['ID'];
+    for (var j = 0; j < this.numGroups; ++j)
+    {
+      header.push(String(j));
+    }
+
+    for (var j = 0; j < clusterProbs.length; ++j)
+    {
+      var row = clusterProbs[j].slice();
+      row.splice(0, 0, String(j));
+
+      rawProbMatrix.push(row);
+    }
+
+    rawProbMatrix.splice(0, 0, header);
+    var newProbMatrix = parser.parseMatrix(rawProbMatrix);
+
+    this.update(probs, labels, occurs, newProbMatrix);
 
     var oldGroups = (<any>this.range.dim(0)).groups;
     var newRange = ranges.parse(labels);
@@ -1108,10 +1220,11 @@ export class ClusterProbView
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  public update(probabilities: any[], labels: any, occurs: any)
+  public update(probabilities: any, labels: any, occurs: any, probMatrix: any)
   {
     this.labels = labels;
     var that = this;
+    console.log(probabilities);
 
     // function to color the bars
     function colorBars(numOccurs)
@@ -1137,6 +1250,13 @@ export class ClusterProbView
     this.probabilityView.setLabels(labels);
     this.mainZoom = new behaviors.ZoomLogic(this.probabilityView, null);
     this.$mainNode.classed('hidden', !this.visible);
+
+    // matrix view
+    var $matrixBody = this.$matrixNode.select('.body');
+
+    this.matrixView = heatmap.create(probMatrix, <Element>$matrixBody.node(), { selectAble: false });
+    this.zoomMatrixView = new behaviors.ZoomLogic(this.matrixView, null);
+    this.$matrixNode.classed('hidden', true);
 
     for (var i = 0; i < this.numGroups; ++i)
     {

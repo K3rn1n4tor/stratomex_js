@@ -1064,7 +1064,7 @@ export class ClusterColumn extends columns.Column
         statsView.$mainNode.style(
           {
             width: this.options.statsWidth + 'px',
-            height: clusterHeight + 'px', // TODO Hack for matri(x bug!
+            height: clusterHeight + 'px',
             top: clusterPosY + 'px',
             left: (size.x + this.options.padding * 2) + 'px'
           });
@@ -1076,7 +1076,7 @@ export class ClusterColumn extends columns.Column
           statsView.$matrixNode.style(
           {
             width: this.options.matrixWidth + 'px',
-            height: clusterHeight + 'px', // TODO Hack for matri(x bug!
+            height: clusterHeight + 'px',
             top: clusterPosY + 'px',
             left: (size.x + this.options.statsWidth + this.options.extOffset + this.options.padding * 2) + 'px'
           });
@@ -1424,44 +1424,44 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
 
         viewPosX += this.options.extOffset;
 
-        for (var i = 0; i < numGroups; ++i)
+        if (probsView.matrixMode)
         {
-          if (i != probsView.cluster)
-          {
-            probsView.extZooms[i].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
-          }
-
           viewPosX += this.options.statsWidth;
 
-          probsView.$extNodes[i].style(
+          probsView.$matrixNode.style(
           {
-            width: (this.options.statsWidth) + 'px',
+            width: this.options.matrixWidth + 'px',
             height: clusterHeight + 'px',
             top: clusterPosY + 'px',
             left: String(viewPosX) + 'px'
           });
-        }
 
-        //for (var i = 0; i < numGroups; ++i)
-        //{
-        //  if (!probsView.$nodes[i]) { continue; }
-        //  if (i > 0 && !probsView.externVisible) { break; }
-        //
-        //  probsView.zooms[i].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
-        //
-        //  var viewPosX = size.x + this.options.padding * 2 + this.options.statsWidth * i;
-        //  const statsView = this.statsViews[j];
-        //  const statsWidth = (statsView != null) ? statsView.getWidth() : 0;
-        //  viewPosX += statsWidth;
-        //
-        //  probsView.$nodes[i].style(
-        //    {
-        //      width: (this.options.statsWidth) + 'px',
-        //      height: clusterHeight + 'px',
-        //      top: clusterPosY + 'px',
-        //      left: String(viewPosX) + 'px'
-        //    });
-        //}
+          probsView.zoomMatrixView.zoomTo(this.options.matrixWidth - this.options.padding * 2, boxChartHeight);
+        }
+        else
+        {
+          if (probsView.externVisible)
+          {
+            for (var i = 0; i < numGroups; ++i)
+            {
+              if (i != probsView.cluster)
+              {
+                probsView.extZooms[i].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
+              }
+
+              viewPosX += this.options.statsWidth;
+
+              probsView.$extNodes[i].style(
+              {
+                width: (this.options.statsWidth) + 'px',
+                height: clusterHeight + 'px',
+                top: clusterPosY + 'px',
+                left: String(viewPosX) + 'px'
+              });
+            }
+
+          }
+        }
       }
     }
   }
