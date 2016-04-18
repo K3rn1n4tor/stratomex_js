@@ -414,7 +414,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
     var scaleX = d3.scale.linear().domain(range).range([0, rawSize[0]]);
 
     // create dummy rect to detect hovering event
-    $root.append('rect').attr({ width: rawSize[0], height: rawSize[1], opacity: 0 })
+    $root.append('rect').attr({ width: rawSize[0], height: rawSize[1], opacity: 1, fill: 'white' })
       .on('mousemove', this._mouseHandler('mousemove', $root, [scaleY]))
       .on('mouseout', this._mouseHandler('mouseout', $root, []));
 
@@ -437,7 +437,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
       x: 0, y: 0,
       width: (d: any) => { return scaleX(d); }, height: barHeight,
       'fill': this.options.sliderColor, id: 'bar', class: (_: any, i: number) => { return 'bar' + String(i);},
-      /*'shape-rendering': 'crispEdges',*/ stroke: 'black', 'stroke-width': '2px', 'stroke-alignment': 'inner',
+      'shape-rendering': 'crispEdges', stroke: 'black', 'stroke-width': '2px', 'stroke-alignment': 'inner',
       'stroke-opacity': 0.05
     }).on('mousemove', this._mouseHandler('mousemove', $root, [scaleY]))
       .on('mouseout', this._mouseHandler('mouseout', $root, []));
@@ -787,11 +787,12 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
 
     var descs: any[] = [];
     // TODO! implement custom interpolator for colors
-    const redColor = '#BB0000';//'#AA4040';
-    const greenColor = '#009900';//'#45AA55';
-    const yellowColor = '#AAAA00';//'#AAAA40';
+    const greenColor = '#cbc9e2';//'#009900';//'#45AA55'; ['#cbc9e2', '#9e9ac8', '#756bb1']
+    const yellowColor = '#9e9ac8';//'#AAAA00';//'#AAAA40';
+    const redColor = '#756bb1';//'#BB0000';//'#AA4040';
 
     var colors = (numDivs == 1) ? [greenColor, redColor] : [greenColor, yellowColor, redColor];
+    if (this.options.colorScheme) { colors = this.options.colorScheme; }
 
     var sliderIndices = Array.apply(null, Array(numDivs + 1)).map( (_, i: number) => { return i; });
     var colorScale = d3.scale.linear().domain(sliderIndices).range(<any>colors);

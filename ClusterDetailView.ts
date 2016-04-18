@@ -308,7 +308,7 @@ export class ClusterDetailView
         {
           const $elemNext = $parent.append('div').classed('stats', true).style('opacity', 0);
           $elemNext.classed('group', true);//.datum(rawDistMatrix);
-          $elemNext.append('div').attr('class', 'title').text('Group' + String(j));
+          $elemNext.append('div').attr('class', 'title').text('Ext.' + String(j));
           $elemNext.append('div').attr('class', 'body');
           var $toolbar = $elemNext.append('div').attr('class', 'gtoolbar');
 
@@ -322,7 +322,7 @@ export class ClusterDetailView
 
           if (j != this.cluster)
           {
-            $toolbar.append('i').attr('class', 'fa fa-sort-amount-desc')
+            $toolbar.append('i').attr('class', 'fa fa-sort-amount-asc')
               .on('click', onClickSort(j + 1, rawDistMatrix, numGroups, labels, column));
           }
 
@@ -458,7 +458,7 @@ export class ClusterDetailView
         column.stratomex.relayout();
       });
 
-      this.$toolbar.insert('i', '.fa-close').attr('class', 'fa fa-sort-amount-desc').on('click', () =>
+      this.$toolbar.insert('i', '.fa-close').attr('class', 'fa fa-sort-amount-asc').on('click', () =>
       {
         const index = this.cluster + 1;
         that._sortClusterByID(index, that.rawDistMatrix, that.numGroups, that.rawLabels, column);
@@ -614,6 +614,7 @@ export class ClusterDetailView
     {
       var graph = column.stratomex.provGraph;
       var obj = graph.findObject(column);
+      var obj = graph.findObject(column);
 
       // regroup column
       graph.push(createRegroupColumnCmd(obj, newCompositeRange, true));
@@ -711,7 +712,8 @@ export class ClusterDetailView
     // create matrix view heatmap
     var $matrixBody = this.$matrixNode.select('.body');
 
-    this.matrixView = heatmap.create(distMatrix, <Element>$matrixBody.node(), { selectAble: false });
+    this.matrixView = heatmap.create(distMatrix, <Element>$matrixBody.node(), { selectAble: false,
+      color: ['#f0f0f0', '#252525'] });
     this.zoomMatrixView = new behaviors.ZoomLogic(this.matrixView, null);
     this.$matrixNode.classed('hidden', true);
     //d3.select(this.matrixView.node).classed('hidden', true);
@@ -729,7 +731,8 @@ export class ClusterDetailView
 
     if (this.distanceView) { d3.select(this.distanceView.node).remove(); }
     this.distanceView = <boxSlider.BoxSlider>boxSlider.createRaw(distances[this.cluster],
-        <Element>this.$mainNode.node(), { range: this.distancesRange, numAvg: 1, numSlider: 2 });
+        <Element>this.$mainNode.node(), { range: this.distancesRange, numAvg: 1, numSlider: 2,
+        colorScheme: ['#636363', '#636363','#636363']/*['#cccccc', '#969696', '#636363']*/ /*['#cbc9e2', '#9e9ac8', '#756bb1']*/ });
     this.mainZoom = new behaviors.ZoomLogic(this.distanceView, null);
     this.distanceView.setLabels(labels);
 
@@ -743,7 +746,8 @@ export class ClusterDetailView
 
       var $currentNode = this.$extNodes[i].select('.body');
       this.externalViews[i] = <boxSlider.BoxSlider>boxSlider.createRaw(distances[i], <Element>$currentNode.node(), {
-        range: this.distancesRange, numAvg: 1, numSlider: 0 });
+        range: this.distancesRange, numAvg: 1, numSlider: 0, colorScheme: ['#636363', '#636363','#636363'] });
+      //['#cccccc', '#969696', '#636363'] });
       this.extZooms[i] = new behaviors.ZoomLogic(this.externalViews[i], null);
       this.externalViews[i].setLabels(labels);
     }
