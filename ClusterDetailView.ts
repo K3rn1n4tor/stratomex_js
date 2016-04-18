@@ -150,6 +150,9 @@ export class ClusterDetailView
   private labels: number[] = [];
   private updated: boolean = false;
 
+  private rawDistMatrix: any;
+  private rawLabels: any;
+
   // -------------------------------------------------------------------------------------------------------------------
 
   constructor(public cluster: number, private data: datatypes.IDataType, private range: ranges.Range,
@@ -282,6 +285,8 @@ export class ClusterDetailView
       }
       // 2) parse matrix
       var distMatrix = parser.parseMatrix(rawDistMatrix);
+      this.rawDistMatrix = rawDistMatrix;
+      this.rawLabels = labels;
 
       // build main node of the view
       const $elem = $parent.append('div').classed('stats', true).style('opacity', 0);
@@ -289,7 +294,7 @@ export class ClusterDetailView
 
       // create the toolbar of the detail view
       this.$toolbar = $elem.append('div').attr('class', 'gtoolbar');
-      this.createToolbar(column, rawDistMatrix, numGroups, labels);
+      this.createToolbar(column);
 
       // build title and body of all subviews -> build skeleton
       $elem.append('div').attr('class', 'title').text('Distances');
@@ -369,7 +374,7 @@ export class ClusterDetailView
    * Create toolbar of cluster detail view.
    * @param column
      */
-  private createToolbar(column: any, rawDistMatrix: any, numGroups: number, labels: any)
+  private createToolbar(column: any)
   {
     const that = this;
 
@@ -390,7 +395,7 @@ export class ClusterDetailView
 
     this.$toolbar.append('i').attr('class', icon).on('click', () =>
     {
-      var distHeatmap = that.matrixView;
+      //var distHeatmap = that.matrixView;
 
       that.toggleMatrixMode();
 
@@ -406,7 +411,7 @@ export class ClusterDetailView
       column.setColumnWidth();
       column.stratomex.relayout();
 
-      that.createToolbar(column, rawDistMatrix, numGroups, labels);
+      that.createToolbar(column);
     });
 
     if (!this.matrixMode)
@@ -417,7 +422,7 @@ export class ClusterDetailView
 
         C.resolveIn(400).then( () =>
         {
-          that.createToolbar(column, rawDistMatrix, numGroups, labels);
+          that.createToolbar(column);
         });
 
         // stop propagation to disable further event triggering
@@ -456,7 +461,7 @@ export class ClusterDetailView
       this.$toolbar.insert('i', '.fa-close').attr('class', 'fa fa-sort-amount-desc').on('click', () =>
       {
         const index = this.cluster + 1;
-        that._sortClusterByID(index, rawDistMatrix, numGroups, labels, column);
+        that._sortClusterByID(index, that.rawDistMatrix, that.numGroups, that.rawLabels, column);
       });
     }
 
