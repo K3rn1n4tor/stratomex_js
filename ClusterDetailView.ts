@@ -308,7 +308,7 @@ export class ClusterDetailView
         {
           const $elemNext = $parent.append('div').classed('stats', true).style('opacity', 0);
           $elemNext.classed('group', true);//.datum(rawDistMatrix);
-          $elemNext.append('div').attr('class', 'title').text('Group ' + String(j));
+          $elemNext.append('div').attr('class', 'title').text('Group' + String(j));
           $elemNext.append('div').attr('class', 'body');
           var $toolbar = $elemNext.append('div').attr('class', 'gtoolbar');
 
@@ -955,7 +955,7 @@ export class ClusterProbView
 
       const $elem = $parent.append('div').classed('stats', true).classed('hidden', true).style('opacity', 0);
       $elem.classed('group', true).datum(probabilities);
-      $elem.append('div').attr('class', 'title').text('Probs' + String(IDs[j]));
+      $elem.append('div').attr('class', 'title').text('Probs' + String(j));
       $elem.append('div').attr('class', 'body');
       this.$extNodes.push($elem);
     }
