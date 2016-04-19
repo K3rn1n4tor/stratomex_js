@@ -692,6 +692,20 @@ export class ClusterColumn extends columns.Column
 
     // create new group
     var newLabels = group1.asList().concat(group2.asList());
+
+    // filter redundant indices for fuzzy-clustering
+    function sortNumbers(a, b) { return a - b; }
+    newLabels.sort(sortNumbers);
+
+    // for that purpose, use an hash table
+    var seen = {};
+    // and filter all unique indices
+    // see http://stackoverflow.com/questions/9229645/remove-duplicates-from-javascript-array
+    newLabels = newLabels.filter( (item: any) =>
+      {
+        return seen.hasOwnProperty(item) ? false : (seen[item] = true);
+      });
+
     groups[clusterID] = new ranges.Range1DGroup("Group " + clusterID, 'grey', ranges.parse(newLabels).dim(0));
     // remove other group
     groups.splice(otherClusterID, 1);

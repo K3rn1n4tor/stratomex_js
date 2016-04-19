@@ -1233,7 +1233,7 @@ export class ClusterProbView
     // function to color the bars
     function colorBars(numOccurs)
     {
-      var cScale = d3.scale.linear().domain([0,1]).range(<any>['#449944', '#bbbb22']);
+      var cScale = d3.scale.linear().domain([0,1]).range(<any>['#66c2a4', '#b2e2e2']);//['#449944', '#bbbb22']);
 
       return function(d: any, i: number)
       {
@@ -1274,7 +1274,7 @@ export class ClusterProbView
 
       var boxChart = <boxSlider.BoxSlider>boxSlider.createRaw(probabilities[i], <Element>$body.node(), {
         range: [0.0, 1.0], numAvg: 1, numSlider: 0, precision: 4, valueName: 'Prob.',
-        colorFunction: colorBars(occurs)});
+        colorScheme: ['#636363', '#636363', '#636363'] });//colorFunction: colorBars(occurs)});
       boxChart.setLabels(labels);
 
       this.externalViews[i] = boxChart;

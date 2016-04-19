@@ -801,8 +801,10 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
     {
       // TODO toggle colorByValue / colorByRange
       const midRange = (this.options.range[0] + this.options.range[1]) / 2.0;
+      var colors = (this.options.colorScheme) ? this.options.colorScheme : ['red', 'yellow', 'green'];
+
       var cScale = d3.scale.linear().domain([this.options.range[0], midRange, this.options.range[1]])
-        .range((<any>['red', 'yellow', 'green']));
+        .range((<any>colors));
 
       var colorByValue = function(d: any) { return cScale(d); };
       var colorFunc = (this.options.colorFunction) ? this.options.colorFunction : colorByValue;
