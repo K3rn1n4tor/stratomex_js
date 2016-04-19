@@ -797,11 +797,19 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
    */
   private colorizeBars()
   {
+    // TODO! change colorizing code and make it easier to control coloring of bars and background
+
+    const greenColor = '#cbc9e2';//'#009900';//'#45AA55'; ['#cbc9e2', '#9e9ac8', '#756bb1']
+    const yellowColor = '#9e9ac8';//'#AAAA00';//'#AAAA40';
+    const redColor = '#756bb1';//'#BB0000';//'#AA4040';
+
+    var colors: string[] = [];
+
     if (this.options.numSlider == 0 && this.divisions.length == 0)
     {
       // TODO toggle colorByValue / colorByRange
       const midRange = (this.options.range[0] + this.options.range[1]) / 2.0;
-      var colors = (this.options.colorScheme) ? this.options.colorScheme : ['red', 'yellow', 'green'];
+      colors = (this.options.colorScheme) ? <string[]>this.options.colorScheme : ['red', 'yellow', 'green'];
 
       var cScale = d3.scale.linear().domain([this.options.range[0], midRange, this.options.range[1]])
         .range((<any>colors));
@@ -810,50 +818,46 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance
       var colorFunc = (this.options.colorFunction) ? this.options.colorFunction : colorByValue;
 
       this.$node.selectAll('#bar').transition().duration(this.options.duration).attr('fill', colorFunc);//this.options.sliderColor);
-
-      return;
     }
-
-    const numDivs = this.divisions.length;
-
-    var descs: any[] = [];
-    // TODO! implement custom interpolator for colors
-    const greenColor = '#cbc9e2';//'#009900';//'#45AA55'; ['#cbc9e2', '#9e9ac8', '#756bb1']
-    const yellowColor = '#9e9ac8';//'#AAAA00';//'#AAAA40';
-    const redColor = '#756bb1';//'#BB0000';//'#AA4040';
-
-    var colors = (numDivs == 1) ? [greenColor, redColor] : [greenColor, yellowColor, redColor];
-    if (this.options.colorScheme) { colors = this.options.colorScheme; }
-
-    var sliderIndices = Array.apply(null, Array(numDivs + 1)).map( (_, i: number) => { return i; });
-    var colorScale = d3.scale.linear().domain(sliderIndices).range(<any>colors);
-
-    // build descriptions
-    for (var i = 0; i < numDivs + 1; ++i)
+    else
     {
-      var minIndex = (i == 0) ? 0 : this.divisions[i - 1];
-      var maxIndex = (i == numDivs) ? this.numBars : this.divisions[i];
-      var range = [minIndex, maxIndex];
+      const numDivs = this.divisions.length;
 
-      descs.push({ range: range, color: colorScale(i) });
-      minIndex = maxIndex;
-    }
+      var descs: any[] = [];
 
-    // TODO! replace this by discrete scaling function (d3)
-    function colorize(_: any, i: number)
-    {
-      for (var j = 0; j < descs.length; ++j)
+      colors = (numDivs == 1) ? [greenColor, redColor] : [greenColor, yellowColor, redColor];
+      if (this.options.colorScheme) { colors = this.options.colorScheme; }
+
+      var sliderIndices = Array.apply(null, Array(numDivs + 1)).map( (_, i: number) => { return i; });
+      var colorScale = d3.scale.linear().domain(sliderIndices).range(<any>colors);
+
+      // build descriptions
+      for (var i = 0; i < numDivs + 1; ++i)
       {
-        var colDesc = descs[j];
-        if (i < colDesc.range[1] && i >= colDesc.range[0])
+        var minIndex = (i == 0) ? 0 : this.divisions[i - 1];
+        var maxIndex = (i == numDivs) ? this.numBars : this.divisions[i];
+        var range = [minIndex, maxIndex];
+
+        descs.push({ range: range, color: colorScale(i) });
+        minIndex = maxIndex;
+      }
+
+      // TODO! replace this by discrete scaling function (d3)
+      function colorize(_: any, i: number)
+      {
+        for (var j = 0; j < descs.length; ++j)
         {
-          return colDesc.color;
+          var colDesc = descs[j];
+          if (i < colDesc.range[1] && i >= colDesc.range[0])
+          {
+            return colDesc.color;
+          }
         }
       }
-    }
 
-    var colorFunc = (this.options.colorFunction) ? this.options.colorFunction : colorize;
-    this.$node.selectAll('#bar').transition().duration(this.options.duration).attr('fill', colorFunc);
+      var colorFunc = (this.options.colorFunction) ? this.options.colorFunction : colorize;
+      this.$node.selectAll('#bar').transition().duration(this.options.duration).attr('fill', colorFunc);
+    }
   }
 
   // -------------------------------------------------------------------------------------------------------------------
