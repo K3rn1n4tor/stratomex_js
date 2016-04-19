@@ -131,19 +131,28 @@ div.mergePopup
   div.body
   {
     display: flex;
+    display: -webkit-flex;
     flex-flow: column;
+    -webkit-flex-flow: column;
     justify-content: space-between;
+    -webkit-justify-content: space-between;
     align-items: center;
+    -webkit-align-items: center;
     background-color: #f9fff9;
 
     > .content
     {
       width: 100%;
       display: flex;
+      display: -webkit-flex;
       flex: 1 1 20px;
+      -webkit-flex: 1 1 20px;
       flex-flow: row;
+      -webkit-flex-flow: row;
       justify-content: space-between;
+      -webkit-justify-content: space-between;
       align-items: center;
+      -webkit-align-items: center;
       min-height: 35px;
       padding-left: 10px;
       padding-right: 10px;
@@ -227,19 +236,28 @@ div.clusterPopup
   div.body
   {
     display: flex;
+    display: -webkit-flex;
     flex-flow: column;
+    -webkit-flex-flow: column;
     justify-content: space-between;
+    -webkit-justify-content: space-between;
     align-items: center;
+    -webkit-align-items: center;
     background-color: #f9fff9;
 
     > .method
     {
       width: 100%;
       display: flex;
+      display: -webkit-flex;
       flex: 1 1 20px;
+      -webkit-flex: 1 1 20px;
       flex-flow: row;
+      -webkit-flex-flow: row;
       justify-content: space-between;
+      -webkit-justify-content: space-between;
       align-items: center;
+      -webkit-align-items: center;
       min-height: 35px;
       padding-left: 10px;
       padding-right: 10px;
@@ -281,19 +299,20 @@ div.clusterPopup
 }
 
 #stratomex {
-  -webkit-flex: 1 1 50vh;
-  flex: 1 1 50vh;
-
   position: relative;
   background-color: white;
 
   display: -webkit-flex;
   display: flex;
 
-  -webkit-align-items: stretch;
-  -webkit-flex-flow: row;
-  align-items: stretch;
+  flex: 1 1 50vh;
+  -webkit-flex: 1 1 50vh;
+
   flex-flow: row;
+  -webkit-flex-flow: row;
+
+  align-items: stretch;
+  -webkit-align-items: stretch;
 
   padding-top: 20px;
 
