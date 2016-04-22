@@ -1233,7 +1233,7 @@ export class ClusterProbView
     // function to color the bars
     function colorBars(numOccurs)
     {
-      var cScale = d3.scale.linear().domain([0,1]).range(<any>['#66c2a4', '#b2e2e2']);//['#449944', '#bbbb22']);
+      var cScale = d3.scale.linear().domain([0,1]).range(<any>['#66c2a4', '#8c6bb1']);//'#b2e2e2']);//['#449944', '#bbbb22']);
 
       return function(d: any, i: number)
       {
