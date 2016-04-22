@@ -731,7 +731,7 @@ export class ClusterDetailView
 
     if (this.distanceView) { d3.select(this.distanceView.node).remove(); }
     this.distanceView = <boxSlider.BoxSlider>boxSlider.createRaw(distances[this.cluster],
-        <Element>this.$mainNode.node(), { range: this.distancesRange, numAvg: 1, numSlider: 2,
+        <Element>$mainBody.node(), { range: this.distancesRange, numAvg: 1, numSlider: 2,
         colorScheme: ['#636363', '#636363','#636363']/*['#cccccc', '#969696', '#636363']*/
         /*['#cbc9e2', '#9e9ac8', '#756bb1']*/,
         backgrounds: ['#66c2a4', '#b2e2e2', '#edf8fb']});
