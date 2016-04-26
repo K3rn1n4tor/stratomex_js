@@ -34,8 +34,7 @@ import boxSlider = require('./boxslider');
  * @param within
  * @returns {number}
  */
-export function animationTime(within = -1)
-{
+export function animationTime(within = -1) {
   return within < 0 ? 50 : within;
 }
 
@@ -46,22 +45,17 @@ export function animationTime(within = -1)
  * @param desc: description of the data
  * @returns {any}
  */
-function guessInitial(desc):any
-{
-  if (desc.type === 'matrix')
-  {
+function guessInitial(desc):any {
+  if (desc.type === 'matrix') {
     return 'caleydo-vis-heatmap';
   }
-  if (desc.type === 'vector' && desc.value.type === 'int' && desc.name.toLowerCase().indexOf('daystodeath') >= 0)
-  {
+  if (desc.type === 'vector' && desc.value.type === 'int' && desc.name.toLowerCase().indexOf('daystodeath') >= 0) {
     return 'caleydo-vis-kaplanmeier';
   }
-  if (desc.type === 'vector')
-  {
+  if (desc.type === 'vector') {
     return desc.value.type === 'categorical' ? 'caleydo-vis-mosaic' : 'caleydo-vis-heatmap1d';
   }
-  if (desc.type === 'stratification')
-  {
+  if (desc.type === 'stratification') {
     return 'caleydo-vis-mosaic';
   }
   return -1;
@@ -81,18 +75,16 @@ export const manager = new idtypes.ObjectManager<Column>('_column', 'Column');
  * @param within
  * @returns {Promise<TResult>|Promise<U>}
  */
-function createColumn(inputs, parameter, graph, within)
-{
+function createColumn(inputs, parameter, graph, within) {
   var stratomex = inputs[0].value,
     partitioning = ranges.parse(parameter.partitioning),
     index = parameter.hasOwnProperty('index') ? parameter.index : -1,
     name = parameter.name || inputs[1].name,
-    uid = parameter.uid || 'C'+C.random_id();
+    uid = parameter.uid || 'C' + C.random_id();
 
   //console.log(ranges.parse(parameter.partitioning));
 
-  return inputs[1].v.then(function (data)
-  {
+  return inputs[1].v.then(function (data) {
     //console.log(new Date(), 'create column', data.desc.name, index);
     var c = new Column(stratomex, data, partitioning, inputs[1], {
       width: (data.desc.type === 'stratification') ? 60 : (data.desc.name.toLowerCase().indexOf('death') >= 0 ? 110 : 160),
@@ -100,23 +92,19 @@ function createColumn(inputs, parameter, graph, within)
     }, within);
     c.node.setAttribute('data-anchor', uid);
     var r = prov.ref(c, c.name, prov.cat.visual, c.hashString);
-    c.changeHandler = function (event, to, from)
-    {
-      if (from)
-      { //have a previous one so not the default
+    c.changeHandler = function (event, to, from) {
+      if (from) { //have a previous one so not the default
         graph.push(createChangeVis(r, to.id, from ? from.id : null));
       }
     };
-    c.optionHandler = function (event, name, value, bak)
-    {
+    c.optionHandler = function (event, name, value, bak) {
       graph.push(createSetOption(r, name, value, bak));
     };
     c.on('changed', c.changeHandler);
     c.on('option', c.optionHandler);
 
     //console.log(new Date(), 'add column', data.desc.name, index);
-    return stratomex.addColumn(c, index, within).then(() =>
-    {
+    return stratomex.addColumn(c, index, within).then(() => {
       //console.log(new Date(), 'added column', data.desc.name, index);
       return {
         created: [r],
@@ -129,8 +117,7 @@ function createColumn(inputs, parameter, graph, within)
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-function removeColumn(inputs, parameter, graph, within)
-{
+function removeColumn(inputs, parameter, graph, within) {
   var column:Column = inputs[1].value;
   const dataRef = column.dataRef;
   const partitioning = column.range.toString();
@@ -138,8 +125,7 @@ function removeColumn(inputs, parameter, graph, within)
   const uid = column.node.getAttribute('data-anchor');
   //console.log(new Date(), 'remove column', column.data.desc.name);
 
-  return inputs[0].value.removeColumn(column, within).then((index) =>
-  {
+  return inputs[0].value.removeColumn(column, within).then((index) => {
     //console.log(new Date(), 'removed column', dataRef.value.desc.name, index);
     return {
       removed: [inputs[1]],
@@ -151,10 +137,8 @@ function removeColumn(inputs, parameter, graph, within)
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-function swapColumns(inputs, parameter, graph, within)
-{
-  return (inputs[0].value).swapColumn(inputs[1].value, inputs[2].value, within).then(() =>
-  {
+function swapColumns(inputs, parameter, graph, within) {
+  return (inputs[0].value).swapColumn(inputs[1].value, inputs[2].value, within).then(() => {
     return {
       inverse: createSwapColumnCmd(inputs[0], inputs[2], inputs[1]),
       consumed: within
@@ -164,14 +148,12 @@ function swapColumns(inputs, parameter, graph, within)
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-function changeVis(inputs, parameter)
-{
+function changeVis(inputs, parameter) {
   var column = inputs[0].value,
     to = parameter.to,
     from = parameter.from || column.grid.act.id;
   column.off('changed', column.changeHandler);
-  return column.grid.switchTo(to).then(function ()
-  {
+  return column.grid.switchTo(to).then(function () {
     column.on('changed', column.changeHandler);
     return {
       inverse: createChangeVis(inputs[0], from, to)
@@ -181,21 +163,17 @@ function changeVis(inputs, parameter)
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function showInDetail(inputs, parameter, graph, within)
-{
+export function showInDetail(inputs, parameter, graph, within) {
   var column:Column = inputs[0].value,
     cluster = parameter.cluster,
     show = parameter.action === 'show';
   var r:Promise<any>;
-  if (show)
-  {
+  if (show) {
     r = column.showInDetail(cluster, within);
-  } else
-  {
+  } else {
     r = column.hideDetail(cluster, within);
   }
-  return r.then(() =>
-  {
+  return r.then(() => {
     return {
       inverse: createToggleDetailCmd(inputs[0], cluster, !show),
       consumed: within
@@ -205,8 +183,7 @@ export function showInDetail(inputs, parameter, graph, within)
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function createToggleDetailCmd(column, cluster, show)
-{
+export function createToggleDetailCmd(column, cluster, show) {
   var act = show ? 'Show' : 'Hide';
   return prov.action(prov.meta(act + ' Details of ' + column.toString() + ' Cluster "' + cluster + '"', prov.cat.layout),
     'showStratomeXInDetail', showInDetail, [column], {
@@ -217,8 +194,7 @@ export function createToggleDetailCmd(column, cluster, show)
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function createChangeVis(column, to, from)
-{
+export function createChangeVis(column, to, from) {
   const visses = column.value.grid.visses;
   const vis_desc = visses.filter((v) => v.id === to)[0];
   return prov.action(prov.meta(column.value.name + ' as ' + vis_desc.name,
@@ -230,8 +206,7 @@ export function createChangeVis(column, to, from)
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-function setOption(inputs, parameter)
-{
+function setOption(inputs, parameter) {
   var column = inputs[0].value,
     name = parameter.name,
     value = parameter.value,
@@ -246,51 +221,45 @@ function setOption(inputs, parameter)
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function createSetOption(column, name, value, old)
-{
+export function createSetOption(column, name, value, old) {
   return prov.action(prov.meta('set option "' + name + +'" of "' + column.name + ' to "' + value + '"', prov.cat.visual),
     'setStratomeXColumnOption', setOption, [column], {
-    name: name,
-    value: value,
-    old: old
-  });
+      name: name,
+      value: value,
+      old: old
+    });
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function createColumnCmd(stratomex, data, partitioning, name:string, index:number = -1, uid = 'C'+ C.random_id())
-{
+export function createColumnCmd(stratomex, data, partitioning, name:string, index:number = -1, uid = 'C' + C.random_id()) {
   return prov.action(prov.meta(name, prov.cat.data, prov.op.create),
     'createStratomeXColumn', createColumn, [stratomex, data], {
-    partitioning: partitioning.toString(),
-    name: name,
-    index: index,
-    uid: uid
-  });
+      partitioning: partitioning.toString(),
+      name: name,
+      index: index,
+      uid: uid
+    });
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function createRemoveCmd(stratomex, column)
-{
+export function createRemoveCmd(stratomex, column) {
   return prov.action(prov.meta(column.name, prov.cat.data, prov.op.remove),
     'removeStratomeXColumn', removeColumn, [stratomex, column]);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function createSwapColumnCmd(stratomex, columnA, columnB)
-{
+export function createSwapColumnCmd(stratomex, columnA, columnB) {
   return prov.action(prov.meta(`${columnA.name}⇄${columnB.name}`, prov.cat.layout, prov.op.update),
     'swapStratomeXColumns', swapColumns, [stratomex, columnA, columnB]);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function createCmd(id:string)
-{
-  switch (id)
-  {
+export function createCmd(id:string) {
+  switch (id) {
     case 'setStratomeXColumnOption' :
       return setOption;
     case 'createStratomeXColumn':
@@ -305,7 +274,7 @@ export function createCmd(id:string)
       return changeVis;
     case 'showStratomeXInDetail' :
       return showInDetail;
-  /** This is a new feature **/
+    /** This is a new feature **/
     //case 'showStratomeXStats' :
     //  return clustercolumns.showStats;
   }
@@ -319,31 +288,23 @@ export function createCmd(id:string)
  * @param path
  * @returns {prov.ActionNode[]}
  */
-export function compressCreateRemove(path:prov.ActionNode[])
-{
+export function compressCreateRemove(path:prov.ActionNode[]) {
   const to_remove:number[] = [];
-  path.forEach((p, i) =>
-  {
-    if (p.f_id === 'removeStratomeXColumn')
-    {
+  path.forEach((p, i) => {
+    if (p.f_id === 'removeStratomeXColumn') {
       const col = p.removes[0]; //removed column
       //find the matching createStatement and mark all changed in between
-      for (let j = i - 1; j >= 0; --j)
-      {
+      for (let j = i - 1; j >= 0; --j) {
         let q = path[j];
-        if (q.f_id === 'createStratomeXColumn')
-        {
+        if (q.f_id === 'createStratomeXColumn') {
           let created_col = q.creates[0];
-          if (created_col === col)
-          {
+          if (created_col === col) {
             //I found my creation
             to_remove.push(j, i); //remove both
             break;
           }
-        } else if (q.f_id.match(/(changeStratomeXColumnVis|showStratomeXInDetail|setStratomeXColumnOption|swapStratomeXColumns|showStratomeXStats)/))
-        {
-          if (q.requires.some((d) => d === col))
-          {
+        } else if (q.f_id.match(/(changeStratomeXColumnVis|showStratomeXInDetail|setStratomeXColumnOption|swapStratomeXColumns|showStratomeXStats)/)) {
+          if (q.requires.some((d) => d === col)) {
             to_remove.push(j); //uses the element
           }
         }
@@ -351,8 +312,7 @@ export function compressCreateRemove(path:prov.ActionNode[])
     }
   });
   //decreasing order for right indices
-  for (let i of to_remove.sort((a, b) => b - a))
-  {
+  for (let i of to_remove.sort((a, b) => b - a)) {
     path.splice(i, 1);
   }
   return path;
@@ -360,23 +320,17 @@ export function compressCreateRemove(path:prov.ActionNode[])
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function compressSwap(path:prov.ActionNode[])
-{
+export function compressSwap(path:prov.ActionNode[]) {
   const to_remove:number[] = [];
-  path.forEach((p, i) =>
-  {
-    if (p.f_id === 'swapStratomeXColumns')
-    {
+  path.forEach((p, i) => {
+    if (p.f_id === 'swapStratomeXColumns') {
       const inputs = p.requires;
       //assert inputs.length === 3
-      for (let j = i + 1; j < path.length; ++j)
-      {
+      for (let j = i + 1; j < path.length; ++j) {
         let q = path[j];
-        if (q.f_id === 'swapStratomeXColumns')
-        {
+        if (q.f_id === 'swapStratomeXColumns') {
           let otherin = q.requires;
-          if (inputs[1] === otherin[2] && inputs[2] === otherin[1])
-          {
+          if (inputs[1] === otherin[2] && inputs[2] === otherin[1]) {
             //swapped again
             to_remove.push(i, j);
             break;
@@ -386,8 +340,7 @@ export function compressSwap(path:prov.ActionNode[])
     }
   });
   //decreasing order for right indices
-  for (let i of to_remove.sort((a, b) => b - a))
-  {
+  for (let i of to_remove.sort((a, b) => b - a)) {
     path.splice(i, 1);
   }
   return path;
@@ -395,21 +348,16 @@ export function compressSwap(path:prov.ActionNode[])
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function compressHideShowDetail(path:prov.ActionNode[])
-{
+export function compressHideShowDetail(path:prov.ActionNode[]) {
   const to_remove:number[] = [];
-  path.forEach((p, i) =>
-  {
-    if (p.f_id === 'showStratomeXInDetail' && p.parameter.action === 'show')
-    {
+  path.forEach((p, i) => {
+    if (p.f_id === 'showStratomeXInDetail' && p.parameter.action === 'show') {
       const column = p.requires[0];
       const cluster = p.parameter.cluster;
-      for (let j = i + 1; j < path.length; ++j)
-      {
+      for (let j = i + 1; j < path.length; ++j) {
         let q = path[j];
         if (q.f_id === 'showStratomeXInDetail' && q.parameter.action === 'hide'
-          && q.parameter.cluster === cluster && column === q.requires[0])
-        {
+          && q.parameter.cluster === cluster && column === q.requires[0]) {
           //hide again
           to_remove.push(i, j);
           break;
@@ -418,8 +366,7 @@ export function compressHideShowDetail(path:prov.ActionNode[])
     }
   });
   //decreasing order for right indices
-  for (let i of to_remove.sort((a, b) => b - a))
-  {
+  for (let i of to_remove.sort((a, b) => b - a)) {
     path.splice(i, 1);
   }
   return path;
@@ -427,12 +374,9 @@ export function compressHideShowDetail(path:prov.ActionNode[])
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-function shiftBy(r, shift)
-{
-  if (Array.isArray(r))
-  {
-    return r.map(function (loc)
-    {
+function shiftBy(r, shift) {
+  if (Array.isArray(r)) {
+    return r.map(function (loc) {
       return loc ? geom.wrap(loc).shift(shift) : loc;
     });
   }
@@ -445,20 +389,17 @@ function shiftBy(r, shift)
  * utility to sync histograms over multiple instances
  * @param expectedNumberOfHists
  */
-function groupTotalAggregator(column: any, agg: (v: any) => number)//expectedNumberOfPlots:number, agg:(v:any) => number)
+function groupTotalAggregator(column:any, agg:(v:any) => number)//expectedNumberOfPlots:number, agg:(v:any) => number)
 {
   const expectedNumberOfPlots = (<ranges.CompositeRange1D>column.getRange().dim(0)).groups.length;
 
   var acc = 0;
   var resolvers = [];
-  return (v) =>
-  {
-    return new Promise((resolve) =>
-    {
+  return (v) => {
+    return new Promise((resolve) => {
       acc = Math.max(agg(v), acc);
       resolvers.push(resolve);
-      if (resolvers.length === expectedNumberOfPlots)
-      {
+      if (resolvers.length === expectedNumberOfPlots) {
         resolvers.forEach((r) => r(acc));
         acc = 0;
         resolvers = [];
@@ -473,59 +414,55 @@ function groupTotalAggregator(column: any, agg: (v: any) => number)//expectedNum
 /**
  *
  */
-export class Column extends events.EventHandler implements idtypes.IHasUniqueId, link_m.IDataVis
-{
-  id: number;
-  public destroyed: boolean; // signals if this column was destroyed
+export class Column extends events.EventHandler implements idtypes.IHasUniqueId, link_m.IDataVis {
+  id:number;
+  public destroyed:boolean; // signals if this column was destroyed
 
-  protected options: any;
-  protected $parent: d3.Selection<any>;
-  protected $toolbar: d3.Selection<any>;
-  protected $summary: d3.Selection<any>;
-  protected $clusters: d3.Selection<any>;
+  protected options:any;
+  protected $parent:d3.Selection<any>;
+  protected $toolbar:d3.Selection<any>;
+  protected $summary:d3.Selection<any>;
+  protected $clusters:d3.Selection<any>;
 
-  range: ranges.Range;
-  protected summary: multiform.MultiForm;
-  protected grid: multiform.MultiFormGrid;
+  range:ranges.Range;
+  protected summary:multiform.MultiForm;
+  protected grid:multiform.MultiFormGrid;
 
-  protected grid_zoom: behaviors.ZoomLogic;
-  protected summary_zoom: behaviors.ZoomLogic;
+  protected grid_zoom:behaviors.ZoomLogic;
+  protected summary_zoom:behaviors.ZoomLogic;
 
-  protected detail:
-  {
-    $node: d3.Selection<any>;
-    multi: multiform.IMultiForm;
-    zoom: behaviors.ZoomBehavior;
-    cluster: number;
+  protected detail:{
+    $node:d3.Selection<any>;
+    multi:multiform.IMultiForm;
+    zoom:behaviors.ZoomBehavior;
+    cluster:number;
   };
 
-  protected $layoutHelper: d3.Selection<any>;
+  protected $layoutHelper:d3.Selection<any>;
 
   changeHandler:any;
   optionHandler:any;
 
-  protected connectSignal: any = null;
+  protected connectSignal:any = null;
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  protected highlightMe = (event:events.IEvent, type:string, act:ranges.Range) =>
-  {
+  protected highlightMe = (event:events.IEvent, type:string, act:ranges.Range) => {
     this.$parent.classed('caleydo-select-' + type, act.dim(0).contains(this.id));
   };
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  constructor(protected stratomex, public data, partitioning:ranges.Range, public dataRef, options:any = {}, within = -1)
-  {
+  constructor(protected stratomex, public data, partitioning:ranges.Range, public dataRef, options:any = {}, within = -1) {
     super();
     this.options = C.mixin(
-    {
-      summaryHeight: 90,
-      width: 160,
-      detailWidth: 500,
-      padding: 2,
-      name: null
-    }, options);
+      {
+        summaryHeight: 90,
+        width: 160,
+        detailWidth: 500,
+        padding: 2,
+        name: null
+      }, options);
 
     var that = this;
     this.$parent = d3.select(stratomex.parent).append('div').attr('class', 'column').style('opacity', 0);
@@ -566,8 +503,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       }
     });
 
-    this.$summary.on('click', () =>
-    {
+    this.$summary.on('click', () => {
       //console.log('Select column:', that.id);
       manager.select([that.id], idtypes.toSelectOperation(d3.event));
     });
@@ -586,13 +522,11 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  protected multiGridWrapper(partitioning)
-  {
+  protected multiGridWrapper(partitioning) {
     var that = this;
     this.range = partitioning;
 
-    var createWrapper = function(elem, data, cluster, pos)
-    {
+    var createWrapper = function (elem, data, cluster, pos) {
       // select element of current multigrid
       const $elem = d3.select(elem);
       // set to group classed
@@ -601,8 +535,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       var $toolbar = $elem.append('div').attr('class', 'gtoolbar');
 
       // add new command with symbol fa-expand
-      $toolbar.append('i').attr('class', 'fa fa-expand').on('click', () =>
-      {
+      $toolbar.append('i').attr('class', 'fa fa-expand').on('click', () => {
         // first obtain the provenance graph
         var graph = that.stratomex.provGraph;
         // next find the current object / selection / cluster
@@ -613,15 +546,12 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         d3.event.stopPropagation();
       });
 
-      const toggleSelection = () =>
-      {
+      const toggleSelection = () => {
         var isSelected = $elem.classed('caleydo-select-selected');
-        if (isSelected)
-        {
+        if (isSelected) {
           data.select(0, ranges.none());
         }
-        else
-        {
+        else {
           data.select(0, ranges.all());
         }
         $elem.classed('caleydo-select-selected', !isSelected);
@@ -642,17 +572,14 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  protected createMultiGrid(partitioning, data)
-  {
+  protected createMultiGrid(partitioning, data) {
     const r = (<ranges.CompositeRange1D>partitioning.dim(0));
     const initialHeight = 500 / (r.groups || []).length;
 
     d3.select(this.$clusters.node()).style('opacity', 0);
 
-    this.grid = multiform.createGrid(data, partitioning, <Element>this.$clusters.node(), function (data, range, pos)
-    {
-      if (data.desc.type === 'stratification')
-      {
+    this.grid = multiform.createGrid(data, partitioning, <Element>this.$clusters.node(), function (data, range, pos) {
+      if (data.desc.type === 'stratification') {
         return (<any>data).group(pos[0]);
       }
       return (<any>data).view(range);
@@ -662,7 +589,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       wrap: this.multiGridWrapper(partitioning),
       all: {
         selectAble: false,
-        total: groupTotalAggregator(this, (v) => v.largestBin ),
+        total: groupTotalAggregator(this, (v) => v.largestBin),
         nbins: Math.sqrt(data.dim[0]),
         heightTo: initialHeight
       },
@@ -689,16 +616,14 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     var that = this;
 
-    that.grid.on('changed', function (event, to, from)
-    {
+    that.grid.on('changed', function (event, to, from) {
       that.fire('changed', to, from);
     });
   }
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  setInteractive(interactive:boolean)
-  {
+  setInteractive(interactive:boolean) {
     this.$toolbar.style('display', interactive ? null : 'none');
     this.$parent.selectAll('.gtoolbar').style('display', interactive ? null : 'none');
 
@@ -707,8 +632,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  setColumnId(newID: number)
-  {
+  setColumnId(newID:number) {
     // remove current column with old id from selection manager
     //manager.off('select', this.highlightMe);
 
@@ -720,8 +644,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     manager.push(<Column>this);
     //manager.on('select', this.highlightMe);
 
-    this.$summary.on('click', () =>
-    {
+    this.$summary.on('click', () => {
       console.log('Select column', that.id);
       manager.select([that.id], idtypes.toSelectOperation(d3.event));
     });
@@ -729,31 +652,26 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  get node()
-  {
+  get node() {
     return <Element>this.$parent.node();
   }
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  get layoutNode()
-  {
+  get layoutNode() {
     return <Element>this.$layoutHelper.node();
   }
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  get hashString()
-  {
+  get hashString() {
     return this.data.desc.name + '_' + this.range.toString();
   }
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  get name()
-  {
-    if (this.options.name)
-    {
+  get name() {
+    if (this.options.name) {
       return this.options.name;
     }
     const n:string = this.data.desc.name;
@@ -763,22 +681,19 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  ids()
-  {
+  ids() {
     return this.data.ids(this.range);
   }
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  getRange()
-  {
+  getRange() {
     return this.range;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  get location()
-  {
+  get location() {
     const abspos = C.bounds(<Element>this.$layoutHelper.node());
     const parent = C.bounds((<Element>this.$layoutHelper.node()).parentElement);
     return geom.rect(abspos.x - parent.x, abspos.y - parent.y, abspos.w, abspos.h);
@@ -786,8 +701,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  visPos()
-  {
+  visPos() {
     var l = this.location;
     var offset = $(this.$parent.node()).find('div.multiformgrid').position();
     return {
@@ -798,15 +712,12 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  locateImpl(range:ranges.Range)
-  {
+  locateImpl(range:ranges.Range) {
     var cluster = range.dim(0);
     cluster = cluster.toSet();
-    for (let i = this.grid.dimSizes[0] - 1; i >= 0; --i)
-    {
+    for (let i = this.grid.dimSizes[0] - 1; i >= 0; --i) {
       let r = this.grid.getRange(i).dim(0).toSet();
-      if (r.eq(cluster))
-      {
+      if (r.eq(cluster)) {
         return shiftBy(this.grid.getBounds(i), this.visPos());
       }
     }
@@ -815,10 +726,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  locate(...args:any[])
-  {
-    if (args.length === 1)
-    {
+  locate(...args:any[]) {
+    if (args.length === 1) {
       return this.locateImpl(args[0]);
     }
     return args.map((arg) => this.locateImpl(arg));
@@ -826,34 +735,27 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  protected locateHack(groups:ranges.Range[])
-  {
+  protected locateHack(groups:ranges.Range[]) {
     const nGroups = this.grid.dimSizes[0];
-    if (groups.length !== nGroups)
-    {
+    if (groups.length !== nGroups) {
       return null;
     }
-    return groups.map((g, i) =>
-    {
+    return groups.map((g, i) => {
       return shiftBy(this.grid.getBounds(i), this.visPos());
     });
   }
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  locateById(...args:any[])
-  {
+  locateById(...args:any[]) {
     const that = this;
     //TODO use the real thing not a heuristic.
     var r = this.locateHack(args);
-    if (r)
-    {
+    if (r) {
       return r;
     }
-    return this.data.ids().then(function (ids)
-    {
-      return that.locate.apply(that, args.map(function (r)
-      {
+    return this.data.ids().then(function (ids) {
+      return that.locate.apply(that, args.map(function (r) {
         return ids.indexOf(r);
       }));
     });
@@ -867,11 +769,9 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
    * @param within
    * @returns {Promise<void>}
    */
-  showInDetail(cluster, within = -1)
-  {
+  showInDetail(cluster, within = -1) {
     // don't build detail view twice
-    if (this.detail)
-    {
+    if (this.detail) {
       return Promise.resolve([]);
     }
 
@@ -891,8 +791,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     });
     multiform.addIconVisChooser(<Element>$toolbar.node(), multi);
 
-    $toolbar.append('i').attr('class', 'fa fa-close').on('click', () =>
-    {
+    $toolbar.append('i').attr('class', 'fa fa-close').on('click', () => {
       var g = this.stratomex.provGraph;
       var s = g.findObject(this);
       g.push(createToggleDetailCmd(s, cluster, false));
@@ -910,10 +809,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     return this.resizeDetail(within);
   }
 
-  hideDetail(cluster, within)
-  {
-    if (!this.detail)
-    {
+  hideDetail(cluster, within) {
+    if (!this.detail) {
       return Promise.resolve([]);
     }
     //this.detail.multi.destroy();
@@ -925,9 +822,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  protected resizeDetail(within, hide=false)
-  {
-    var width = (hide)? this.options.width : this.options.width + this.options.detailWidth;
+  protected resizeDetail(within, hide = false) {
+    var width = (hide) ? this.options.width : this.options.width + this.options.detailWidth;
 
     this.$parent.style('width', width + 'px');
     this.$layoutHelper.style('width', width + 'px');
@@ -937,8 +833,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  layouted(within = -1)
-  {
+  layouted(within = -1) {
     //sync the scaling
     let bounds = C.bounds(<Element>this.$layoutHelper.node());
     var size = {x: bounds.w, y: bounds.h - 5}; //no idea why but needed avoiding an overflow
@@ -957,8 +852,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     // Resize if detail is shown
 
 
-    if (this.detail)
-    {
+    if (this.detail) {
       var clusterPosY = this.options.summaryHeight + 32;
 
       size.x -= this.options.detailWidth;
@@ -980,18 +874,15 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     // Apply zooms to column elements / grids
     this.$summary.style('width', size.x + 'px');
 
-    this.summary.actLoader.then(() =>
-    {
+    this.summary.actLoader.then(() => {
       this.summary_zoom.zoomTo(size.x - this.options.padding * 3, this.options.summaryHeight - this.options.padding * 3 - 30);
     });
-    this.grid.actLoader.then(() =>
-    {
+    this.grid.actLoader.then(() => {
       this.grid_zoom.zoomTo(size.x - this.options.padding * 2, size.y);
 
       //shift the content for the aspect ratio
       var shift = [null, null];
-      if (this.grid_zoom.isFixedAspectRatio)
-      {
+      if (this.grid_zoom.isFixedAspectRatio) {
         var act = this.grid.size;
         shift[0] = ((size.x - act[0]) / 2) + 'px';
         shift[1] = ((size.y - act[1]) / 2) + 'px';
@@ -1008,52 +899,43 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  protected resizeColumn(size: any, within=-1)
-  {
+  protected resizeColumn(size:any, within = -1) {
     // nothing to do here
   }
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  protected onActionLoader(size: any, within=-1)
-  {
+  protected onActionLoader(size:any, within = -1) {
     // nothing to do here
   }
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  createToolBar()
-  {
+  createToolBar() {
     var $t = this.$toolbar,
       that = this;
     multiform.addIconVisChooser(<Element>$t.node(), this.grid);
-    $t.append('i').attr('class', 'fa fa-chevron-left').on('click', ()=>
-    {
+    $t.append('i').attr('class', 'fa fa-chevron-left').on('click', ()=> {
       var g = that.stratomex.provGraph;
       var s = g.findObject(that);
-      if (this.stratomex.canShift(that).left > 0)
-      {
+      if (this.stratomex.canShift(that).left > 0) {
         g.push(createSwapColumnCmd(this.stratomex.ref, s, this.stratomex.atRef(that.stratomex.indexOf(that) - 1)));
       }
     });
-    $t.append('i').attr('class', 'fa fa-chevron-right').on('click', ()=>
-    {
+    $t.append('i').attr('class', 'fa fa-chevron-right').on('click', ()=> {
       var g = that.stratomex.provGraph;
       var s = g.findObject(that);
-      if (that.stratomex.canShift(that).right < 0)
-      {
+      if (that.stratomex.canShift(that).right < 0) {
         g.push(createSwapColumnCmd(this.stratomex.ref, s, that.stratomex.atRef(that.stratomex.indexOf(that) + 1)));
       }
     });
-    $t.append('i').attr('class', 'fa fa-expand').on('click', () =>
-    {
+    $t.append('i').attr('class', 'fa fa-expand').on('click', () => {
       var g = this.stratomex.provGraph;
       var s = g.findObject(this);
       g.push(createToggleDetailCmd(s, -1, true));
     });
 
-    $t.append('i').attr('class', 'fa fa-close').on('click', ()=>
-    {
+    $t.append('i').attr('class', 'fa fa-close').on('click', ()=> {
       var g = that.stratomex.provGraph;
       g.push(createRemoveCmd(this.stratomex.ref, g.findObject(that)));
     });
@@ -1063,8 +945,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  destroy(within)
-  {
+  destroy(within) {
     manager.off('select', this.highlightMe);
     manager.remove(this);
     this.$parent.style('opacity', 1).transition().duration(animationTime(within)).style('opacity', 0).remove();

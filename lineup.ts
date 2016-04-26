@@ -24,9 +24,8 @@ import matrix = require('../caleydo_core/matrix');
  * @param width width of column
  * @returns {{column: string, width: number}}
  */
-function col(name: string, width: number)
-{
-  return { column: name, width: width };
+function col(name:string, width:number) {
+  return {column: name, width: width};
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -36,10 +35,9 @@ function col(name: string, width: number)
  * @param list
  * @returns {any}
  */
-function convertToTable(list: any[])
-{
+function convertToTable(list:any[]) {
   return tables.wrapObjects(<any>{
-    id : '_stratification',
+    id: '_stratification',
     name: 'stratifications',
     type: 'table',
     rowtype: '_stratification',
@@ -47,61 +45,66 @@ function convertToTable(list: any[])
     columns: [
       {
         name: 'Package',
-        value: { type: 'string' },
-        getter: function(d)
-        {
+        value: {type: 'string'},
+        getter: function (d) {
           var s = d.desc.fqname.split('/');
           return s[0];
         }
       },
       {
         name: 'Dataset',
-        value: { type: 'string' },
-        getter: function(d)
-        {
+        value: {type: 'string'},
+        getter: function (d) {
           var s = d.desc.fqname.split('/');
           return s.length === 2 ? s[0] : s[1];
         }
       },
       {
         name: 'Name',
-        value: { type: 'string' },
-        getter: function(d)
-        {
+        value: {type: 'string'},
+        getter: function (d) {
           var s = d.desc.fqname.split('/');
-          return s[s.length-1];
+          return s[s.length - 1];
         }
       },
       {
         name: 'Dimensions',
-        value: { type: 'string' },
-        getter: function(d) { return d.dim.join(' x '); },
-        lineup:
-        {
+        value: {type: 'string'},
+        getter: function (d) {
+          return d.dim.join(' x ');
+        },
+        lineup: {
           alignment: 'right'
         }
       },
       {
         name: 'ID Type',
-        value: { type: 'string' },
-        getter: function(d) { return (d.idtypes.map(String).join(', ')); }
+        value: {type: 'string'},
+        getter: function (d) {
+          return (d.idtypes.map(String).join(', '));
+        }
       },
       {
         name: 'Type',
-        value: { type: 'string' },
-        getter: function(d) { return d.desc.type; }
+        value: {type: 'string'},
+        getter: function (d) {
+          return d.desc.type;
+        }
       },
       {
         name: '# Groups',
-        value: { type: 'string' },
-        getter: function(d) { return d.ngroups || (d.valuetype.categories ? d.valuetype.categories.length : 0); },
-        lineup:
-        {
+        value: {type: 'string'},
+        getter: function (d) {
+          return d.ngroups || (d.valuetype.categories ? d.valuetype.categories.length : 0);
+        },
+        lineup: {
           alignment: 'right'
         }
       }
     ]
-  }, list, (d: any) => { return d.desc.name; });
+  }, list, (d:any) => {
+    return d.desc.name;
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -111,11 +114,10 @@ function convertToTable(list: any[])
  * This is an implementation of a custom LineUp view for StratomeX. It creates the file browser for this application
  * to list all available stratifications and data and connect actions for each row with a special function.
  */
-export class StratomeXLineUp extends views.AView
-{
-  private _data: any = [];
-  public lineup: any;
-  public rawData: any[] = [];
+export class StratomeXLineUp extends views.AView {
+  private _data:any = [];
+  public lineup:any;
+  public rawData:any[] = [];
 
   // -------------------------------------------------------------------------------------------------------------------
 
@@ -125,9 +127,8 @@ export class StratomeXLineUp extends views.AView
    * @param showGroups:
    * @param onAdd: pointer to function that is called when '+' sign is clicked at certain row
    * @param onCluster: pointer to function that is called when 'K' sign is clicked at certain row
-     */
-  constructor(private parent: Element, public showGroups: boolean, public onAdd: any, public onCluster: any)
-  {
+   */
+  constructor(private parent:Element, public showGroups:boolean, public onAdd:any, public onCluster:any) {
     super();
   }
 
@@ -136,9 +137,8 @@ export class StratomeXLineUp extends views.AView
   /**
    * Return data of LineUp.
    * @returns {any}
-     */
-  get data()
-  {
+   */
+  get data() {
     return this._data;
   }
 
@@ -149,14 +149,12 @@ export class StratomeXLineUp extends views.AView
    * @param x
    * @param y
    * @param w
-     * @param h
-     */
-  setBounds(x, y, w, h)
-  {
+   * @param h
+   */
+  setBounds(x, y, w, h) {
     super.setBounds(x, y, w, h);
 
-    if (this.lineup)
-    {
+    if (this.lineup) {
       this.lineup.update();
     }
   }
@@ -166,9 +164,8 @@ export class StratomeXLineUp extends views.AView
   /**
    * Convert list of stratifications to lineup-conform description and set the data of this LineUp.
    * @param stratifications
-     */
-  setData(stratifications: any[])
-  {
+   */
+  setData(stratifications:any[]) {
     var that = this;
     var data = convertToTable(stratifications);
 
@@ -179,51 +176,49 @@ export class StratomeXLineUp extends views.AView
     // list all plugins that are able to visualize this data table
     var v = vis.list(data);
     // select the vis-lineup that uses the linup library since we only need this plugin
-    var lineup = v.filter((v: any) => { return v.id === 'caleydo-vis-lineup'; })[0];
+    var lineup = v.filter((v:any) => {
+      return v.id === 'caleydo-vis-lineup';
+    })[0];
 
     // define the icons for the actions
     var addIcon = '\uf067';
     var clusterIcon = (this.onCluster === null) ? '' : '\uf085'; // gears //'\uf013'; // gear
 
     // load the plugin and define the description
-    lineup.load().then((plugin) =>
-    {
+    lineup.load().then((plugin) => {
       that.lineup = plugin.factory(data, that.parent, {
-        lineup:
-        {
-          svgLayout:
-          {
+        lineup: {
+          svgLayout: {
             mode: 'separate',
             // define types of actions and set callback functions
-            rowActions:
-            [
+            rowActions: [
               {
                 name: 'add',
                 icon: addIcon,
-                action: (row: any) => { that.onAdd(row._) }
+                action: (row:any) => {
+                  that.onAdd(row._)
+                }
               },
               {
                 name: 'cluster',
                 icon: clusterIcon,
-                action: (row: any) => { that.onCluster(row, that.parent) }
+                action: (row:any) => {
+                  that.onCluster(row, that.parent)
+                }
               }
             ]
           },
           manipulative: true,
-          interaction:
-          {
+          interaction: {
             tooltips: false
           }
         },
-        dump:
-        {
-          layout:
-          {
+        dump: {
+          layout: {
             // define columns layout
-            primary:
-            [
-              { type: 'actions', width: 50, label: 'Actions'},
-              { type: 'rank', width: 40 },
+            primary: [
+              {type: 'actions', width: 50, label: 'Actions'},
+              {type: 'rank', width: 40},
               col('Package', 150),
               col('Dataset', 220),
               col('Name', 220),
@@ -248,8 +243,7 @@ export class StratomeXLineUp extends views.AView
  * @param onCluster
  * @returns {StratomeXLineUp}
  */
-export function create(parent: Element, onAdd: any, onCluster: any)
-{
+export function create(parent:Element, onAdd:any, onCluster:any) {
   return new StratomeXLineUp(parent, true, onAdd, onCluster);
 }
 
@@ -262,8 +256,7 @@ export function create(parent: Element, onAdd: any, onCluster: any)
  * @param onCluster
  * @returns {StratomeXLineUp}
  */
-export function createData(parent: Element, onAdd: any, onCluster: any)
-{
+export function createData(parent:Element, onAdd:any, onCluster:any) {
   return new StratomeXLineUp(parent, false, onAdd, onCluster);
 }
 

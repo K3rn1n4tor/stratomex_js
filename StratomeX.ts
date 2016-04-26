@@ -20,23 +20,23 @@ import {getFirstByFQName} from "../caleydo_core/data";
 
 //type ColumnRef = prov.IObjectRef<columns.Column>;
 
-function toName(data: string, par: string) {
-  const n : string= data;
+function toName(data:string, par:string) {
+  const n:string = data;
   const i = n.lastIndexOf('/');
-  var base =  i >= 0 ? n.slice(i+1) : n;
+  var base = i >= 0 ? n.slice(i + 1) : n;
 
-  var c = par.replace(' Clustering','');
+  var c = par.replace(' Clustering', '');
   const j = c.lastIndexOf('/');
-  c = j >= 0 ? c.slice(j+1) : c;
+  c = j >= 0 ? c.slice(j + 1) : c;
   if (base === c) {
     return base;
   }
-  return base + ' ('+c+')';
+  return base + ' (' + c + ')';
 }
 
-function toMiddle(n: string) {
+function toMiddle(n:string) {
   const l = n.split('/');
-  return l.length > 1 ? l[l.length-2] : n;
+  return l.length > 1 ? l[l.length - 2] : n;
 }
 
 class StratomeX extends views.AView {
@@ -63,7 +63,7 @@ class StratomeX extends views.AView {
     });
   }
 
-  setInteractive(interactive: boolean) {
+  setInteractive(interactive:boolean) {
     this.interactive = interactive;
     this._columns.forEach((c) => c.setInteractive(interactive));
   }
@@ -87,19 +87,21 @@ class StratomeX extends views.AView {
   relayout(within = -1) {
     var that = this;
     that._links.hide();
-    return C.resolveIn(5).then(() =>
-    {
-      that._columns.forEach((d) => { d.layouted(within); });
+    return C.resolveIn(5).then(() => {
+      that._columns.forEach((d) => {
+        d.layouted(within);
+      });
 
-      if (that.relayoutTimer >= 0)
-      {
+      if (that.relayoutTimer >= 0) {
         clearTimeout(that.relayoutTimer);
       }
 
       that.relayoutTimer = setTimeout(that._links.update.bind(that._links), within + 400);
-      that._columns.forEach((d) => { d.fire('relayouted'); });
-      return C.resolveIn(within);
+      that._columns.forEach((d) => {
+        d.fire('relayouted');
       });
+      return C.resolveIn(within);
+    });
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -108,8 +110,8 @@ class StratomeX extends views.AView {
    * adds a new column displaying data from the "data" section related to stratifications
    * @param m
    * @returns {boolean}
-     */
-  addDependentData(m: datatypes.IDataType) {
+   */
+  addDependentData(m:datatypes.IDataType) {
     const base = columns.manager.selectedObjects()[0];
 
     console.log(base);
@@ -135,8 +137,8 @@ class StratomeX extends views.AView {
    * add Orly's genomic data to the lineup
    * @param m
    * @returns {boolean}
-     */
-  addDependentOrlyData(m: datatypes.IDataType) {
+   */
+  addDependentOrlyData(m:datatypes.IDataType) {
     const base = columns.manager.selectedObjects()[0];
 
     console.log('Adding Orlys data: ', m.desc.fqname);
@@ -165,11 +167,9 @@ class StratomeX extends views.AView {
    * @param data
    * @param method
    * @param arg
-     */
-  clusterData(data: datatypes.IDataType, method: string, args: any)
-  {
-    if (data.desc.type != 'matrix')
-    {
+   */
+  clusterData(data:datatypes.IDataType, method:string, args:any) {
+    if (data.desc.type != 'matrix') {
       console.log('clustering of data only supported for matrices, by now.');
       return;
     }
@@ -182,14 +182,13 @@ class StratomeX extends views.AView {
     const dataID = data.desc.id;
     console.log('Cluster data set:', dataID);
     var that = this;
-    var clusterResponse: Promise<any>;
+    var clusterResponse:Promise<any>;
     var methodName = '';
     var distMetric = '';
 
     $('body').addClass('waiting');
 
-    if (method == 'k-means')
-    {
+    if (method == 'k-means') {
       const k = String(args[0]);
       const initMethod = args[1];
 
@@ -211,8 +210,7 @@ class StratomeX extends views.AView {
       distMetric = distance;
     }
 
-    else if (method == 'hierarchical')
-    {
+    else if (method == 'hierarchical') {
       const k = String(args[0]);
       const method = args[1];
       const distance = args[2];
@@ -223,8 +221,7 @@ class StratomeX extends views.AView {
       distMetric = distance;
     }
 
-    else if (method == 'fuzzy')
-    {
+    else if (method == 'fuzzy') {
       const c = String(args[0]);
       const m = String(args[1]);
       const t = String(args[2]);
@@ -235,12 +232,10 @@ class StratomeX extends views.AView {
       distMetric = 'euclidean';
     }
 
-    clusterResponse.then( (result: any) =>
-    {
+    clusterResponse.then((result:any) => {
       that.createClusterStratification(data, result, methodName, distMetric);
       $('body').removeClass('waiting');
-    }).catch( (e: any) =>
-    {
+    }).catch((e:any) => {
       console.log('Could not apply clustering algorithm to data set:', dataID);
       console.log('Error:', e);
       $('body').removeClass('waiting');
@@ -256,9 +251,8 @@ class StratomeX extends views.AView {
    * @param data
    * @param result
    * @param method
-     */
-  private createClusterStratification(data: datatypes.IDataType, result: any, method: string, metric: string)
-  {
+   */
+  private createClusterStratification(data:datatypes.IDataType, result:any, method:string, metric:string) {
     var that = this;
 
     // obtain data info
@@ -282,8 +276,7 @@ class StratomeX extends views.AView {
     //
     ////clusterLabels.sort(compareCluster);
 
-    Promise.all([(<any>data).rows(), (<any>data).rowIds()]).then((args) =>
-    {
+    Promise.all([(<any>data).rows(), (<any>data).rowIds()]).then((args) => {
       // obtain the rows and rowIDs of the data
       var rows = args[0];
       var rowIds = args[1];
@@ -295,12 +288,10 @@ class StratomeX extends views.AView {
       var rowLabels = rowIds.dim(0).asList();
       var sumLabels = 0;
 
-      for (var i = 0; i < numClusters; ++i)
-      {
+      for (var i = 0; i < numClusters; ++i) {
         const numLabels = clusterLabels[i].length;
 
-        for (var j = 0; j < numLabels; ++j)
-        {
+        for (var j = 0; j < numLabels; ++j) {
           // HINT! have a look at any CNMF clustering file, they rearrange all rows and rowIds instead of the groups
           newRows.push(rows[clusterLabels[i][j]]);
           newRowIds.push(rowLabels[clusterLabels[i][j]]);
@@ -310,8 +301,7 @@ class StratomeX extends views.AView {
         sumLabels += numLabels;
       }
 
-      for (var i = 0; i < numClusters; ++i)
-      {
+      for (var i = 0; i < numClusters; ++i) {
         clusterRanges.push(ranges.parse(clusterLabels[i]));
         groups.push(new ranges.Range1DGroup('Group ' + String(i),
           'red', clusterRanges[i].dim(0)));
@@ -331,23 +321,20 @@ class StratomeX extends views.AView {
       };
 
       // create a new startification of the data
-      var strati : stratification.IStratification;
+      var strati:stratification.IStratification;
       // provide newRows as number[] and newRowIds as string[]
       strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, newRows, newRowIds, <any>compositeRange);
 
       // add new clustered data with its stratification to StratomeX
-      if (method == 'Hierarchical')
-      {
+      if (method == 'Hierarchical') {
         that.addHierarchicalClusterData(strati, data, metric, result.dendrogram);
       }
-      else if (method == 'Fuzzy')
-      {
+      else if (method == 'Fuzzy') {
         const partitionMatrix = result.partitionMatrix;
         const maxProb = result.maxProbability;
         that.addFuzzyClusterData(strati, data, metric, partitionMatrix, maxProb);
       }
-      else
-      {
+      else {
         that.addClusterData(strati, data, metric);
       }
     });
@@ -355,8 +342,7 @@ class StratomeX extends views.AView {
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  addColumnWithRange(data: datatypes.IDataType, compositeRange: ranges.CompositeRange1D)
-  {
+  addColumnWithRange(data:datatypes.IDataType, compositeRange:ranges.CompositeRange1D) {
     var that = this;
 
     const dataID = data.desc.id;
@@ -375,14 +361,13 @@ class StratomeX extends views.AView {
       ws: 'random'
     };
 
-    Promise.all([(<any>data).rows(), (<any>data).rowIds()]).then((args) =>
-    {
+    Promise.all([(<any>data).rows(), (<any>data).rowIds()]).then((args) => {
       // obtain the rows and rowIDs of the data
       var rows = args[0];
       var rowIds = args[1];
 
       // create a new startification of the data
-      var strati : stratification.IStratification;
+      var strati:stratification.IStratification;
       strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, rows, rowIds, <any>compositeRange);
 
       // add new clustered data with its stratification to StratomeX
@@ -397,26 +382,23 @@ class StratomeX extends views.AView {
    * @param rowStrat
    * @param rowMatrix
    * @param distanceMetric
-     */
-  addClusterData(rowStrat: stratification.IStratification,
-                rowMatrix: datatypes.IDataType,
-                distanceMetric: string = 'euclidean')
-  {
+   */
+  addClusterData(rowStrat:stratification.IStratification,
+                 rowMatrix:datatypes.IDataType,
+                 distanceMetric:string = 'euclidean') {
     var that = this;
     const objectName = rowMatrix.desc.name;
     var mref = this.provGraph.findOrAddObject(rowMatrix, objectName, 'data');
 
     Promise.all<ranges.Range1D>([rowStrat.idRange(), ranges.Range1D.all()])
-      .then((range_list:ranges.Range1D[]) =>
-      {
+      .then((range_list:ranges.Range1D[]) => {
         const idRange = ranges.list(range_list);
         return rowMatrix.fromIdRange(idRange);
 
-      }).then((range) =>
-      {
-        that.provGraph.push(clustercolumns.createClusterColumnCmd(that.ref, mref, range, distanceMetric,
-          toName(objectName, rowStrat.desc.name)));
-      });
+      }).then((range) => {
+      that.provGraph.push(clustercolumns.createClusterColumnCmd(that.ref, mref, range, distanceMetric,
+        toName(objectName, rowStrat.desc.name)));
+    });
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -427,34 +409,31 @@ class StratomeX extends views.AView {
    * @param rowMatrix
    * @param distanceMetric
    * @param dendrogram
-     */
-  addHierarchicalClusterData(rowStrat: stratification.IStratification,
-                            rowMatrix: datatypes.IDataType,
-                            distanceMetric: string,
-                            dendrogram: any)
-  {
+   */
+  addHierarchicalClusterData(rowStrat:stratification.IStratification,
+                             rowMatrix:datatypes.IDataType,
+                             distanceMetric:string,
+                             dendrogram:any) {
     var that = this;
     const objectName = rowMatrix.desc.name;
     var mref = this.provGraph.findOrAddObject(rowMatrix, objectName, 'data');
 
     Promise.all<ranges.Range1D>([rowStrat.idRange(), ranges.Range1D.all()])
-      .then((range_list:ranges.Range1D[]) =>
-      {
+      .then((range_list:ranges.Range1D[]) => {
         const idRange = ranges.list(range_list);
         return rowMatrix.fromIdRange(idRange);
 
-      }).then((range) =>
-      {
-        const newID = rowMatrix.desc.id + 'Dendrogram';
-        const dendrogramName = rowMatrix.desc.name + '_Dendrogram';
-        var dendrogramDesc = { id: newID, name: 'dendrogramName', 'fqname': 'null', type: 'tree' };
-        var dendrogramData = new clustercolumns.Dendrogram(dendrogram, dendrogramDesc);
+      }).then((range) => {
+      const newID = rowMatrix.desc.id + 'Dendrogram';
+      const dendrogramName = rowMatrix.desc.name + '_Dendrogram';
+      var dendrogramDesc = {id: newID, name: 'dendrogramName', 'fqname': 'null', type: 'tree'};
+      var dendrogramData = new clustercolumns.Dendrogram(dendrogram, dendrogramDesc);
 
-        var dendrogramRef = that.provGraph.findOrAddObject(dendrogramData, dendrogramName, 'data');
+      var dendrogramRef = that.provGraph.findOrAddObject(dendrogramData, dendrogramName, 'data');
 
-        that.provGraph.push(clustercolumns.createHierarchicalClusterColumnCmd(that.ref, mref, range, distanceMetric,
-          dendrogramRef, toName(objectName, rowStrat.desc.name)));
-      });
+      that.provGraph.push(clustercolumns.createHierarchicalClusterColumnCmd(that.ref, mref, range, distanceMetric,
+        dendrogramRef, toName(objectName, rowStrat.desc.name)));
+    });
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -466,34 +445,31 @@ class StratomeX extends views.AView {
    * @param distanceMetric
    * @param partitionMatrix
    * @param maxProb
-     */
-  addFuzzyClusterData(rowStrat: stratification.IStratification,
-                      rowMatrix: datatypes.IDataType,
-                      distanceMetric: string,
-                      partitionMatrix: any[],
-                      maxProb: number)
-  {
+   */
+  addFuzzyClusterData(rowStrat:stratification.IStratification,
+                      rowMatrix:datatypes.IDataType,
+                      distanceMetric:string,
+                      partitionMatrix:any[],
+                      maxProb:number) {
     var that = this;
     const objectName = rowMatrix.desc.name;
     var mref = this.provGraph.findOrAddObject(rowMatrix, objectName, 'data');
 
     Promise.all<ranges.Range1D>([rowStrat.idRange(), ranges.Range1D.all()])
-      .then((range_list:ranges.Range1D[]) =>
-      {
+      .then((range_list:ranges.Range1D[]) => {
         const idRange = ranges.list(range_list);
         return rowMatrix.fromIdRange(idRange);
 
-      }).then((range) =>
-      {
-        const newID = rowMatrix.desc.id + 'PartitionMatrix';
-        const partitionName = rowMatrix.desc.name + '_PartitionMatrix';
-        const partitionDesc = { id: newID, name: partitionName, fqname: 'null', type: 'tree' };
-        const partitionData = new clustercolumns.PartitionMatrix(partitionMatrix, partitionDesc);
-        const partitionRef = that.provGraph.findOrAddObject(partitionData, partitionName, 'data');
+      }).then((range) => {
+      const newID = rowMatrix.desc.id + 'PartitionMatrix';
+      const partitionName = rowMatrix.desc.name + '_PartitionMatrix';
+      const partitionDesc = {id: newID, name: partitionName, fqname: 'null', type: 'tree'};
+      const partitionData = new clustercolumns.PartitionMatrix(partitionMatrix, partitionDesc);
+      const partitionRef = that.provGraph.findOrAddObject(partitionData, partitionName, 'data');
 
-        that.provGraph.push(clustercolumns.createFuzzyClusterColumnCmd(that.ref, mref, range, distanceMetric,
-          partitionRef, maxProb, toName(objectName, rowStrat.desc.name)));
-      });
+      that.provGraph.push(clustercolumns.createFuzzyClusterColumnCmd(that.ref, mref, range, distanceMetric,
+        partitionRef, maxProb, toName(objectName, rowStrat.desc.name)));
+    });
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -503,9 +479,8 @@ class StratomeX extends views.AView {
    * @param rowStrat
    * @param m
    * @param colStrat
-     */
-  addData(rowStrat: stratification.IStratification, m: datatypes.IDataType, colStrat?: stratification.IStratification)
-  {
+   */
+  addData(rowStrat:stratification.IStratification, m:datatypes.IDataType, colStrat?:stratification.IStratification) {
     var that = this;
     var mref = this.provGraph.findOrAddObject(m, m.desc.name, 'data');
     if (rowStrat === m) {
@@ -544,7 +519,7 @@ class StratomeX extends views.AView {
     });
   }
 
-  addColumn(column:columns.Column, index: number = -1, within = -1) {
+  addColumn(column:columns.Column, index:number = -1, within = -1) {
     //console.log("new index", index);
     if (index < 0) {
       this._columns.push(column);
@@ -569,22 +544,19 @@ class StratomeX extends views.AView {
 
       // kernm: modification to keep track of ids for each column.
       // First remove all columns from manager and add them with new ids.
-      this._columns.forEach((col: any, _: number) =>
-      {
-          columns.manager.remove(col);
+      this._columns.forEach((col:any, _:number) => {
+        columns.manager.remove(col);
       });
 
-      this._columns.forEach((col: any, _: number) => {
+      this._columns.forEach((col:any, _:number) => {
         col.setColumnId(col.id);
 
-        if (col.id > i)
-        {
+        if (col.id > i) {
           col.setColumnId(col.id - 1);
         }
       });
 
-      return this.relayout(within).then(() =>
-      {
+      return this.relayout(within).then(() => {
         columns.manager.select([]);
 
         return i;
@@ -596,12 +568,11 @@ class StratomeX extends views.AView {
     return Promise.resolve(-1);
   }
 
-  getLastColumn()
-  {
+  getLastColumn() {
     return this._columns.slice(-1)[0];
   }
 
-  swapColumn(columnA: columns.Column, columnB: columns.Column, within = -1) {
+  swapColumn(columnA:columns.Column, columnB:columns.Column, within = -1) {
     const i = this.indexOf(columnA);
     const j = this.indexOf(columnB);
 
@@ -625,8 +596,7 @@ class StratomeX extends views.AView {
     }
     var promise = this.relayout(within);
 
-    return promise.then(() =>
-    {
+    return promise.then(() => {
       columns.manager.select([j]);
       return Promise.resolve([]);
     });
@@ -642,7 +612,7 @@ class StratomeX extends views.AView {
     return this._columns[index];
   }
 
-  atRef(index: number) {
+  atRef(index:number) {
     const c = this.at(index);
     return this.provGraph.findObject(c);
   }

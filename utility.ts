@@ -18,11 +18,10 @@ import matrix = require('../caleydo_core/matrix');
  * Implementation of a simple popup to select a cluster algorithm applied to any matrix with
  * corresponding parameter settings.
  */
-export class ClusterPopup
-{
-  private $node: d3.Selection<any> = null;
-  private destroyed: boolean = false;
-  public height: number = 0;
+export class ClusterPopup {
+  private $node:d3.Selection<any> = null;
+  private destroyed:boolean = false;
+  public height:number = 0;
 
   // -------------------------------------------------------------------------------------------------------------------
 
@@ -35,43 +34,37 @@ export class ClusterPopup
    * @param rowID index of row
    * @param options options for algorithms
    */
-  constructor(private data: datatypes.IDataType, private parent: Element,
-              private stratomex: any, rowID: number,
-              private options: any)
-  {
+  constructor(private data:datatypes.IDataType, private parent:Element,
+              private stratomex:any, rowID:number,
+              private options:any) {
     this.options = C.mixin(
       {
         width: 580,
         rowHeight: 35,
         animationTime: 200,
-        'kmeans':
-        {
+        'kmeans': {
           inits: ['forgy', 'uniform', 'random', 'kmeans++'], // initialization method for k-means
           initSelect: 3
         },
-        'hierarchical':
-        {
+        'hierarchical': {
           methods: ['single', 'complete', 'weighted', 'median', 'average', 'centroid'], // linkage method for k-means
           methodSelect: 1,
           distSelect: 0
         },
-        'affinity':
-        {
+        'affinity': {
           rangeDamping: [0, 1, 0.5], // damping avoids oscillations of algorithm [min, max, value]
           rangeFactor: [0.1, 10, 1.0], // influences the preference value (influences number of clusters)
           prefs: ['median', 'minimum'], // median produces moderate number, minimum a small number of clusters
           prefSelect: 1,
           distSelect: 1
         },
-        'fuzzy':
-        {
+        'fuzzy': {
           threshold: [0.01, 1.0],
           fuzzifier: [1.001, 100, 1.2]
         },
-        'general':
-        {
+        'general': {
           distances: ['euclidean', 'sqeuclidean', 'cityblock', 'chebyshev', 'canberra', 'correlation', 'hamming',
-                      'mahalanobis', 'correlation', 'pearson', 'spearman', 'kendall'],
+            'mahalanobis', 'correlation', 'pearson', 'spearman', 'kendall'],
           numClusters: [2, 10, 2]
         }
       }, options);
@@ -83,9 +76,8 @@ export class ClusterPopup
   /**
    * Returns the html node.
    * @returns {d3.Selection<any>}
-     */
-  get node()
-  {
+   */
+  get node() {
     return this.$node;
   }
 
@@ -96,10 +88,9 @@ export class ClusterPopup
    * @param $parent
    * @param rowID
    * @returns {Selection<any>}
-     * @private
-     */
-  private _build($parent: d3.Selection<any>, rowID: number)
-  {
+   * @private
+   */
+  private _build($parent:d3.Selection<any>, rowID:number) {
     var that = this;
 
     // find the current rows section in lineup
@@ -123,7 +114,9 @@ export class ClusterPopup
     // create toolbar
     var $toolbar = $root.append('div').classed('toolbar', true);
     $toolbar.append('i').attr('class', 'fa fa-close')
-      .on('click', (_ : any) => { that.destroy(); });
+      .on('click', (_:any) => {
+        that.destroy();
+      });
 
     // create body
     var $body = $root.append('div').classed('body', true);
@@ -156,8 +149,7 @@ export class ClusterPopup
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  private _buildKMeansRow($body: d3.Selection<any>)
-  {
+  private _buildKMeansRow($body:d3.Selection<any>) {
     var that = this;
     this.height += this.options.rowHeight;
 
@@ -169,15 +161,18 @@ export class ClusterPopup
       value: this.options.general.numClusters[2], step: 1, title: "Number of Clusters"
     });
 
-    var inputInit = row.append('select').attr({ title: 'Initialization Method' });
+    var inputInit = row.append('select').attr({title: 'Initialization Method'});
     inputInit.selectAll('option').data(this.options.kmeans.inits)
-      .enter().append('option').attr('value', (d: any) => { return d; })
-      .text( (d: string) => { return d });
+      .enter().append('option').attr('value', (d:any) => {
+      return d;
+    })
+      .text((d:string) => {
+        return d
+      });
 
     inputInit.property('value', this.options.kmeans.inits[this.options.kmeans.initSelect]);
 
-    button.on('mouseup', (_ : any) =>
-    {
+    button.on('mouseup', (_:any) => {
       const k = parseInt($(inputK.node()).val());
       const initMethod = $(inputInit.node()).val();
 
@@ -185,10 +180,9 @@ export class ClusterPopup
     });
   }
 
-   // -------------------------------------------------------------------------------------------------------------------
+  // -------------------------------------------------------------------------------------------------------------------
 
-  private _buildHierarchicalRow($body: d3.Selection<any>)
-  {
+  private _buildHierarchicalRow($body:d3.Selection<any>) {
     var that = this;
     this.height += this.options.rowHeight;
 
@@ -200,22 +194,29 @@ export class ClusterPopup
       value: this.options.general.numClusters[2], step: 1, title: "Number of Clusters"
     });
 
-    var inputLinkage = row.append('select').attr({ title: 'Linkage Method' }).classed('linkage', true);
+    var inputLinkage = row.append('select').attr({title: 'Linkage Method'}).classed('linkage', true);
     inputLinkage.selectAll('option').data(this.options.hierarchical.methods)
-      .enter().append('option').attr('value', (d: any) => { return d; })
-      .text( (d: string) => { return d });
+      .enter().append('option').attr('value', (d:any) => {
+      return d;
+    })
+      .text((d:string) => {
+        return d
+      });
 
     inputLinkage.property('value', this.options.hierarchical.methods[this.options.hierarchical.methodSelect]);
 
-    var inputDistance = row.append('select').attr({ title: 'Distance Measurement' }).classed('dist', true);
+    var inputDistance = row.append('select').attr({title: 'Distance Measurement'}).classed('dist', true);
     inputDistance.selectAll('option').data(this.options.general.distances)
-      .enter().append('option').attr('value', (d: any) => { return d; })
-      .text( (d: string) => { return d });
+      .enter().append('option').attr('value', (d:any) => {
+      return d;
+    })
+      .text((d:string) => {
+        return d
+      });
 
     inputDistance.property('value', this.options.general.distances[this.options.hierarchical.distSelect]);
 
-    button.on('mouseup', (_ : any) =>
-    {
+    button.on('mouseup', (_:any) => {
       const k = parseInt($(inputClusters.node()).val());
       const method = $(inputLinkage.node()).val();
       const dist = $(inputDistance.node()).val();
@@ -226,8 +227,7 @@ export class ClusterPopup
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  private _buildAffinityRow($body: d3.Selection<any>)
-  {
+  private _buildAffinityRow($body:d3.Selection<any>) {
     var that = this;
     this.height += this.options.rowHeight;
 
@@ -244,22 +244,29 @@ export class ClusterPopup
       value: this.options.affinity.rangeFactor[2], step: 0.05, title: "Factor Value"
     });
 
-    var inputSelect = row.append('select').attr({ title: 'Initial Preference' }).classed('init', true);
+    var inputSelect = row.append('select').attr({title: 'Initial Preference'}).classed('init', true);
     inputSelect.selectAll('option').data(this.options.affinity.prefs)
-      .enter().append('option').attr('value', (d: any) => { return d; })
-      .text( (d: string) => { return d });
+      .enter().append('option').attr('value', (d:any) => {
+      return d;
+    })
+      .text((d:string) => {
+        return d
+      });
 
     inputSelect.property('value', this.options.affinity.prefs[this.options.affinity.prefSelect]);
 
-    var inputDistance = row.append('select').attr({ title: 'Distance Measurement' }).classed('dist', true);
+    var inputDistance = row.append('select').attr({title: 'Distance Measurement'}).classed('dist', true);
     inputDistance.selectAll('option').data(this.options.general.distances)
-      .enter().append('option').attr('value', (d: any) => { return d; })
-      .text( (d: string) => { return d });
+      .enter().append('option').attr('value', (d:any) => {
+      return d;
+    })
+      .text((d:string) => {
+        return d
+      });
 
     inputDistance.property('value', this.options.general.distances[this.options.affinity.distSelect]);
 
-    button.on('mouseup', (_ : any) =>
-    {
+    button.on('mouseup', (_:any) => {
       const affDamping = parseFloat($(inputDamping.node()).val());
       const affFactor = parseFloat($(inputFactor.node()).val());
       const affPref = $(inputSelect.node()).val();
@@ -271,8 +278,7 @@ export class ClusterPopup
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  private _buildFuzzyRow($body: d3.Selection<any>)
-  {
+  private _buildFuzzyRow($body:d3.Selection<any>) {
     var that = this;
     this.height += this.options.rowHeight;
 
@@ -297,11 +303,12 @@ export class ClusterPopup
       value: this.options.fuzzy.fuzzifier[2], step: 0.001, title: "Fuzzifier Factor"
     });
 
-    function onClusterChange()
-    {
+    function onClusterChange() {
       var k = parseInt($(inputC.node()).val());
 
-      if (isNaN(k)) { return; }
+      if (isNaN(k)) {
+        return;
+      }
 
       const threshold = d3.round(1.0 / k, 2);
       $(inputT.node()).val(String(threshold));
@@ -311,8 +318,7 @@ export class ClusterPopup
     inputC.on('mouseup', onClusterChange);
     onClusterChange();
 
-    button.on('mouseup', (_ : any) =>
-    {
+    button.on('mouseup', (_:any) => {
       const c = parseInt($(inputC.node()).val());
       const m = parseFloat($(inputM.node()).val());
       const t = parseFloat($(inputT.node()).val());
@@ -326,9 +332,10 @@ export class ClusterPopup
   /**
    * Destroys the node and all its children.
    */
-  destroy()
-  {
-    if (this.destroyed) { return; }
+  destroy() {
+    if (this.destroyed) {
+      return;
+    }
 
     this.$node.transition().duration(this.options.animationTime).style('opacity', 0).remove();
     this.destroyed = true;
@@ -338,16 +345,14 @@ export class ClusterPopup
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Class definition of mergePopup
 
-export class MergePopup
-{
-  private $node: d3.Selection<any> = null;
-  private destroyed: boolean = false;
-  private height: number = 60;
+export class MergePopup {
+  private $node:d3.Selection<any> = null;
+  private destroyed:boolean = false;
+  private height:number = 60;
 
-  constructor(private data: datatypes.IDataType, private parent: Element,
-              private column: any, clusterID: number, private numClusters: number,
-              private options: any)
-  {
+  constructor(private data:datatypes.IDataType, private parent:Element,
+              private column:any, clusterID:number, private numClusters:number,
+              private options:any) {
     this.options = C.mixin(
       {
         width: 150,
@@ -359,15 +364,13 @@ export class MergePopup
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  get node()
-  {
+  get node() {
     return this.$node;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  private _build($parent : d3.Selection<any>, clusterID : number)
-  {
+  private _build($parent:d3.Selection<any>, clusterID:number) {
     var that = this;
 
     // this works for both Firefox and Chrome
@@ -385,7 +388,9 @@ export class MergePopup
     // create toolbar
     var $toolbar = $root.append('div').classed('gtoolbar', true);
     $toolbar.append('i').attr('class', 'fa fa-close')
-      .on('click', (_ : any) => { that.destroy(); });
+      .on('click', (_:any) => {
+        that.destroy();
+      });
 
     // create body
     var $body = $root.append('div').classed('body', true);
@@ -397,21 +402,26 @@ export class MergePopup
     // button to trigger merge
     var button = row.append('button').text('Merge');
 
-    var clusterNums = Array.apply(null, Array(this.numClusters)).map((_, i) => { return i });
+    var clusterNums = Array.apply(null, Array(this.numClusters)).map((_, i) => {
+      return i
+    });
     clusterNums.splice(clusterID, 1);
 
     // create selection of cluster ids
-    var clusterSelect = row.append('select').attr({ title: 'select second group' }).classed('clusterSelect', true);
+    var clusterSelect = row.append('select').attr({title: 'select second group'}).classed('clusterSelect', true);
     clusterSelect.selectAll('option').data(clusterNums)
-      .enter().append('option').attr('value', (d: any) => { return d; })
-      .text( (d: string) => { return d });
+      .enter().append('option').attr('value', (d:any) => {
+      return d;
+    })
+      .text((d:string) => {
+        return d
+      });
 
     // select first cluster by default
     clusterSelect.property('value', clusterNums[0]);
 
     // button event
-    button.on('mouseup', (_: any) =>
-    {
+    button.on('mouseup', (_:any) => {
       // obtain selected cluster index
       const otherClusterID = parseFloat($(clusterSelect.node()).val());
 
@@ -437,9 +447,10 @@ export class MergePopup
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  destroy()
-  {
-    if (this.destroyed) { return; }
+  destroy() {
+    if (this.destroyed) {
+      return;
+    }
 
     this.$node.transition().duration(this.options.animationTime).style('opacity', 0).remove();
     this.destroyed = true;
@@ -458,14 +469,12 @@ export class MergePopup
  * @param options
  * @returns {ClusterPopup}
  */
-export function createClusterPopup(data: matrix.IMatrix, parent: Element, stratomex: any, rowID: number,
-              options: any)
-{
+export function createClusterPopup(data:matrix.IMatrix, parent:Element, stratomex:any, rowID:number,
+                                   options:any) {
   return new ClusterPopup(data, parent, stratomex, rowID, options);
 }
 
-export function createMergePopup(data: matrix.IMatrix, parent: Element, column: any, rowID: number, numClusters: number,
-              options: any)
-{
+export function createMergePopup(data:matrix.IMatrix, parent:Element, column:any, rowID:number, numClusters:number,
+                                 options:any) {
   return new MergePopup(data, parent, column, rowID, numClusters, options);
 }
