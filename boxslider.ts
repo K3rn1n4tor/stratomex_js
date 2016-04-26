@@ -10,8 +10,6 @@ import C = require('../caleydo_core/main');
 import vis = require('../caleydo_core/vis');
 
 import vector = require('../caleydo_core/vector');
-import matrix = require('../caleydo_core/matrix');
-import strati = require('../caleydo_core/stratification_impl');
 import geom = require('../caleydo_core/geom');
 import ranges = require('../caleydo_core/range');
 
@@ -56,7 +54,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
       var scaling = this.options.scaleTo;
       var raw = this.rawSize;
       this.options.scale = raw.map((d, i) => {
-        return scaling[i] / d
+        return scaling[i] / d;
       });
     }
 
@@ -129,8 +127,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
   option(name:string, val?:any) {
     if (arguments.length === 1) {
       return this.options[name];
-    }
-    else {
+    } else {
       this.fire('option', name, val, this.options[name]);
       this.fire('option.' + name, val, this.options[name]);
       this.options[name] = val;
@@ -190,13 +187,12 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
    * @returns {any}
    */
   transform(scale?:number[], rotate:number = 0) {
-    var opts =
-    {
+    var opts = {
       scale: this.options.scale || [1, 1],
       rotate: this.options.rotate || 0
     };
     // default way to check how many arguments were passed into the function
-    if (arguments.length == 0) {
+    if (arguments.length === 0) {
       return opts;
     }
 
@@ -206,8 +202,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
     this.$node.attr('width', raw[0] * scale[0]).attr('height', raw[1] * scale[1]);
     this.$node.select('g').attr('transform', 'scale(' + scale[0] + ',' + scale[1] + ')');
 
-    var newSize =
-    {
+    var newSize = {
       scale: scale,
       rotate: rotate
     };
@@ -231,7 +226,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
    */
   getDivisionRanges(indexRange = true):any[] {
     // if slices of labels are required but no labels are set, return immediately
-    if (this.labels.length == 0 && !indexRange) {
+    if (this.labels.length === 0 && !indexRange) {
       return [];
     }
 
@@ -240,8 +235,8 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
     var numRanges = this.options.numSlider + 1;
 
     for (var j = 0; j < numRanges; ++j) {
-      var minIndex = (j == 0) ? 0 : this.divisions[j - 1];
-      var maxIndex = (j == numRanges - 1) ? this.numBars : this.divisions[j];
+      var minIndex = (j === 0) ? 0 : this.divisions[j - 1];
+      var maxIndex = (j === numRanges - 1) ? this.numBars : this.divisions[j];
 
       var minI = minIndex * this.options.numAvg;
       var maxI = Math.min(maxIndex * this.options.numAvg, this.labels.length);
@@ -249,8 +244,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
       //ranges.push(this.labels.slice(minI, maxI));
       if (indexRange) {
         ranges.push('(' + String(minI) + ':' + String(maxI) + ')');
-      }
-      else {
+      } else {
         ranges.push(this.labels.slice(minI, maxI));
       }
     }
@@ -289,8 +283,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
 
     if (this.data instanceof Array) {
       buildComponents(this.data);
-    }
-    else {
+    } else {
       this.data.data().then((vec:any) => {
         buildComponents(vec);
       });
@@ -313,7 +306,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
     var that = this;
     const tooltipHeight = 17;
 
-    if (type == 'mouseover' || type == 'mousemove') {
+    if (type === 'mouseover' || type === 'mousemove') {
       var scaleY = args[0];
 
       return function (_:any) {
@@ -336,7 +329,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
         // HINT! use this technique to compute relative distance to parent, works for both Firefox and Chrome!
         var absPosY = $bar.offset().top - $bar.parent().parent().offset().top + 18 - tooltipHeight / 2;
 
-        if (type == 'mousemove') {
+        if (type === 'mousemove') {
           that.colorizeBars();
         }
 
@@ -347,9 +340,8 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
         that.$tooltip.html(that.options.valueName + ': ' + String(value));
         that.$tooltip.style({left: (absPosX + 5) + 'px', top: (absPosY) + 'px'});
 
-      }
-    }
-    else if (type == 'mouseout') {
+      };
+    } else if (type === 'mouseout') {
       return function (_:any) {
         // prevent removing tooltip when dragging is active
         if (that.isDragging) {
@@ -358,7 +350,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
 
         that.$tooltip.style('opacity', 0);
         that.colorizeBars();
-      }
+      };
     }
   }
 
@@ -461,7 +453,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
     var that = this;
     const tooltipHeight = 17;
 
-    if (type == 'dragstart' || type == 'drag') {
+    if (type === 'dragstart' || type === 'drag') {
       var barCover = args[0];
       var barHeight = args[1];
       var scaleY = args[2];
@@ -474,7 +466,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
         const width = rawSize[0] * scaling[0];
 
         const id = d3.select(this).attr('id');
-        const number = parseInt(id.slice(-1));
+        const number = parseInt(id.slice(-1), 10);
         const index = that.divisions[number];
 
         $root.select('.sliderBar' + number).transition().duration(that.options.duration)
@@ -490,16 +482,14 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
         var minIndex, maxIndex;
 
         // handle indices differently
-        if (type == 'dragstart') {
+        if (type === 'dragstart') {
           maxIndex = Math.max(0, Math.min(that.numBars - 1, newIndex));
           minIndex = Math.max(0, Math.min(that.numBars - 1, newIndex - 1));
-        }
-        else // type == 'drag'
-        {
+        } else {// type == 'drag'
           var borders = [0, that.numBars];
           if (that.options.numSlider > 1) {
-            var leftIndex = (number == 0) ? 0 : that.divisions[number - 1] + 1;
-            var rightIndex = (number == that.options.numSlider - 1) ? that.numBars : that.divisions[number + 1] - 1;
+            var leftIndex = (number === 0) ? 0 : that.divisions[number - 1] + 1;
+            var rightIndex = (number === that.options.numSlider - 1) ? that.numBars : that.divisions[number + 1] - 1;
             borders = [leftIndex, rightIndex];
           }
 
@@ -511,7 +501,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
           maxIndex = Math.min(that.numBars - 1, newIndex);
           maxIndex = Math.min(borders[1], Math.max(borders[0], maxIndex));
 
-          if (newIndex != index) {
+          if (newIndex !== index) {
             that.sliders[number]//.transition().duration(that.options.duration)
               .attr('transform', 'translate(0,' + (scaleY(newIndex) - barCover / 2) + ')');
 
@@ -524,8 +514,8 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
 
           // color backgrounds
           for (var i = 0; i < (that.options.numSlider + 1); ++i) {
-            var prevSliderPos = (i == 0) ? 0 : scaleY(that.divisions[i - 1]);
-            var currSliderPos = (i == that.options.numSlider) ? rawSize[1] : scaleY(that.divisions[i]);
+            var prevSliderPos = (i === 0) ? 0 : scaleY(that.divisions[i - 1]);
+            var currSliderPos = (i === that.options.numSlider) ? rawSize[1] : scaleY(that.divisions[i]);
 
             $root.select('.sliderBack' + String(i)).attr({
               y: prevSliderPos, height: (currSliderPos - prevSliderPos),
@@ -552,22 +542,20 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
           .transition().duration(that.options.duration).attr('fill', 'darkorange');
         that.$node.select('.bar' + maxIndex).datum(that.boxValues[maxIndex])
           .transition().duration(that.options.duration).attr('fill', 'darkorange');
-      }
-    }
-
-    else if (type == 'dragend') {
+      };
+    } else if (type === 'dragend') {
       return function (_:any) {
         that.isDragging = false;
 
         var id = d3.select(this).attr('id');
-        var number = parseInt(id.slice(-1));
+        var number = parseInt(id.slice(-1), 10);
 
         that.$tooltip.style('opacity', 0);
         that.colorizeBars();
 
         $root.select('.sliderBar' + number).transition().duration(that.options.duration)
           .attr('fill', that.options.sliderColor);
-      }
+      };
     }
   }
 
@@ -611,7 +599,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
 
       for (var j = 0; j < this.options.numSlider; ++j) {
         const currentValue = minValue + j * stepSize;
-        var index = (sliderStarts.length == 0) ? 0 : sliderStarts[j - 1];
+        var index = (sliderStarts.length === 0) ? 0 : sliderStarts[j - 1];
 
         for (var i = index; i < sortedVec.length; ++i) {
           var value = sortedVec[i];
@@ -623,8 +611,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
           }
         }
       }
-    }
-    else {
+    } else {
       const Q2 = d3.quantile(sortedVec, 0.50);
 
       for (var i = 0; i < sortedVec.length; ++i) {
@@ -654,7 +641,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
 
     const rawSize = this.rawSize;
     const scaling = this.options.scale;
-    if (scaling[1] == 0) {
+    if (scaling[1] === 0) {
       scaling[1] = 1;
     }
 
@@ -730,8 +717,8 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
 
     // color backgrounds
     for (var i = 0; i < (this.options.numSlider + 1); ++i) {
-      var prevSliderPos = (i == 0) ? 0 : scaleY(sliderStarts[i - 1]);
-      var currSliderPos = (i == this.options.numSlider) ? rawSize[1] : scaleY(sliderStarts[i]);
+      var prevSliderPos = (i === 0) ? 0 : scaleY(sliderStarts[i - 1]);
+      var currSliderPos = (i === this.options.numSlider) ? rawSize[1] : scaleY(sliderStarts[i]);
 
 
       $root.select('.sliderBack' + String(i)).attr({
@@ -763,8 +750,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
       that.colorizeBars();
 
       that.markReady();
-    }
-    else {
+    } else {
       this.data.data().then((vec:any) => {
         that.buildSlider($root, vec, this.divisions);
         that.colorizeBars();
@@ -788,7 +774,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
 
     var colors:string[] = [];
 
-    if (this.options.numSlider == 0 && this.divisions.length == 0) {
+    if (this.options.numSlider === 0 && this.divisions.length === 0) {
       // TODO toggle colorByValue / colorByRange
       const midRange = (this.options.range[0] + this.options.range[1]) / 2.0;
       colors = (this.options.colorScheme) ? <string[]>this.options.colorScheme : ['red', 'yellow', 'green'];
@@ -802,13 +788,12 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
       var colorFunc = (this.options.colorFunction) ? this.options.colorFunction : colorByValue;
 
       this.$node.selectAll('#bar').transition().duration(this.options.duration).attr('fill', colorFunc);//this.options.sliderColor);
-    }
-    else {
+    } else {
       const numDivs = this.divisions.length;
 
       var descs:any[] = [];
 
-      colors = (numDivs == 1) ? [greenColor, redColor] : [greenColor, yellowColor, redColor];
+      colors = (numDivs === 1) ? [greenColor, redColor] : [greenColor, yellowColor, redColor];
       if (this.options.colorScheme) {
         colors = this.options.colorScheme;
       }
@@ -820,8 +805,8 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
 
       // build descriptions
       for (var i = 0; i < numDivs + 1; ++i) {
-        var minIndex = (i == 0) ? 0 : this.divisions[i - 1];
-        var maxIndex = (i == numDivs) ? this.numBars : this.divisions[i];
+        var minIndex = (i === 0) ? 0 : this.divisions[i - 1];
+        var maxIndex = (i === numDivs) ? this.numBars : this.divisions[i];
         var range = [minIndex, maxIndex];
 
         descs.push({range: range, color: colorScale(i)});

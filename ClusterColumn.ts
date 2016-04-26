@@ -6,13 +6,8 @@
 // libraries
 import d3 = require('d3');
 import $ = require('jquery');
-import ajax = require('../caleydo_core/ajax');
 import C = require('../caleydo_core/main');
-import multiform = require('../caleydo_core/multiform');
-import geom = require('../caleydo_core/geom');
 import idtypes = require('../caleydo_core/idtype');
-import behaviors = require('../caleydo_core/behavior');
-import events = require('../caleydo_core/event');
 import link_m = require('../caleydo_d3/link');
 import datatypes = require('../caleydo_core/datatype');
 import datas = require('../caleydo_core/data');
@@ -20,14 +15,10 @@ import prov = require('../caleydo_clue/prov');
 import ranges = require('../caleydo_core/range');
 import stratification = require('../caleydo_core/stratification');
 import stratification_impl = require('../caleydo_core/stratification_impl');
-import parser = require('../caleydo_d3/parser');
-import vis = require('../caleydo_core/vis');
-import heatmap = require('../caleydo_vis/heatmap');
 
 // my own libraries
 import columns = require('./Column');
 import clusterView = require('./ClusterDetailView');
-import boxSlider = require('./boxslider');
 import utility = require('./utility');
 
 // popup manager helper pointer
@@ -332,7 +323,7 @@ export class ClusterColumn extends columns.Column {
       datas.list().then((list) => {
         for (var i = 0; i < list.length; ++i) {
           var data = list[i];
-          if (data.desc.id == dataDiffID) {
+          if (data.desc.id === dataDiffID) {
             that.stratomex.addColumnWithRange(data, that.range.dim(0));
           }
         }
@@ -394,7 +385,7 @@ export class ClusterColumn extends columns.Column {
 
     const oldNumGroups = range.groups.length;
     const newNumGroups = compositeRange.groups.length;
-    const groupsChanged = (newNumGroups != oldNumGroups);
+    const groupsChanged = (newNumGroups !== oldNumGroups);
 
     // reset layout of column
     that.setColumnWidth(!noStatsUpdate);
@@ -500,9 +491,9 @@ export class ClusterColumn extends columns.Column {
       // create new cluster merge command
       $toolbar.append('i').attr('class', 'fa fa-link').on('click', () => {
         // first obtain the provenance graph
-        var graph = that.stratomex.provGraph;
+        //var graph = that.stratomex.provGraph;
         // next find the current object / selection / cluster
-        var obj = graph.findObject(that);
+        //var obj = graph.findObject(that);
         // push new command to graph
         //graph.push(createToggleStatsCmd(obj, pos[0], true));
 
@@ -568,8 +559,7 @@ export class ClusterColumn extends columns.Column {
         var isSelected = $elem.classed('caleydo-select-selected');
         if (isSelected) {
           data.select(0, ranges.none());
-        }
-        else {
+        } else {
           data.select(0, ranges.all());
         }
         $elem.classed('caleydo-select-selected', !isSelected);
@@ -666,7 +656,7 @@ export class ClusterColumn extends columns.Column {
       return seen.hasOwnProperty(item) ? false : (seen[item] = true);
     });
 
-    groups[clusterID] = new ranges.Range1DGroup("Group " + clusterID, 'grey', ranges.parse(newLabels).dim(0));
+    groups[clusterID] = new ranges.Range1DGroup('Group ' + clusterID, 'grey', ranges.parse(newLabels).dim(0));
     // remove other group
     groups.splice(otherClusterID, 1);
 
@@ -733,8 +723,7 @@ export class ClusterColumn extends columns.Column {
 
         // regroup column
         graph.push(createRegroupColumnCmd(obj, compositeRange, true));
-      }
-      else {
+      } else {
         Promise.resolve([]);
       }
     });
@@ -779,7 +768,7 @@ export class ClusterColumn extends columns.Column {
     }
 
     var index = this.activeDivision.indexOf(view.column);
-    if (index != -1 && column == null) {
+    if (index !== -1 && column == null) {
       return Promise.resolve([]);
     }
 
@@ -794,7 +783,7 @@ export class ClusterColumn extends columns.Column {
     var rStart = clusterName.search(/\(/);
     var rEnd = clusterName.search(/\)/);
 
-    var groupName = (rStart == -1) ? clusterName : clusterName.slice(0, rStart);
+    var groupName = (rStart === -1) ? clusterName : clusterName.slice(0, rStart);
     var method = clusterName.slice(rStart, rEnd);
 
     // obtain sub-ranges from cluster divider, either real labels or ranges (min:max) if there's no column
@@ -819,8 +808,7 @@ export class ClusterColumn extends columns.Column {
     var compositeRange = ranges.composite(dataName + 'divisions', groups);
 
     // create a new stratification description
-    var descStrati =
-    {
+    var descStrati = {
       id: dataID + method + String(numClusters) + 'Division' + String(cluster),
       fqname: 'none', name: dataName + '/' + method + '_' + String(numClusters) + '_Division_' + String(cluster),
       origin: dataFQ, size: stratiSize, ngroups: numDivs, type: 'stratification', groups: groupsDesc,
@@ -887,7 +875,7 @@ export class ClusterColumn extends columns.Column {
     var distanceVec:any[] = [];
 
     for (var j = 0; j < statsView.externalViews.length; ++j) {
-      if (j == cluster) {
+      if (j === cluster) {
         continue;
       }
 
@@ -928,13 +916,12 @@ export class ClusterColumn extends columns.Column {
     });
 
     for (var i = 0; i < numGroups; ++i) {
-      if (i != cluster) {
+      if (i !== cluster) {
         // create new group
         let labels = copyCompositeRange.groups[i].asList();
         finalLabels[i] = labels.concat(newLabels[i]);
         //console.log("New labels of cluster ", i, finalLabels);
-      }
-      else {
+      } else {
         finalLabels[i] = newLabels[i];
       }
 
@@ -1040,7 +1027,7 @@ export class ClusterColumn extends columns.Column {
       if (statsView == null) {
         continue;
       }
-      if (statsView.visible == true) {
+      if (statsView.visible === true) {
 
         var clusterGrid = $(this.$parent.node()).find('div.gridrow')[j];
         var clusterPosY = $(clusterGrid).position().top;
@@ -1071,11 +1058,10 @@ export class ClusterColumn extends columns.Column {
             });
 
           statsView.zoomMatrixView.zoomTo(this.options.matrixWidth - this.options.padding * 2, boxChartHeight);
-        }
-        else {
+        } else {
           if (statsView.externVisible) {
             for (var k = 0; k < statsView.$extNodes.length; ++k) {
-              if (k != statsView.cluster) {
+              if (k !== statsView.cluster) {
                 statsView.extZooms[k].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
               }
 
@@ -1107,7 +1093,7 @@ export class ClusterColumn extends columns.Column {
       function onClickSlider(view:any, cluster:number, column:ClusterColumn) {
         return function (d) {
           return refreshColumn(view, cluster, column);
-        }
+        };
       }
 
       var newColumn = this.stratomex.getLastColumn();
@@ -1132,7 +1118,7 @@ export class ClusterColumn extends columns.Column {
     var that = event.target;
 
     const numGroups = (<any>that.range.dims[0]).groups.length;
-    if (that.statsViews.length == 0) {
+    if (that.statsViews.length === 0) {
       return;
     }
 
@@ -1142,7 +1128,7 @@ export class ClusterColumn extends columns.Column {
       if (statsView == null) {
         continue;
       }
-      if (statsView.visible == true) {
+      if (statsView.visible === true) {
         Promise.resolve(statsView).then((stats:any) => {
           // 500ms is chosen as it takes time to switch column IDs
           C.resolveIn(500).then(() => {
@@ -1159,12 +1145,12 @@ export class ClusterColumn extends columns.Column {
             var maxID = Math.max(colID, nextID);
             //console.log('column:',minID, maxID);
 
-            if (Math.abs(colID - nextID) != 1) {
+            if (Math.abs(colID - nextID) !== 1) {
               return;
             }
 
             // get current links between column minID and maxID and look for the bands
-            var idRequest = "g[data-id=\"" + String(minID) + '-' + String(maxID) + "\"]";
+            var idRequest = 'g[data-id="' + String(minID) + '-' + String(maxID) + '"]';
             //var bandsGroup = linkSVG.selectAll(idRequest);
             var bandsGroup = d3.select($(idRequest).get(0));
             //console.log(bandsGroup);
@@ -1178,7 +1164,7 @@ export class ClusterColumn extends columns.Column {
 
             var divBands = bands[0];
 
-            if (divBands.length != 3) {
+            if (divBands.length !== 3) {
               //console.log('three bands not found --> restarting again');
               that.fire('relayouted');
               return;
@@ -1265,7 +1251,7 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
         probsView.$matrixNode.remove();
 
         for (var k = 0; k < probsView.$extNodes.length; ++k) {
-          if (k != probsView.cluster) {
+          if (k !== probsView.cluster) {
             probsView.externalViews[k].destroy();
           }
           probsView.$extNodes[k].remove();
@@ -1284,8 +1270,7 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
             d.show(-1);
           }
         });
-      }
-      else {
+      } else {
         that.noProbs = true;
       }
 
@@ -1329,7 +1314,7 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
 
     var restSize = 0;
     var maxStatsWidth = Math.max.apply(Math, this.statsViews.map((stat) => {
-      return (stat) ? stat.getWidth() : 0
+      return (stat) ? stat.getWidth() : 0;
     }));
     maxStatsWidth = Math.max(maxStatsWidth, 0);
 
@@ -1379,7 +1364,7 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
       if (probsView == null) {
         continue;
       }
-      if (probsView.visible == true) {
+      if (probsView.visible === true) {
         var clusterGrid = $(this.$parent.node()).find('div.gridrow')[j];
         var clusterPosY = $(clusterGrid).position().top;
         var clusterHeight = $(clusterGrid).height() - 10;
@@ -1415,18 +1400,16 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
             });
 
           probsView.zoomMatrixView.zoomTo(this.options.matrixWidth - this.options.padding * 2, boxChartHeight);
-        }
-        else {
+        } else {
           if (probsView.externVisible) {
             for (var i = 0; i < numGroups; ++i) {
-              if (i != probsView.cluster) {
+              if (i !== probsView.cluster) {
                 probsView.extZooms[i].zoomTo(this.options.statsWidth - this.options.padding * 2, boxChartHeight);
               }
 
               viewPosX += this.options.statsWidth;
 
-              probsView.$extNodes[i].style(
-                {
+              probsView.$extNodes[i].style({
                   width: (this.options.statsWidth) + 'px',
                   height: clusterHeight + 'px',
                   top: clusterPosY + 'px',
@@ -1508,7 +1491,7 @@ export class HierarchicalClusterColumn extends ClusterColumn implements idtypes.
       const oldNumGroups = (<any>that.range.dims[0]).groups.length;
       const numGroups = Math.min(oldNumGroups + 1, 10);
 
-      if (oldNumGroups == numGroups) {
+      if (oldNumGroups === numGroups) {
         return;
       }
 
@@ -1519,7 +1502,7 @@ export class HierarchicalClusterColumn extends ClusterColumn implements idtypes.
       const oldNumGroups = (<any>that.range.dims[0]).groups.length;
       const numGroups = Math.max(oldNumGroups - 1, 1);
 
-      if (oldNumGroups == numGroups) {
+      if (oldNumGroups === numGroups) {
         return;
       }
 

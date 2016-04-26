@@ -7,7 +7,6 @@
 // libraries
 import d3 = require('d3');
 import $ = require('jquery');
-import ajax = require('../caleydo_core/ajax');
 import C = require('../caleydo_core/main');
 import multiform = require('../caleydo_core/multiform');
 import geom = require('../caleydo_core/geom');
@@ -15,16 +14,8 @@ import idtypes = require('../caleydo_core/idtype');
 import behaviors = require('../caleydo_core/behavior');
 import events = require('../caleydo_core/event');
 import link_m = require('../caleydo_d3/link');
-import datatypes = require('../caleydo_core/datatype');
-import datas = require('../caleydo_core/data');
 import prov = require('../caleydo_clue/prov');
 import ranges = require('../caleydo_core/range');
-import stratification = require('../caleydo_core/stratification');
-import stratification_impl = require('../caleydo_core/stratification_impl');
-import vis = require('../caleydo_core/vis');
-
-// my own libraries
-import boxSlider = require('./boxslider');
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Column utility functions
@@ -274,7 +265,7 @@ export function createCmd(id:string) {
       return changeVis;
     case 'showStratomeXInDetail' :
       return showInDetail;
-    /** This is a new feature **/
+    /* This is a new feature */
     //case 'showStratomeXStats' :
     //  return clustercolumns.showStats;
   }
@@ -389,8 +380,7 @@ function shiftBy(r, shift) {
  * utility to sync histograms over multiple instances
  * @param expectedNumberOfHists
  */
-function groupTotalAggregator(column:any, agg:(v:any) => number)//expectedNumberOfPlots:number, agg:(v:any) => number)
-{
+function groupTotalAggregator(column:any, agg:(v:any) => number) { //expectedNumberOfPlots:number, agg:(v:any) => number)
   const expectedNumberOfPlots = (<ranges.CompositeRange1D>column.getRange().dim(0)).groups.length;
 
   var acc = 0;
@@ -550,8 +540,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
         var isSelected = $elem.classed('caleydo-select-selected');
         if (isSelected) {
           data.select(0, ranges.none());
-        }
-        else {
+        } else {
           data.select(0, ranges.all());
         }
         $elem.classed('caleydo-select-selected', !isSelected);

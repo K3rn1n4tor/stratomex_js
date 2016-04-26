@@ -8,20 +8,11 @@ import d3 = require('d3');
 import $ = require('jquery');
 import ajax = require('../caleydo_core/ajax');
 import C = require('../caleydo_core/main');
-import multiform = require('../caleydo_core/multiform');
-import geom = require('../caleydo_core/geom');
-import idtypes = require('../caleydo_core/idtype');
 import behaviors = require('../caleydo_core/behavior');
-import events = require('../caleydo_core/event');
-import link_m = require('../caleydo_d3/link');
 import datatypes = require('../caleydo_core/datatype');
-import datas = require('../caleydo_core/data');
 import prov = require('../caleydo_clue/prov');
 import ranges = require('../caleydo_core/range');
-import stratification = require('../caleydo_core/stratification');
-import stratification_impl = require('../caleydo_core/stratification_impl');
 import parser = require('../caleydo_d3/parser');
-import vis = require('../caleydo_core/vis');
 import heatmap = require('../caleydo_vis/heatmap');
 
 // my own libraries
@@ -41,8 +32,7 @@ export function showProbs(inputs, parameter, graph, within) {
   var r:Promise<any>;
   if (show) {
     r = column.showProbs(cluster, within);
-  }
-  else {
+  } else {
     r = column.hideProbs(cluster, within);
   }
   return r.then(() => {
@@ -78,7 +68,7 @@ function applyDivisions(view:any, cluster:number, column:any) {
   var compRange = <ranges.CompositeRange1D>column.getRange().dim(0);
 
   for (var i = 0; i < compRange.groups.length; ++i) {
-    if (i == clusterIndex) {
+    if (i === clusterIndex) {
       continue;
     }
     var groupIndex = i;
@@ -86,12 +76,12 @@ function applyDivisions(view:any, cluster:number, column:any) {
       groupIndex = i + groupsColumn.length - 1;
     }
 
-    compRange.groups[i].name = "Group " + String(groupIndex);
+    compRange.groups[i].name = 'Group ' + String(groupIndex);
     newGroups.push(compRange.groups[i]);
   }
 
   for (var k = groupsColumn.length - 1; k >= 0; --k) {
-    groupsColumn[k].name = "Group " + String(k + clusterIndex);
+    groupsColumn[k].name = 'Group ' + String(k + clusterIndex);
     newGroups.splice(clusterIndex, 0, groupsColumn[k]);
   }
 
@@ -165,16 +155,14 @@ export class ClusterDetailView {
 
       if (this.matrixMode) {
         width += this.options.extOffset + this.options.matrixWidth;
-      }
-      else {
+      } else {
         if (this.externVisible) {
           width += this.options.extOffset + this.numGroups * this.options.statsWidth;
         }
       }
 
       return width;
-    }
-    else {
+    } else {
       return 0;
     }
   }
@@ -230,7 +218,7 @@ export class ClusterDetailView {
     var externLabelList = [];
     var externLabelIDs = [];
     for (var j = 0; j < numGroups; ++j) {
-      if (j == cluster) {
+      if (j === cluster) {
         continue;
       }
       externLabelList.push(compositeRange.groups[j].asList());
@@ -242,7 +230,7 @@ export class ClusterDetailView {
     var request = {group: JSON.stringify({labels: labelList, externLabels: externLabelList})};
     var response = ajax.send('/api/clustering/distances/' + this.options.distanceMetric + '/' + this.data.desc.id,
       request, 'post');
-    console.log("Requested distances of data set:", this.data.desc.id);
+    console.log('Requested distances of data set:', this.data.desc.id);
 
     // resolve all promises, including the promises where the distance range is determined
     return Promise.all(responses.concat(response)).then((args:any) => {
@@ -290,7 +278,7 @@ export class ClusterDetailView {
 
       // build title and body of all subviews -> build skeleton
       $elem.append('div').attr('class', 'title').text('Distances');
-      const $body = $elem.append('div').attr('class', 'body');
+      $elem.append('div').attr('class', 'body');
       that.$mainNode = $elem;
 
       // check if external distances are available
@@ -308,7 +296,7 @@ export class ClusterDetailView {
             };
           }
 
-          if (j != this.cluster) {
+          if (j !== this.cluster) {
             $toolbar.append('i').attr('class', 'fa fa-sort-amount-asc')
               .on('click', onClickSort(j + 1, rawDistMatrix, numGroups, labels, column));
           }
@@ -486,7 +474,7 @@ export class ClusterDetailView {
     //IDs.splice(that.cluster, 1);
     //IDs.splice(0, 0, that.cluster);
 
-    if (mode == 'mousemove') {
+    if (mode === 'mousemove') {
       return function (_:any) {
         if (!that.matrixMode) {
           return;
@@ -515,13 +503,13 @@ export class ClusterDetailView {
           return;
         }
         that.$tooltipMatrix.html('Group ' + String(index));
-      }
+      };
     }
 
-    if (mode == 'mouseout') {
+    if (mode === 'mouseout') {
       return function (_:any) {
         that.$tooltipMatrix.style('opacity', 0);
-      }
+      };
     }
 
     return null;
@@ -564,7 +552,7 @@ export class ClusterDetailView {
     });
 
     for (var j = 0; j < rawLabels.length; ++j) {
-      var ID = parseInt(sortedMatrix[j][0]);
+      var ID = parseInt(sortedMatrix[j][0], 10);
       newLabels.push(rawLabels[ID]);
       for (var i = 0; i < newDistances.length; ++i) {
         newDistances[i].push(sortedMatrix[j][i + 1]);
@@ -586,7 +574,6 @@ export class ClusterDetailView {
     // 4) finally update the grid
     C.resolveIn(5).then(() => {
       var graph = column.stratomex.provGraph;
-      var obj = graph.findObject(column);
       var obj = graph.findObject(column);
 
       // regroup column
@@ -717,7 +704,7 @@ export class ClusterDetailView {
 
     // create distanceViews for external distances
     for (var i = 0; i < distances.length; ++i) {
-      if (i == this.cluster) {
+      if (i === this.cluster) {
         continue;
       }
 
@@ -860,16 +847,14 @@ export class ClusterProbView {
 
       if (this.matrixMode) {
         width += this.options.extOffset + this.options.matrixWidth;
-      }
-      else {
+      } else {
         if (this.externVisible) {
           width += (this.numGroups * this.options.probsWidth) + this.options.extOffset;
         }
       }
 
       return width;
-    }
-    else {
+    } else {
       return 0;
     }
   }
@@ -1024,7 +1009,7 @@ export class ClusterProbView {
     function OnSortDesc(index, column) {
       return () => {
         that.sortClusterByID(index, column);
-      }
+      };
     }
 
     // set-up toolbar for main prob view
@@ -1090,7 +1075,7 @@ export class ClusterProbView {
 
     // create toolbars for external views
     for (var j = 0; j < that.numGroups; ++j) {
-      if (j == this.cluster) {
+      if (j === this.cluster) {
         continue;
       }
 
@@ -1180,7 +1165,6 @@ export class ClusterProbView {
 
   public update(probabilities:any, labels:any, occurs:any, probMatrix:any) {
     this.labels = labels;
-    var that = this;
 
     // function to color the bars
     function colorBars(numOccurs) {
@@ -1188,7 +1172,7 @@ export class ClusterProbView {
 
       return function (d:any, i:number) {
         return cScale(numOccurs[i] > 1 ? 1 : 0);
-      }
+      };
     }
 
     // create box chart for main view
@@ -1219,7 +1203,7 @@ export class ClusterProbView {
     this.$matrixNode.classed('hidden', true);
 
     for (var i = 0; i < this.numGroups; ++i) {
-      if (i == this.cluster) {
+      if (i === this.cluster) {
         continue;
       }
 

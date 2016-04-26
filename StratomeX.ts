@@ -6,8 +6,6 @@ import views = require('../caleydo_core/layout_view');
 import datatypes = require('../caleydo_core/datatype');
 import stratification = require('../caleydo_core/stratification');
 import stratification_impl = require('../caleydo_core/stratification_impl');
-import vector = require('../caleydo_core/vector');
-import vector_impl = require('../caleydo_core/vector_impl');
 import C = require('../caleydo_core/main');
 import link_m = require('../caleydo_d3/link');
 import ranges = require('../caleydo_core/range');
@@ -16,7 +14,6 @@ import ajax = require('../caleydo_core/ajax');
 
 import columns = require('./Column');
 import clustercolumns = require('./ClusterColumn');
-import {getFirstByFQName} from "../caleydo_core/data";
 
 //type ColumnRef = prov.IObjectRef<columns.Column>;
 
@@ -169,7 +166,7 @@ class StratomeX extends views.AView {
    * @param arg
    */
   clusterData(data:datatypes.IDataType, method:string, args:any) {
-    if (data.desc.type != 'matrix') {
+    if (data.desc.type !== 'matrix') {
       console.log('clustering of data only supported for matrices, by now.');
       return;
     }
@@ -188,7 +185,7 @@ class StratomeX extends views.AView {
 
     $('body').addClass('waiting');
 
-    if (method == 'k-means') {
+    if (method === 'k-means') {
       const k = String(args[0]);
       const initMethod = args[1];
 
@@ -198,7 +195,7 @@ class StratomeX extends views.AView {
       distMetric = 'sqeuclidean';
     }
 
-    if (method == 'affinity') {
+    if (method === 'affinity') {
       const damping = args[0];
       const factor = args[1];
       const pref = args[2];
@@ -208,9 +205,7 @@ class StratomeX extends views.AView {
       clusterResponse = ajax.getAPIJSON('/clustering/affinity/' + argUrl, {});
       methodName = 'Affinity';
       distMetric = distance;
-    }
-
-    else if (method == 'hierarchical') {
+    } else if (method === 'hierarchical') {
       const k = String(args[0]);
       const method = args[1];
       const distance = args[2];
@@ -219,9 +214,7 @@ class StratomeX extends views.AView {
       clusterResponse = ajax.getAPIJSON('/clustering/hierarchical/' + argUrl, {});
       methodName = 'Hierarchical';
       distMetric = distance;
-    }
-
-    else if (method == 'fuzzy') {
+    } else if (method === 'fuzzy') {
       const c = String(args[0]);
       const m = String(args[1]);
       const t = String(args[2]);
@@ -311,8 +304,7 @@ class StratomeX extends views.AView {
       var compositeRange = ranges.composite(dataName + 'cluster', groups);
 
       // create new stratification with description
-      var descStrati =
-      {
+      var descStrati = {
         id: dataID + 'method', fqname: 'none', name: dataName + '/' + method,
         origin: dataFQ, size: (<any>data).dim[0], ngroups: numClusters,
         type: 'stratification', groups: groupsDesc,
@@ -326,15 +318,13 @@ class StratomeX extends views.AView {
       strati = stratification_impl.wrap(<datatypes.IDataDescription>descStrati, newRows, newRowIds, <any>compositeRange);
 
       // add new clustered data with its stratification to StratomeX
-      if (method == 'Hierarchical') {
+      if (method === 'Hierarchical') {
         that.addHierarchicalClusterData(strati, data, metric, result.dendrogram);
-      }
-      else if (method == 'Fuzzy') {
+      } else if (method === 'Fuzzy') {
         const partitionMatrix = result.partitionMatrix;
         const maxProb = result.maxProbability;
         that.addFuzzyClusterData(strati, data, metric, partitionMatrix, maxProb);
-      }
-      else {
+      } else {
         that.addClusterData(strati, data, metric);
       }
     });
@@ -352,8 +342,7 @@ class StratomeX extends views.AView {
     const numGroups = compositeRange.groups.length;
 
     // create new stratification with description
-    var descStrati =
-    {
+    var descStrati = {
       id: dataID + 'method', fqname: 'none', name: dataName,
       origin: dataFQ, size: (<any>data).dim[0], ngroups: numGroups,
       type: 'stratification', groups: compositeRange.groups,

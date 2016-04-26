@@ -7,13 +7,8 @@
 // Libraries
 
 import views = require('../caleydo_core/layout_view');
-import C = require('../caleydo_core/main');
 import vis = require('../caleydo_core/vis');
 import tables = require('../caleydo_core/table_impl');
-import d3 = require('d3');
-import $ = require('jquery');
-import strati = require('../caleydo_core/stratification');
-import matrix = require('../caleydo_core/matrix');
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Utility functions
@@ -196,14 +191,14 @@ export class StratomeXLineUp extends views.AView {
                 name: 'add',
                 icon: addIcon,
                 action: (row:any) => {
-                  that.onAdd(row._)
+                  that.onAdd(row._);
                 }
               },
               {
                 name: 'cluster',
                 icon: clusterIcon,
                 action: (row:any) => {
-                  that.onCluster(row, that.parent)
+                  that.onCluster(row, that.parent);
                 }
               }
             ]
