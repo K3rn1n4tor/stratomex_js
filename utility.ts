@@ -398,8 +398,8 @@ export class MergePopup {
     // create selection of cluster ids
     var clusterSelect = row.append('select').attr({title: 'select second group'}).classed('clusterSelect', true);
     clusterSelect.selectAll('option').data(clusterNums)
-      .enter().append('option').attr('value', (d) => d)
-      .text((d) => d);
+      .enter().append('option').attr('value', String)
+      .text(String);
 
     // select first cluster by default
     clusterSelect.property('value', clusterNums[0]);
