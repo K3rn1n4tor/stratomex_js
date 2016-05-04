@@ -84,7 +84,7 @@
     "dependencies": {
       "web": {
         "d3": "~3.5.5",
-        "jquery": "*"
+        "jquery": ">=1.11.0"
       }
     },
     "products": [
