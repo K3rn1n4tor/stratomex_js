@@ -340,6 +340,11 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
         that.$tooltip.html(that.options.valueName + ': ' + String(value));
         that.$tooltip.style({left: (absPosX + 5) + 'px', top: (absPosY) + 'px'});
 
+        for (var i = 0; i < that.options.numSlider; ++i) {
+          var slider = that.sliders[i].select('.sliderBar' + String(i));
+          slider.attr('opacity', 0.5);
+        }
+
       };
     } else if (type === 'mouseout') {
       return function (_:any) {
@@ -350,6 +355,11 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
 
         that.$tooltip.style('opacity', 0);
         that.colorizeBars();
+
+        for (var i = 0; i < that.options.numSlider; ++i) {
+          var slider = that.sliders[i].select('.sliderBar' + String(i));
+          slider.attr('opacity', 0.25);
+        }
       };
     }
   }
@@ -702,11 +712,30 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
           fill: that.options.sliderColor,
           rx: sliderRadius,
           ry: sliderRadius,
-          opacity: 0.75
+          opacity: 0.25
         });
 
       container.call(dragSlider);
       slider.call(dragSlider);
+
+      function hoverSlider(action, slider)
+      {
+        if (action == 'mousemove')
+        {
+          return () => {
+            slider.attr('opacity', 1);
+          }
+        }
+        else if (action == 'mouseout')
+        {
+          return () => {
+            slider.attr('opacity', 0.5);
+          }
+        }
+      }
+
+      group.on('mousemove', hoverSlider('mousemove', slider));
+      group.on('mouseout', hoverSlider('mouseout', slider));
 
       this.sliders[i] = group;
 
