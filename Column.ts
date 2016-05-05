@@ -525,7 +525,8 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
       var $toolbar = $elem.append('div').attr('class', 'gtoolbar');
 
       // add new command with symbol fa-expand
-      $toolbar.append('i').attr('class', 'fa fa-expand').on('click', () => {
+      $toolbar.append('i').attr('class', 'fa fa-expand').attr('title', 'Detail View')
+        .on('click', () => {
         // first obtain the provenance graph
         var graph = that.stratomex.provGraph;
         // next find the current object / selection / cluster
@@ -904,27 +905,31 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     var $t = this.$toolbar,
       that = this;
     multiform.addIconVisChooser(<Element>$t.node(), this.grid);
-    $t.append('i').attr('class', 'fa fa-chevron-left').on('click', ()=> {
+    $t.append('i').attr('class', 'fa fa-chevron-left').attr('title', 'Shift column to the left')
+      .on('click', ()=> {
       var g = that.stratomex.provGraph;
       var s = g.findObject(that);
       if (this.stratomex.canShift(that).left > 0) {
         g.push(createSwapColumnCmd(this.stratomex.ref, s, this.stratomex.atRef(that.stratomex.indexOf(that) - 1)));
       }
     });
-    $t.append('i').attr('class', 'fa fa-chevron-right').on('click', ()=> {
+    $t.append('i').attr('class', 'fa fa-chevron-right').attr('title', 'Shift column to the right')
+      .on('click', ()=> {
       var g = that.stratomex.provGraph;
       var s = g.findObject(that);
       if (that.stratomex.canShift(that).right < 0) {
         g.push(createSwapColumnCmd(this.stratomex.ref, s, that.stratomex.atRef(that.stratomex.indexOf(that) + 1)));
       }
     });
-    $t.append('i').attr('class', 'fa fa-expand').on('click', () => {
+    $t.append('i').attr('class', 'fa fa-expand').attr('title', 'Detail View')
+      .on('click', () => {
       var g = this.stratomex.provGraph;
       var s = g.findObject(this);
       g.push(createToggleDetailCmd(s, -1, true));
     });
 
-    $t.append('i').attr('class', 'fa fa-close').on('click', ()=> {
+    $t.append('i').attr('class', 'fa fa-close').attr('title', 'Remove column')
+      .on('click', ()=> {
       var g = that.stratomex.provGraph;
       g.push(createRemoveCmd(this.stratomex.ref, g.findObject(that)));
     });

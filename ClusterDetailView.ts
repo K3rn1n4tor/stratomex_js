@@ -297,7 +297,7 @@ export class ClusterDetailView {
           }
 
           if (j !== this.cluster) {
-            $toolbar.append('i').attr('class', 'fa fa-sort-amount-asc')
+            $toolbar.append('i').attr('class', 'fa fa-sort-amount-asc').attr('title', 'Sort distances in ascending order')
               .on('click', onClickSort(j + 1, rawDistMatrix, numGroups, labels, column));
           }
 
@@ -360,12 +360,14 @@ export class ClusterDetailView {
 
 
     if (this.column) {
-      this.$toolbar.append('i').attr('class', 'fa fa-chevron-circle-left').on('click', () => {
+      this.$toolbar.append('i').attr('class', 'fa fa-chevron-circle-left').attr('title', 'Merge subsets back to column')
+        .on('click', () => {
         applyDivisions(that, that.cluster, column);
       });
     }
 
-    this.$toolbar.append('i').attr('class', icon).on('click', () => {
+    this.$toolbar.append('i').attr('class', icon).attr('title', that.matrixView ? 'Enable bar-chart view' : 'Enable matrix view')
+      .on('click', () => {
       //var distHeatmap = that.matrixView;
 
       that.toggleMatrixMode();
@@ -386,7 +388,8 @@ export class ClusterDetailView {
 
     if (!this.matrixMode) {
       // tool to divide current cluster and create new divisions / stratifications displayed in a new column
-      this.$toolbar.append('i').attr('class', 'fa fa-share-alt').on('click', () => {
+      this.$toolbar.append('i').attr('class', 'fa fa-share-alt').attr('title', 'Split cluster into subsets')
+        .on('click', () => {
         column.showDivisions(that, that.cluster);
 
         C.resolveIn(400).then(() => {
@@ -399,7 +402,8 @@ export class ClusterDetailView {
     }
 
     // tool to recluster current column
-    this.$toolbar.append('i').attr('class', 'fa fa-refresh').on('click', () => {
+    this.$toolbar.append('i').attr('class', 'fa fa-refresh').attr('title', 'Shift elements to better fitting clusters')
+      .on('click', () => {
       column.regroupCluster(that.cluster);
 
       // stop propagation to disable further event triggering
@@ -408,7 +412,8 @@ export class ClusterDetailView {
 
     if (!this.matrixMode) {
       // tool to show external distances
-      this.$toolbar.append('i').attr('class', 'fa fa-expand').on('click', () => {
+      this.$toolbar.append('i').attr('class', 'fa fa-expand').attr('title', 'Show all between-cluster distances')
+        .on('click', () => {
         const numGroups = (<any>column.range.dims[0]).groups.length;
 
         that.externVisible = !that.externVisible;
@@ -422,14 +427,16 @@ export class ClusterDetailView {
         column.stratomex.relayout();
       });
 
-      this.$toolbar.insert('i', '.fa-close').attr('class', 'fa fa-sort-amount-asc').on('click', () => {
+      this.$toolbar.insert('i', '.fa-close').attr('class', 'fa fa-sort-amount-asc').attr('title', 'Sort distances in ascending order')
+        .on('click', () => {
         const index = this.cluster + 1;
         that._sortClusterByID(index, that.rawDistMatrix, that.numGroups, that.rawLabels, column);
       });
     }
 
     // close / hide statistics views
-    this.$toolbar.append('i').attr('class', 'fa fa-close').on('click', () => {
+    this.$toolbar.append('i').attr('class', 'fa fa-close').attr('title', 'Close Distance View')
+      .on('click', () => {
       var g = column.stratomex.provGraph;
       var s = g.findObject(<columns.Column>column);
       g.push(createToggleStatsCmd(s, that.cluster, false));
@@ -1017,14 +1024,16 @@ export class ClusterProbView {
     var $gtoolbar = this.$mainNode.append('div').attr('class', 'gtoolbar');
 
     if (this.column != null) {
-      $gtoolbar.append('i').attr('class', 'fa fa-chevron-circle-left').on('click', () => {
+      $gtoolbar.append('i').attr('class', 'fa fa-chevron-circle-left').attr('title', 'Merge subsets back to column')
+        .on('click', () => {
         applyDivisions(that, that.cluster, column);
       });
     }
 
     var icon = (this.matrixMode) ? 'fa fa-bar-chart' : 'fa fa-th';
 
-    $gtoolbar.append('i').attr('class', icon).on('click', () => {
+    $gtoolbar.append('i').attr('class', icon).attr('title', that.matrixView ? 'Enable bar-chart view' : 'Enable matrix view')
+      .on('click', () => {
       //var distHeatmap = that.matrixView;
 
       that.toggleMatrixMode();
@@ -1043,9 +1052,11 @@ export class ClusterProbView {
       that.createToolbar(column);
     });
 
-    $gtoolbar.append('i').attr('class', 'fa fa-sort-amount-desc').on('click', OnSortDesc(this.cluster, column));
+    $gtoolbar.append('i').attr('class', 'fa fa-sort-amount-desc').attr('title', 'Sort probabilities in descending order')
+      .on('click', OnSortDesc(this.cluster, column));
 
-    $gtoolbar.append('i').attr('class', 'fa fa-expand').on('click', () => {
+    $gtoolbar.append('i').attr('class', 'fa fa-expand').attr('title', 'Show all between-cluster probabilities')
+      .on('click', () => {
       that.externVisible = !that.externVisible;
 
       for (var i = 0; i < that.numGroups; ++i) {
@@ -1057,7 +1068,8 @@ export class ClusterProbView {
       column.stratomex.relayout();
     });
 
-    $gtoolbar.append('i').attr('class', 'fa fa-share-alt').on('click', () => {
+    $gtoolbar.append('i').attr('class', 'fa fa-share-alt').attr('title', 'Split cluster into subsets')
+      .on('click', () => {
       column.showDivisions(that, that.cluster);
       // recreate toolbar
       C.resolveIn(400).then(() => {
@@ -1067,7 +1079,8 @@ export class ClusterProbView {
       d3.event.stopPropagation();
     });
 
-    $gtoolbar.append('i').attr('class', 'fa fa-close').on('click', () => {
+    $gtoolbar.append('i').attr('class', 'fa fa-close').attr('title', 'Close Probability View')
+      .on('click', () => {
       var g = column.stratomex.provGraph;
       var s = g.findObject(column);
       g.push(createToggleProbsCmd(s, that.cluster, false));
@@ -1085,7 +1098,8 @@ export class ClusterProbView {
       // create the toolbar of the detail view
       var $gtoolbar = this.$extNodes[j].append('div').attr('class', 'gtoolbar');
 
-      $gtoolbar.append('i').attr('class', 'fa fa-sort-amount-desc').on('click', OnSortDesc(j, column));
+      $gtoolbar.append('i').attr('class', 'fa fa-sort-amount-desc').attr('title', 'Sort probabilities in descending order')
+        .on('click', OnSortDesc(j, column));
     }
   }
 

@@ -316,21 +316,8 @@ export class ClusterColumn extends columns.Column {
 
     super.createToolBar();
 
-    $t.insert('i', '.fa-close').attr('class', 'fa fa-bars').on('click', () => {
-      const dataID = this.data.desc.id;
-      const dataDiffID = dataID.replace('Mean', 'Difference');
-
-      datas.list().then((list) => {
-        for (var i = 0; i < list.length; ++i) {
-          var data = list[i];
-          if (data.desc.id === dataDiffID) {
-            that.stratomex.addColumnWithRange(data, that.range.dim(0));
-          }
-        }
-      });
-    });
-
-    $t.insert('i', '.fa-close').attr('class', 'fa fa-rotate-left').on('click', () => {
+    $t.insert('i', '.fa-close').attr('class', 'fa fa-rotate-left').attr('title','Get previous stratification')
+      .on('click', () => {
       var compositeRange = that.prevStratis.splice(0, 1)[0];
 
       if (compositeRange != null || typeof compositeRange !== 'undefined') {
@@ -347,7 +334,8 @@ export class ClusterColumn extends columns.Column {
       }
     });
 
-    $t.insert('i', '.fa-close').attr('class', 'fa fa-rotate-right').on('click', () => {
+    $t.insert('i', '.fa-close').attr('class', 'fa fa-rotate-right').attr('title','Get next stratification')
+      .on('click', () => {
       var compositeRange = that.nextStratis.splice(0, 1)[0];
 
       if (compositeRange != null || typeof compositeRange !== 'undefined') {
@@ -464,7 +452,8 @@ export class ClusterColumn extends columns.Column {
     const numGroups = (<any>this.range.dim(0)).groups.length;
 
     // create new cluster stats command
-    $toolbar.append('i').attr('class', 'fa fa-sort-amount-asc').on('click', () => {
+    $toolbar.append('i').attr('class', 'fa fa-sort-amount-asc').attr('title', 'Show within-cluster distances')
+      .on('click', () => {
       // first obtain the provenance graph
       var graph = that.stratomex.provGraph;
       // next find the current object / selection / cluster
@@ -476,7 +465,8 @@ export class ClusterColumn extends columns.Column {
     });
 
     // add new command with symbol fa-expand
-    $toolbar.append('i').attr('class', 'fa fa-expand').on('click', () => {
+    $toolbar.append('i').attr('class', 'fa fa-expand').attr('title', 'Detail View')
+      .on('click', () => {
       // first obtain the provenance graph
       var graph = that.stratomex.provGraph;
       // next find the current object / selection / cluster
@@ -489,7 +479,8 @@ export class ClusterColumn extends columns.Column {
 
     if (numGroups > 1) {
       // create new cluster merge command
-      $toolbar.append('i').attr('class', 'fa fa-link').on('click', () => {
+      $toolbar.append('i').attr('class', 'fa fa-link').attr('title', 'Merge with other cluster')
+        .on('click', () => {
         // first obtain the provenance graph
         //var graph = that.stratomex.provGraph;
         // next find the current object / selection / cluster
@@ -507,7 +498,8 @@ export class ClusterColumn extends columns.Column {
       });
 
       // enable possibility to remove group from column
-      $toolbar.append('i').attr('class', 'fa fa-times-circle').on('click', () => {
+      $toolbar.append('i').attr('class', 'fa fa-times-circle').attr('title', 'Exclude from stratification')
+        .on('click', () => {
         const groupID = pos[0];
 
         var oldCompositeRange = (<any>that.range.dim(0));
@@ -1215,7 +1207,8 @@ export class FuzzyClusterColumn extends ClusterColumn implements idtypes.IHasUni
     super.createGridToolbar(elem, data, cluster, pos, $toolbar);
 
     if (!this.noProbs) {
-      $toolbar.insert('i', '.fa-sort-amount-asc').attr('class', 'fa fa-align-left').on('click', () => {
+      $toolbar.insert('i', '.fa-sort-amount-asc').attr('class', 'fa fa-align-left').attr('title', 'Show probabilities')
+        .on('click', () => {
         // first obtain the provenance graph
         var graph = that.stratomex.provGraph;
         // next find the current object / selection / cluster
@@ -1487,7 +1480,8 @@ export class HierarchicalClusterColumn extends ClusterColumn implements idtypes.
 
     super.createToolBar();
 
-    $t.insert('i', '.fa-close').attr('class', 'fa fa-angle-double-up').on('click', () => {
+    $t.insert('i', '.fa-close').attr('class', 'fa fa-angle-double-up').attr('title', 'Increase number of clusters')
+      .on('click', () => {
       const oldNumGroups = (<any>that.range.dims[0]).groups.length;
       const numGroups = Math.min(oldNumGroups + 1, 10);
 
@@ -1498,7 +1492,8 @@ export class HierarchicalClusterColumn extends ClusterColumn implements idtypes.
       that.createNewStratification(numGroups);
     });
 
-    $t.insert('i', '.fa-close').attr('class', 'fa fa-angle-double-down').on('click', () => {
+    $t.insert('i', '.fa-close').attr('class', 'fa fa-angle-double-down').attr('title', 'Decrease number of clusters')
+      .on('click', () => {
       const oldNumGroups = (<any>that.range.dims[0]).groups.length;
       const numGroups = Math.max(oldNumGroups - 1, 1);
 
