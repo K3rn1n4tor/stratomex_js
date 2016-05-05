@@ -72,6 +72,8 @@ function createColumn(inputs, parameter, graph, within) {
     index = parameter.hasOwnProperty('index') ? parameter.index : -1,
     name = parameter.name || inputs[1].name,
     uid = parameter.uid || 'C' + C.random_id();
+  var baseHash = parameter.base;
+  console.log(baseHash);
 
   //console.log(ranges.parse(parameter.partitioning));
 
@@ -93,6 +95,11 @@ function createColumn(inputs, parameter, graph, within) {
     };
     c.on('changed', c.changeHandler);
     c.on('option', c.optionHandler);
+
+    if (baseHash !== null) {
+      var base = stratomex.findColumnByHash(baseHash);
+      base.addDepenedentColumn(c);
+    }
 
     //console.log(new Date(), 'add column', data.desc.name, index);
     return stratomex.addColumn(c, index, within).then(() => {
@@ -223,13 +230,14 @@ export function createSetOption(column, name, value, old) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function createColumnCmd(stratomex, data, partitioning, name:string, index:number = -1, uid = 'C' + C.random_id()) {
+export function createColumnCmd(stratomex, data, partitioning, name:string, index:number = -1, uid = 'C' + C.random_id(), base:string=null) {
   return prov.action(prov.meta(name, prov.cat.data, prov.op.create),
     'createStratomeXColumn', createColumn, [stratomex, data], {
       partitioning: partitioning.toString(),
       name: name,
       index: index,
-      uid: uid
+      uid: uid,
+      base: base
     });
 }
 
@@ -413,6 +421,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
   protected $toolbar:d3.Selection<any>;
   protected $summary:d3.Selection<any>;
   protected $clusters:d3.Selection<any>;
+  public dependentColumn:Column = null;
 
   range:ranges.Range;
   protected summary:multiform.MultiForm;
@@ -609,6 +618,39 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     that.grid.on('changed', function (event, to, from) {
       that.fire('changed', to, from);
     });
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Update this column by means of a new stratification (compositeRange).
+   * @param range
+   * @returns {Promise<TResult>|Promise<U>}
+   */
+  updateGrid(range:ranges.CompositeRange1D) {
+
+    d3.select(this.grid.node).transition().duration(animationTime(-1)).style('opacity', 0);
+    this.grid.destroy();
+
+    var that = this;
+
+    var compositeRange = <ranges.CompositeRange1D>that.range.dim(0);
+    console.log("old range", compositeRange);
+    that.range = ranges.parse(range.toString());
+
+    const newNumGroups = range.groups.length;
+    const oldNumGroups = compositeRange.groups.length;
+    const groupsChanged = (newNumGroups !== oldNumGroups);
+
+    //var promise = that.stratomex.relayout();
+
+    // recreate grid and fire changed option
+    that.createMultiGrid(that.range, that.data);
+
+    return Promise.all([]).then((_) => {
+      return that.stratomex.relayout();
+    });
+
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -819,6 +861,12 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     this.$layoutHelper.style('width', width + 'px');
 
     return this.stratomex.relayout(within);
+  }
+
+  protected addDepenedentColumn(column: Column)
+  {
+    console.log('Dependent column:', column);
+    this.dependentColumn = column;
   }
 
   // -------------------------------------------------------------------------------------------------------------------

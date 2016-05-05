@@ -94,6 +94,12 @@ function applyDivisions(view:any, cluster:number, column:any) {
   // regroup column
   graph.push(createRegroupColumnCmd(obj, compositeRange));
 
+  // var r = ranges.list(compositeRange);
+  // var m = column.dependentColumn.data;
+  // column.data.ids(r).then(m.fromIdRange.bind(m)).then((target) => {
+  //   column.dependentColumn.updateGrid(target.dim(0));
+  // });
+
   // stop propagation to disable further event triggering
   d3.event.stopPropagation();
 }

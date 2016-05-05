@@ -220,6 +220,20 @@ export function regroupColumn(inputs, parameter, graph, within) {
   var oldRange = column.getRange().dim(0);
   r = column.updateGrid(range, noStatsUpdate);
 
+  // update dependent column if available
+  if (column.dependentColumn !== null)
+  {
+    var obj = graph.findObject(column.dependentColumn);
+
+    if (obj !== null) {
+      var ran = ranges.list(range);
+      var m = column.dependentColumn.data;
+      column.data.ids(ran).then(m.fromIdRange.bind(m)).then((target) => {
+        column.dependentColumn.updateGrid(target.dim(0));
+      });
+    }
+  }
+
   return r.then(() => {
     return {
       inverse: createRegroupColumnCmd(inputs[0], oldRange, false),
@@ -522,6 +536,16 @@ export class ClusterColumn extends columns.Column {
         // regroup column
         graph.push(createRegroupColumnCmd(obj, compositeRange));
 
+        // if (that.dependentColumn !== null) {
+        //   var r = ranges.list(compositeRange);
+        //   var m = that.dependentColumn.data;
+        //   that.data.ids(r).then(m.fromIdRange.bind(m)).then((target) => {
+        //     console.log(target.dim(0));
+        //
+        //     that.dependentColumn.updateGrid(target.dim(0));
+        //   });
+        // }
+
         d3.event.stopPropagation();
       });
     }
@@ -665,6 +689,16 @@ export class ClusterColumn extends columns.Column {
 
     // regroup column
     graph.push(createRegroupColumnCmd(obj, compositeRange));
+
+    // if (this.dependentColumn !== null) {
+    //   var r = ranges.list(compositeRange);
+    //   var m = this.dependentColumn.data;
+    //   this.data.ids(r).then(m.fromIdRange.bind(m)).then((target) => {
+    //     console.log(target.dim(0));
+    //
+    //     this.dependentColumn.updateGrid(target.dim(0));
+    //   });
+    // }
 
     d3.event.stopPropagation();
   }
@@ -856,13 +890,14 @@ export class ClusterColumn extends columns.Column {
   protected regroupCluster(cluster:number) {
     var statsView = this.statsViews[cluster];
     var that = this;
+    console.log(that);
 
     if (statsView == null) {
       return Promise.resolve([]);
     }
 
     const clusterLabels = statsView.distanceView.getLabels();
-    console.log('Labels of current cluster ', cluster, clusterLabels);
+    //console.log('Labels of current cluster ', cluster, clusterLabels);
 
     var distanceVec:any[] = [];
 
@@ -933,7 +968,7 @@ export class ClusterColumn extends columns.Column {
       });
     }
 
-    console.log('Final labels:', finalLabels);
+    //console.log('Final labels:', finalLabels);
 
     // first from groups
     var groups = <any>[];
@@ -954,14 +989,30 @@ export class ClusterColumn extends columns.Column {
 
     const dataName = this.data.desc.name;
 
-    var compositeRange = ranges.composite(dataName + 'cluster', groups);
+    var newCompositeRange = ranges.composite(dataName + 'cluster', groups);
 
     // update this column
     var graph = that.stratomex.provGraph;
     var obj = graph.findObject(that);
 
     // regroup column
-    graph.push(createRegroupColumnCmd(obj, compositeRange));
+    graph.push(createRegroupColumnCmd(obj, newCompositeRange));
+
+    // update dependent column
+    // obj = graph.findObject(that.dependentColumn);
+    //
+    // if (obj !== null) {
+    //   console.log(newCompositeRange);
+    //
+    //   var r = ranges.list(newCompositeRange);
+    //   var m = that.dependentColumn.data;
+    //   that.data.ids(r).then(m.fromIdRange.bind(m)).then((target) => {
+    //     console.log(target.dim(0));
+    //
+    //     that.dependentColumn.updateGrid(target.dim(0));
+    //   });
+      //graph.push(createRegroupColumnCmd(obj, compositeRange));
+    //}
   }
 
   // -------------------------------------------------------------------------------------------------------------------

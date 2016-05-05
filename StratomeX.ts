@@ -111,7 +111,6 @@ class StratomeX extends views.AView {
   addDependentData(m:datatypes.IDataType) {
     const base = columns.manager.selectedObjects()[0];
 
-    console.log(base);
     //nothing selected
     if (!base) {
       return false;
@@ -121,7 +120,7 @@ class StratomeX extends views.AView {
       let mref = this.provGraph.findOrAddObject(m, m.desc.name, 'data');
       var r = ranges.list(base.range.dim(0));
       base.data.ids(r).then(m.fromIdRange.bind(m)).then((target) => {
-        this.provGraph.push(columns.createColumnCmd(this.ref, mref, target, toName(m.desc.name, base.range.dim(0).name)));
+        this.provGraph.push(columns.createColumnCmd(this.ref, mref, target, toName(m.desc.name, base.range.dim(0).name), -1, 'C' + C.random_id(), base.hashString));
       });
       return true;
     }
@@ -604,6 +603,15 @@ class StratomeX extends views.AView {
   atRef(index:number) {
     const c = this.at(index);
     return this.provGraph.findObject(c);
+  }
+
+  findColumnByHash(hash:string) {
+    for (var i = 0; i < this._columns.length; ++i) {
+      var c = this._columns[i];
+      if (hash == c.hashString) {
+        return c;
+      }
+    }
   }
 
   canShift(column:columns.Column) {
