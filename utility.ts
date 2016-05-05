@@ -345,7 +345,7 @@ export class MergePopup {
               private options:any) {
     this.options = C.mixin(
       {
-        width: 150,
+        width: 170,
         animationTime: 200
       }, options);
 
@@ -392,7 +392,7 @@ export class MergePopup {
     // button to trigger merge
     var button = row.append('button').text('Merge');
 
-    var clusterNums = Array.apply(null, Array(this.numClusters)).map((_, i) => i);
+    var clusterNums = Array.apply(null, Array(this.numClusters)).map((_, i) => 'Group ' + String(i));
     clusterNums.splice(clusterID, 1);
 
     // create selection of cluster ids
@@ -407,7 +407,7 @@ export class MergePopup {
     // button event
     button.on('mouseup', () => {
       // obtain selected cluster index
-      const otherClusterID = parseFloat($(clusterSelect.node()).val());
+      const otherClusterID = parseFloat($(clusterSelect.node()).val().slice(-1));
 
       // merge clusters
       this.column.mergeClusters(clusterID, otherClusterID);

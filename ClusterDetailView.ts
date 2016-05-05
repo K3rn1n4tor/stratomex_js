@@ -284,7 +284,7 @@ export class ClusterDetailView {
       // check if external distances are available
       if (externDistances != null) {
         for (var j = 0; j < numGroups; ++j) {
-          const $elemNext = $parent.append('div').classed('stats', true).style('opacity', 0);
+          const $elemNext = $parent.append('div').classed('stats', true).style('opacity', 0).style('background-color', 'white');
           $elemNext.classed('group', true);//.datum(rawDistMatrix);
           $elemNext.append('div').attr('class', 'title').text('Ext.' + String(j));
           $elemNext.append('div').attr('class', 'body');
