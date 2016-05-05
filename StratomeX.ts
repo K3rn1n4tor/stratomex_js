@@ -608,7 +608,7 @@ class StratomeX extends views.AView {
   findColumnByHash(hash:string) {
     for (var i = 0; i < this._columns.length; ++i) {
       var c = this._columns[i];
-      if (hash == c.hashString) {
+      if (hash === c.hashString) {
         return c;
       }
     }

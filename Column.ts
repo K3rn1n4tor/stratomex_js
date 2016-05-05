@@ -634,13 +634,13 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
 
     var that = this;
 
-    var compositeRange = <ranges.CompositeRange1D>that.range.dim(0);
-    console.log("old range", compositeRange);
+    //var compositeRange = <ranges.CompositeRange1D>that.range.dim(0);
+    //console.log("old range", compositeRange);
     that.range = ranges.parse(range.toString());
 
-    const newNumGroups = range.groups.length;
-    const oldNumGroups = compositeRange.groups.length;
-    const groupsChanged = (newNumGroups !== oldNumGroups);
+    //const newNumGroups = range.groups.length;
+    //const oldNumGroups = compositeRange.groups.length;
+    //const groupsChanged = (newNumGroups !== oldNumGroups);
 
     //var promise = that.stratomex.relayout();
 
@@ -863,8 +863,7 @@ export class Column extends events.EventHandler implements idtypes.IHasUniqueId,
     return this.stratomex.relayout(within);
   }
 
-  protected addDepenedentColumn(column: Column)
-  {
+  protected addDepenedentColumn(column: Column) {
     console.log('Dependent column:', column);
     this.dependentColumn = column;
   }

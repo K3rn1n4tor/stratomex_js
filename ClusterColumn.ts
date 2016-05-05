@@ -10,7 +10,7 @@ import C = require('../caleydo_core/main');
 import idtypes = require('../caleydo_core/idtype');
 import link_m = require('../caleydo_d3/link');
 import datatypes = require('../caleydo_core/datatype');
-import datas = require('../caleydo_core/data');
+//import datas = require('../caleydo_core/data');
 import prov = require('../caleydo_clue/prov');
 import ranges = require('../caleydo_core/range');
 import stratification = require('../caleydo_core/stratification');
@@ -221,8 +221,7 @@ export function regroupColumn(inputs, parameter, graph, within) {
   r = column.updateGrid(range, noStatsUpdate);
 
   // update dependent column if available
-  if (column.dependentColumn !== null)
-  {
+  if (column.dependentColumn !== null) {
     var obj = graph.findObject(column.dependentColumn);
 
     if (obj !== null) {

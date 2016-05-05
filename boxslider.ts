@@ -718,19 +718,15 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
       container.call(dragSlider);
       slider.call(dragSlider);
 
-      function hoverSlider(action, slider)
-      {
-        if (action == 'mousemove')
-        {
+      function hoverSlider(action, slider) {
+        if (action === 'mousemove') {
           return () => {
             slider.attr('opacity', 1);
-          }
-        }
-        else if (action == 'mouseout')
-        {
+          };
+        } else if (action === 'mouseout') {
           return () => {
             slider.attr('opacity', 0.5);
-          }
+          };
         }
       }
 
