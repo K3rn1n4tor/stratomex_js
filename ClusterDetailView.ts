@@ -146,10 +146,10 @@ export class ClusterDetailView {
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  constructor(public cluster:number, private data:datatypes.IDataType, private range:ranges.Range,
+  constructor(public cluster:number, private data:datatypes.IDataType, private range:ranges.Range, public metric:string,
               private options:any) {
     this.options = C.mixin({
-      matrixMode: false, matrixWidth: 140, statsWidth: 50, extOffset: 30, distanceMetric: 'euclidean'
+      matrixMode: false, matrixWidth: 140, statsWidth: 50, extOffset: 30
     }, options);
   }
 
@@ -201,7 +201,7 @@ export class ClusterDetailView {
       for (var j = 0; j < numGroups; ++j) {
         var labelList = compositeRange.groups[j].asList();
         var request = {group: JSON.stringify({labels: labelList})};
-        responses.push(ajax.send('/api/clustering/distances/' + this.options.distanceMetric + '/' + data.desc.id,
+        responses.push(ajax.send('/api/clustering/distances/' + this.metric + '/' + data.desc.id,
           request, 'post'));
       }
 
@@ -234,7 +234,7 @@ export class ClusterDetailView {
     // request cluster distance data from server
     $('body').addClass('waiting');
     var request = {group: JSON.stringify({labels: labelList, externLabels: externLabelList})};
-    var response = ajax.send('/api/clustering/distances/' + this.options.distanceMetric + '/' + this.data.desc.id,
+    var response = ajax.send('/api/clustering/distances/' + this.metric + '/' + this.data.desc.id,
       request, 'post');
     console.log('Requested distances of data set:', this.data.desc.id);
 
@@ -410,7 +410,7 @@ export class ClusterDetailView {
     // tool to recluster current column
     this.$toolbar.append('i').attr('class', 'fa fa-refresh').attr('title', 'Shift elements to better fitting clusters')
       .on('click', () => {
-      column.regroupCluster(that.cluster);
+      column.regroupCluster(that.cluster, that.metric);
 
       // stop propagation to disable further event triggering
       d3.event.stopPropagation();

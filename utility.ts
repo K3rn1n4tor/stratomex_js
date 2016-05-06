@@ -333,7 +333,118 @@ export class ClusterPopup {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Class definition of mergePopup
+// Class definition of similarityPopup
+
+export class SimilarityPopup {
+  private $node:d3.Selection<any> = null;
+  private destroyed:boolean = false;
+  private height:number = 60;
+
+  constructor(private parent:Element, private column:any, clusterID:number,
+              private options:any) {
+    this.options = C.mixin(
+      {
+        width: 185,
+        animationTime: 200,
+        similarityMetric: 'euclidean',
+        triggerFunc: null
+      }, options);
+
+    this.$node = this._build(d3.select(parent), clusterID);
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  get node() {
+    return this.$node;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  private _build($parent:d3.Selection<any>, clusterID:number) {
+    var that = this;
+
+    // this works for both Firefox and Chrome
+    var mousePos = d3.mouse($parent.node());
+
+    // create root division
+    var $root = $parent.append('div').classed('similarityPopup', true);
+    // start animation of popup
+    $root.transition().duration(this.options.animationTime).style('opacity', 1.0);
+
+    // create title
+    var $titleBar = $root.append('div').classed('title', true);
+    $titleBar.append('text').text('Choose similarity metric');
+
+    // create toolbar
+    var $toolbar = $root.append('div').classed('gtoolbar', true);
+    $toolbar.append('i').attr('class', 'fa fa-close')
+      .on('click', (_:any) => {
+        that.destroy();
+      });
+
+    // create body
+    var $body = $root.append('div').classed('body', true);
+    $body.transition().duration(this.options.animationTime).style('width', String(this.options.width) + 'px');
+
+    // row
+    var row = $body.append('div').classed('content', true);
+
+    // button to trigger merge
+    var button = row.append('button').text('Sort');
+
+    // create selection of similarity metrics
+    var sims = ['euclidean', 'sqeuclidean', 'cityblock', 'chebyshev', 'canberra', 'correlation', 'hamming',
+                'mahalanobis', 'pearson', 'spearman', 'kendall'];
+
+
+    var clusterSelect = row.append('select').attr({title: 'select similarity metric'}).classed('similaritySelect', true);
+    clusterSelect.selectAll('option').data(sims)
+      .enter().append('option').attr('value', String)
+      .text(String);
+
+    // select first cluster by default
+    clusterSelect.property('value', this.options.similarityMetric);
+
+    // button event
+    button.on('mouseup', () => {
+      // obtain selected cluster index
+      const simMetric = $(clusterSelect.node()).val();
+
+      // return similarity metric
+      that.options.triggerFunc(simMetric);
+
+      // remove this window
+      this.destroy();
+    });
+
+    // use custom offsets
+    const offsetX = 10;
+    const offsetY = -6;
+
+    // move window to cluster button
+    $root.style({
+      'opacity': 0, left: String(mousePos[0] - offsetX) + 'px',
+      top: String(mousePos[1] - this.height - offsetY) + 'px'
+    });
+
+    return $root;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  destroy() {
+    if (this.destroyed) {
+      return;
+    }
+
+    this.$node.transition().duration(this.options.animationTime).style('opacity', 0).remove();
+    this.destroyed = true;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Class definition of MergePopup
 
 export class MergePopup {
   private $node:d3.Selection<any> = null;
@@ -461,4 +572,9 @@ export function createClusterPopup(data:matrix.IMatrix, parent:Element, stratome
 export function createMergePopup(data:matrix.IMatrix, parent:Element, column:any, rowID:number, numClusters:number,
                                  options:any) {
   return new MergePopup(data, parent, column, rowID, numClusters, options);
+}
+
+export function createSimilarityPopup(parent:Element, column:any, rowID:number,
+                                 options:any) {
+  return new SimilarityPopup(parent, column, rowID, options);
 }

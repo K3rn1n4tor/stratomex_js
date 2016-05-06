@@ -23,6 +23,7 @@ import utility = require('./utility');
 
 // popup manager helper pointer
 var mergePopupHelper = null;
+var similarityPopupHelper = null;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -256,16 +257,17 @@ function showStats(inputs, parameter, graph, within) {
   var column:ClusterColumn = inputs[0].value;
   var cluster = parameter.cluster;
   var show = parameter.action === 'show';
+  var metric = parameter.metric;
 
   var r:Promise<any>;
   if (show) {
-    r = column.showStats(cluster, within);
+    r = column.showStats(cluster, within, true, false, metric);
   } else {
     r = column.hideStats(cluster, within);
   }
   return r.then(() => {
     return {
-      inverse: createToggleStatsCmd(inputs[0], cluster, !show),
+      inverse: createToggleStatsCmd(inputs[0], cluster, !show, metric),
       consumed: within
     };
   });
@@ -273,12 +275,13 @@ function showStats(inputs, parameter, graph, within) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function createToggleStatsCmd(column, cluster, show) {
+export function createToggleStatsCmd(column, cluster, show, metric:string='euclidean') {
   var act = show ? 'Show' : 'Hide';
   return prov.action(prov.meta(act + ' Distances of ' + column.toString() + ' Cluster "' + cluster + '"', prov.cat.layout),
     'showStratomeXStats', showStats, [column], {
       cluster: cluster,
-      action: show ? 'show' : 'hide'
+      action: show ? 'show' : 'hide',
+      metric: metric
     });
 }
 
@@ -430,9 +433,10 @@ export class ClusterColumn extends columns.Column {
       if (statsView != null) {
         statsView.distanceView.destroy();
         statsView.$mainNode.remove();
-
         statsView.matrixView.destroy();
         statsView.$matrixNode.remove();
+
+        var metric = statsView.metric;
 
         for (var k = 0; k < statsView.$extNodes.length; ++k) {
           if (statsView.externalViews[k]) {
@@ -442,7 +446,7 @@ export class ClusterColumn extends columns.Column {
         }
 
         if (statsView.visible && !groupsChanged) {
-          promises.push(this.showStats(i, -1, false, statsView.matrixMode));
+          promises.push(this.showStats(i, -1, false, statsView.matrixMode, metric));
         }
       }
     }
@@ -464,15 +468,29 @@ export class ClusterColumn extends columns.Column {
     const that = this;
     const numGroups = (<any>this.range.dim(0)).groups.length;
 
-    // create new cluster stats command
-    $toolbar.append('i').attr('class', 'fa fa-sort-amount-asc').attr('title', 'Show within-cluster distances')
-      .on('click', () => {
+    function test(metric: string) {
+      //console.log('Chosen metric:', metric);
+
       // first obtain the provenance graph
       var graph = that.stratomex.provGraph;
       // next find the current object / selection / cluster
       var obj = graph.findObject(that);
       // push new command to graph
-      graph.push(createToggleStatsCmd(obj, pos[0], true));
+      graph.push(createToggleStatsCmd(obj, pos[0], true, metric));
+    }
+
+    // create new cluster stats command
+    $toolbar.append('i').attr('class', 'fa fa-sort-amount-asc').attr('title', 'Show within-cluster distances')
+      .on('click', () => {
+
+      if (similarityPopupHelper != null) {
+        similarityPopupHelper.destroy();
+      }
+
+      // first show popup to select similarity metric
+      similarityPopupHelper = utility.createSimilarityPopup(elem, that, pos[0], {
+        similarityMetric: that.options.distanceMetric, triggerFunc: test});
+
       // stop propagation to disable further event triggering
       d3.event.stopPropagation();
     });
@@ -689,16 +707,6 @@ export class ClusterColumn extends columns.Column {
     // regroup column
     graph.push(createRegroupColumnCmd(obj, compositeRange));
 
-    // if (this.dependentColumn !== null) {
-    //   var r = ranges.list(compositeRange);
-    //   var m = this.dependentColumn.data;
-    //   this.data.ids(r).then(m.fromIdRange.bind(m)).then((target) => {
-    //     console.log(target.dim(0));
-    //
-    //     this.dependentColumn.updateGrid(target.dim(0));
-    //   });
-    // }
-
     d3.event.stopPropagation();
   }
 
@@ -710,22 +718,39 @@ export class ClusterColumn extends columns.Column {
    * @param within
    * @param relayout
    * @param matrixMode
+   * @param metric
    * @returns {any}
    */
-  showStats(cluster, within = -1, relayout = true, matrixMode:boolean = false) {
+  showStats(cluster, within = -1, relayout = true, matrixMode:boolean = false, metric:string = 'euclidean') {
     var statsView = this.statsViews[cluster];
 
     if (statsView != null) {
-      statsView.show(within);
 
-      this.setColumnWidth();
-      return (relayout) ? this.stratomex.relayout(within) : Promise.resolve([]);
+      if (statsView.metric !== metric) {
+        statsView.distanceView.destroy();
+        statsView.$mainNode.remove();
+        statsView.matrixView.destroy();
+        statsView.$matrixNode.remove();
+
+        for (var k = 0; k < statsView.$extNodes.length; ++k) {
+          if (statsView.externalViews[k]) {
+            statsView.externalViews[k].destroy();
+          }
+          statsView.$extNodes[k].remove();
+        }
+
+      } else {
+        statsView.show(within);
+
+        this.setColumnWidth();
+        return (relayout) ? this.stratomex.relayout(within) : Promise.resolve([]);
+      }
     }
 
     const that = this;
 
     var newStatsView:clusterView.ClusterDetailView = new clusterView.ClusterDetailView(cluster, this.data, this.range,
-      {matrixWidth: this.options.matrixWidth, matrixMode: matrixMode, distanceMetric: this.options.distanceMetric});
+      metric, {matrixWidth: this.options.matrixWidth, matrixMode: matrixMode});
     var promise = newStatsView.build(this.$parent, this);
 
     this.statsViews[cluster] = newStatsView;
@@ -886,7 +911,7 @@ export class ClusterColumn extends columns.Column {
    * @param cluster
    * @returns {Promise<Array>}
    */
-  protected regroupCluster(cluster:number) {
+  protected regroupCluster(cluster:number, metric:string) {
     var statsView = this.statsViews[cluster];
     var that = this;
     console.log(that);
@@ -896,7 +921,6 @@ export class ClusterColumn extends columns.Column {
     }
 
     const clusterLabels = statsView.distanceView.getLabels();
-    //console.log('Labels of current cluster ', cluster, clusterLabels);
 
     var distanceVec:any[] = [];
 
@@ -922,6 +946,9 @@ export class ClusterColumn extends columns.Column {
       return [];
     });
 
+    const correlationUsed = (['pearson', 'spearman', 'kendall'].indexOf(metric) >= 0);
+    //console.log("Correlation is used:", correlationUsed);
+
     for (var i = 0; i < distanceVec[0].length; ++i) {
       var tempArray = [];
 
@@ -929,10 +956,17 @@ export class ClusterColumn extends columns.Column {
         tempArray.push(distanceVec[k][i]);
       }
 
-      var minDist = Math.min.apply(Math, tempArray);
-      var minIndex = tempArray.indexOf(minDist);
+      var chosenDist = 0;
 
-      newLabels[minIndex].push(clusterLabels[i]);
+      if (correlationUsed) {
+        chosenDist = Math.max.apply(Math, tempArray);
+      } else {
+        chosenDist = Math.min.apply(Math, tempArray);
+      }
+
+      var chosenIndex = tempArray.indexOf(chosenDist);
+
+      newLabels[chosenIndex].push(clusterLabels[i]);
     }
 
     //console.log("New sorted labels:", newLabels);

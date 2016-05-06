@@ -85,7 +85,7 @@ div.clusterPopup:hover
   -webkit-animation: opacityAnimIn 200ms forwards;
 }
 
-div.mergePopup
+div.mergePopup, div.similarityPopup
 {
   position: absolute !important;
   background-color: white;
