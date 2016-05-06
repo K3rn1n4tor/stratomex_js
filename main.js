@@ -100,13 +100,6 @@ define(function (require) {
       function (vector) { stratomex.addDependentData(vector); }, openClusterMenu);
 
     // -----------------------------------------------------------------------------------------------------------------
-    // methods called per Orly's data tab
-
-
-    var lineupOrlyData = lineupModule.createData(document.getElementById('tab_orlydata'),
-      function (vector) { stratomex.addDependentOrlyData(vector); }, openClusterMenu);
-
-    // -----------------------------------------------------------------------------------------------------------------
 
     var $left_data = $('#databrowser');
     if (cmode.getMode().exploration < 0.8) {
@@ -121,11 +114,6 @@ define(function (require) {
       }
       if (lineupData.lineup) {
         lineupData.lineup.update();
-      }
-
-      if (lineupOrlyData.lineup)
-      {
-        lineupOrlyData.lineup.update();
       }
     }
 
@@ -241,29 +229,7 @@ define(function (require) {
         return false;
       });
     }
-
-    // -----------------------------------------------------------------------------------------------------------------
-    // Create lineUp for Orly's data types
-
-    function createOrlyDataLineUp(r) {
-      lineupOrlyData.setData(r);
-    }
-
-    function filterOrlyDataTypes(arr) {
-
-      return arr.filter(function(d)
-      {
-        var desc = d.desc;
-
-        if (desc.fqname.startsWith(desc.type === 'matrix' && 'stratomex_js')) {
-          return true;
-        }
-        else
-        {
-          return false;
-        }
-      });
-    }
+    
 
     // -----------------------------------------------------------------------------------------------------------------
     // Create filebrowser tabs for each data types
@@ -271,7 +237,6 @@ define(function (require) {
     var vectors = data.list().then(data.convertTableToVectors);
     vectors.then(filterTypes).then(splitAndConvert).then(createLineUp);
     vectors.then(filterDataTypes).then(createDataLineUp);
-    vectors.then(filterOrlyDataTypes).then(createOrlyDataLineUp);
 
     elems.jumpToStored();
   });
