@@ -63,9 +63,9 @@ export class ClusterPopup {
           fuzzifier: [1.001, 100, 1.2]
         },
         'general': {
-          distances: ['euclidean', 'sqeuclidean', 'cityblock', 'chebyshev', 'canberra', 'hamming',
-            'mahalanobis', 'correlation', 'pearson', 'spearman', 'kendall'],
-          numClusters: [2, 10, 2] 
+          distances: ['euclidean', 'sqeuclidean', 'cityblock', 'chebyshev', 'canberra', 'correlation', 'hamming',
+            'mahalanobis', 'pearson', 'spearman', 'kendall'],
+          numClusters: [2, 10, 2]
         }
       }, options);
     this.$node = this._build(d3.select(parent), rowID);
