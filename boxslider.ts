@@ -342,7 +342,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
 
         for (var i = 0; i < that.options.numSlider; ++i) {
           var slider = that.sliders[i].select('.sliderBar' + String(i));
-          slider.attr('opacity', 0.5);
+          slider.attr('opacity', 0.25);
         }
 
       };

@@ -149,7 +149,7 @@ export class ClusterDetailView {
   constructor(public cluster:number, private data:datatypes.IDataType, private range:ranges.Range, public metric:string,
               private options:any) {
     this.options = C.mixin({
-      matrixMode: false, matrixWidth: 140, statsWidth: 50, extOffset: 30
+      matrixMode: false, matrixWidth: 140, statsWidth: 50, extOffset: 30, sorted: true
     }, options);
   }
 
@@ -201,7 +201,8 @@ export class ClusterDetailView {
       for (var j = 0; j < numGroups; ++j) {
         var labelList = compositeRange.groups[j].asList();
         var request = {group: JSON.stringify({labels: labelList})};
-        responses.push(ajax.send('/api/clustering/distances/' + this.metric + '/' + data.desc.id,
+        responses.push(ajax.send('/api/clustering/distances/' + this.metric + '/' + data.desc.id
+          + '/' + String(this.options.sorted),
           request, 'post'));
       }
 
@@ -234,8 +235,8 @@ export class ClusterDetailView {
     // request cluster distance data from server
     $('body').addClass('waiting');
     var request = {group: JSON.stringify({labels: labelList, externLabels: externLabelList})};
-    var response = ajax.send('/api/clustering/distances/' + this.metric + '/' + this.data.desc.id,
-      request, 'post');
+    var response = ajax.send('/api/clustering/distances/' + this.metric + '/' + this.data.desc.id
+      + '/' + String(this.options.sorted), request, 'post');
     console.log('Requested distances of data set:', this.data.desc.id);
 
     // resolve all promises, including the promises where the distance range is determined
@@ -290,7 +291,8 @@ export class ClusterDetailView {
       // check if external distances are available
       if (externDistances != null) {
         for (var j = 0; j < numGroups; ++j) {
-          const $elemNext = $parent.append('div').classed('stats', true).style('opacity', 0).style('background-color', 'white');
+          const $elemNext = $parent.append('div').classed('stats', true).style('opacity', 0)
+            .style('background-color', 'white');
           $elemNext.classed('group', true);//.datum(rawDistMatrix);
           $elemNext.append('div').attr('class', 'title').text('Ext.' + String(j));
           $elemNext.append('div').attr('class', 'body');

@@ -344,7 +344,7 @@ export class SimilarityPopup {
               private options:any) {
     this.options = C.mixin(
       {
-        width: 185,
+        width: 235,
         animationTime: 200,
         similarityMetric: 'euclidean',
         triggerFunc: null
@@ -391,14 +391,15 @@ export class SimilarityPopup {
     var row = $body.append('div').classed('content', true);
 
     // button to trigger merge
-    var button = row.append('button').text('Sort');
+    var sortButton = row.append('button').attr('title', 'Sort patients by distance').text('Sort');
+    var showButton = row.append('button').attr('title', 'Show cluster-patient distances without sorting').text('Show');
 
     // create selection of similarity metrics
     var sims = ['euclidean', 'sqeuclidean', 'cityblock', 'chebyshev', 'canberra', 'correlation', 'hamming',
                 'mahalanobis', 'pearson', 'spearman', 'kendall'];
 
 
-    var clusterSelect = row.append('select').attr({title: 'select similarity metric'}).classed('similaritySelect', true);
+    var clusterSelect = row.append('select').attr({title: 'Select similarity metric'}).classed('similaritySelect', true);
     clusterSelect.selectAll('option').data(sims)
       .enter().append('option').attr('value', String)
       .text(String);
@@ -407,16 +408,22 @@ export class SimilarityPopup {
     clusterSelect.property('value', this.options.similarityMetric);
 
     // button event
-    button.on('mouseup', () => {
-      // obtain selected cluster index
-      const simMetric = $(clusterSelect.node()).val();
+    function onClick(sorted:boolean) {
 
-      // return similarity metric
-      that.options.triggerFunc(simMetric);
+      return () => {
+        // obtain selected similarity metric
+        const simMetric = $(clusterSelect.node()).val();
 
-      // remove this window
-      this.destroy();
-    });
+        // return similarity metric
+        that.options.triggerFunc(simMetric, sorted);
+
+        // remove this window
+        this.destroy();
+      };
+    }
+
+    sortButton.on('mouseup', onClick(true));
+    showButton.on('mouseup', onClick(false));
 
     // use custom offsets
     const offsetX = 10;

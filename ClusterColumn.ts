@@ -258,16 +258,17 @@ function showStats(inputs, parameter, graph, within) {
   var cluster = parameter.cluster;
   var show = parameter.action === 'show';
   var metric = parameter.metric;
+  var sorted = parameter.sorted;
 
   var r:Promise<any>;
   if (show) {
-    r = column.showStats(cluster, within, true, false, metric);
+    r = column.showStats(cluster, within, true, false, metric, sorted);
   } else {
     r = column.hideStats(cluster, within);
   }
   return r.then(() => {
     return {
-      inverse: createToggleStatsCmd(inputs[0], cluster, !show, metric),
+      inverse: createToggleStatsCmd(inputs[0], cluster, !show, metric, sorted),
       consumed: within
     };
   });
@@ -275,13 +276,14 @@ function showStats(inputs, parameter, graph, within) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function createToggleStatsCmd(column, cluster, show, metric:string='euclidean') {
+export function createToggleStatsCmd(column, cluster, show, metric:string='euclidean', sorted:boolean=true) {
   var act = show ? 'Show' : 'Hide';
   return prov.action(prov.meta(act + ' Distances of ' + column.toString() + ' Cluster "' + cluster + '"', prov.cat.layout),
     'showStratomeXStats', showStats, [column], {
       cluster: cluster,
       action: show ? 'show' : 'hide',
-      metric: metric
+      metric: metric,
+      sorted: sorted
     });
 }
 
@@ -468,15 +470,13 @@ export class ClusterColumn extends columns.Column {
     const that = this;
     const numGroups = (<any>this.range.dim(0)).groups.length;
 
-    function test(metric: string) {
-      //console.log('Chosen metric:', metric);
-
+    function toggleDistanceView(metric: string, sorted: boolean) {
       // first obtain the provenance graph
       var graph = that.stratomex.provGraph;
       // next find the current object / selection / cluster
       var obj = graph.findObject(that);
       // push new command to graph
-      graph.push(createToggleStatsCmd(obj, pos[0], true, metric));
+      graph.push(createToggleStatsCmd(obj, pos[0], true, metric, sorted));
     }
 
     // create new cluster stats command
@@ -489,7 +489,7 @@ export class ClusterColumn extends columns.Column {
 
       // first show popup to select similarity metric
       similarityPopupHelper = utility.createSimilarityPopup(elem, that, pos[0], {
-        similarityMetric: that.options.distanceMetric, triggerFunc: test});
+        similarityMetric: that.options.distanceMetric, triggerFunc: toggleDistanceView});
 
       // stop propagation to disable further event triggering
       d3.event.stopPropagation();
@@ -512,12 +512,6 @@ export class ClusterColumn extends columns.Column {
       // create new cluster merge command
       $toolbar.append('i').attr('class', 'fa fa-link').attr('title', 'Merge with other cluster')
         .on('click', () => {
-        // first obtain the provenance graph
-        //var graph = that.stratomex.provGraph;
-        // next find the current object / selection / cluster
-        //var obj = graph.findObject(that);
-        // push new command to graph
-        //graph.push(createToggleStatsCmd(obj, pos[0], true));
 
         if (mergePopupHelper != null) {
           mergePopupHelper.destroy();
@@ -552,16 +546,6 @@ export class ClusterColumn extends columns.Column {
 
         // regroup column
         graph.push(createRegroupColumnCmd(obj, compositeRange));
-
-        // if (that.dependentColumn !== null) {
-        //   var r = ranges.list(compositeRange);
-        //   var m = that.dependentColumn.data;
-        //   that.data.ids(r).then(m.fromIdRange.bind(m)).then((target) => {
-        //     console.log(target.dim(0));
-        //
-        //     that.dependentColumn.updateGrid(target.dim(0));
-        //   });
-        // }
 
         d3.event.stopPropagation();
       });
@@ -721,7 +705,8 @@ export class ClusterColumn extends columns.Column {
    * @param metric
    * @returns {any}
    */
-  showStats(cluster, within = -1, relayout = true, matrixMode:boolean = false, metric:string = 'euclidean') {
+  showStats(cluster, within = -1, relayout = true, matrixMode:boolean = false, metric:string = 'euclidean',
+            sorted:boolean=true) {
     var statsView = this.statsViews[cluster];
 
     if (statsView != null) {
@@ -750,7 +735,7 @@ export class ClusterColumn extends columns.Column {
     const that = this;
 
     var newStatsView:clusterView.ClusterDetailView = new clusterView.ClusterDetailView(cluster, this.data, this.range,
-      metric, {matrixWidth: this.options.matrixWidth, matrixMode: matrixMode});
+      metric, {matrixWidth: this.options.matrixWidth, matrixMode: matrixMode, sorted: sorted});
     var promise = newStatsView.build(this.$parent, this);
 
     this.statsViews[cluster] = newStatsView;
