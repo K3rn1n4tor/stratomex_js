@@ -475,7 +475,14 @@ export class ClusterColumn extends columns.Column {
       var graph = that.stratomex.provGraph;
       // next find the current object / selection / cluster
       var obj = graph.findObject(that);
-      // push new command to graph
+
+      // push new command to graph if different metric was used
+      var statsView = that.statsViews[pos[0]];
+
+      if (statsView !== null && statsView.metric === metric) {
+        return;
+      }
+
       graph.push(createToggleStatsCmd(obj, pos[0], true, metric, sorted));
     }
 
