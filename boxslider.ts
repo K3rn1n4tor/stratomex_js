@@ -443,7 +443,7 @@ export class BoxSlider extends vis.AVisInstance implements vis.IVisInstance {
       'fill': this.options.sliderColor, id: 'bar', class: (_:any, i:number) => {
         return 'bar' + String(i);
       },
-      'shape-rendering': 'crispEdges', stroke: 'black', 'stroke-width': '2px', 'stroke-alignment': 'inner',
+      'shape-rendering': 'geometricPrecision', stroke: 'black', 'stroke-width': '2px', 'stroke-alignment': 'inner',
       'stroke-opacity': 0.05
     }).on('mousemove', this._mouseHandler('mousemove', $root, [scaleY]))
       .on('mouseout', this._mouseHandler('mouseout', $root, []));
