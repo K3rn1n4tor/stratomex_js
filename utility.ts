@@ -117,7 +117,7 @@ export class ClusterPopup {
       });
 
     // create body
-    this.height = 200;
+    this.height = 210;
 
     var $body = $root.append('div').classed('body', true);
     $body.transition().duration(this.options.animationTime).style('width', String(this.options.width) + 'px')
@@ -270,7 +270,7 @@ export class ClusterPopup {
 
     var $paramMetric = $page.append('div').attr('class', 'parameter');
 
-    $paramMetric.append('label').text('Similarity Metric:');
+    $paramMetric.append('label').text('Distance Metric:');
 
     var inputDistance = $paramMetric.append('select')
       .attr({title: 'Distance metric to measure similarity between two records'}).classed('dist', true);
@@ -348,7 +348,7 @@ export class ClusterPopup {
 
     var $paramMetric = $page.append('div').attr('class', 'parameter');
 
-    $paramMetric.append('label').text('Similarity Metric:');
+    $paramMetric.append('label').text('Distance Metric:');
 
     var inputDistance = $paramMetric.append('select')
       .attr({title: 'Distance metric to measure similarity between two records'}).classed('dist', true);
