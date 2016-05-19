@@ -233,68 +233,192 @@ div.clusterPopup
     }
   }
 
-  div.body
+  div.header
   {
-    display: flex;
-    display: -webkit-flex;
-    flex-flow: column;
-    -webkit-flex-flow: column;
-    justify-content: space-between;
-    -webkit-justify-content: space-between;
-    align-items: center;
-    -webkit-align-items: center;
-    background-color: #f9fff9;
+    width: 100%;
+    height: 33px;
+    background-color: $exploration-stage;
 
-    > .method
+    > .tab
     {
-      width: 100%;
-      display: flex;
-      display: -webkit-flex;
-      flex: 1 1 20px;
-      -webkit-flex: 1 1 20px;
-      flex-flow: row;
-      -webkit-flex-flow: row;
-      justify-content: space-between;
-      -webkit-justify-content: space-between;
-      align-items: center;
-      -webkit-align-items: center;
-      min-height: 35px;
-      padding-left: 10px;
-      padding-right: 10px;
+      display: inline-block;
+      width: 24%;
+      height: 27px;
 
-      > button
-      {
-        border: 1px solid $exploration-stage;
-        border-radius: 4px;
-        box-shadow: none !important;
-        background-color: $header-menu-bg-color;
-        min-width: 100px;
-      }
+      line-height: 27px;
+      border-radius: 5px;
+      background-color: $header-menu-bg-color;
 
-      > button:hover
-      {
-        background-color: $select-color-bright;
-        //border-color: $select-color-bright !important;
-        font-weight: bold;
-      }
+      align: center;
+      text-align : center;
+      vertical-align: middle;
 
-      > input, select
-      {
-        text-align: center;
-        border: 1px solid $exploration-stage;
-        border-radius: 4px;
-        background-color: $header-menu-bg-color;
-        min-width: 100px;
-        min-height: 24px;
-      }
+      margin: 3px 0.5% 3px 0.5%;
+      outline: 0;
+      border: 0 solid transparent;
 
-      > input[type=number]
+      font-weight: normal;
+
+      &.active
       {
-        //margin-left: 15px;
-        //margin-right: 15px;
-        min-width: 100px;
+        background-color: #f9fff9 !important;
+        font-weight: bold !important;
+        height: 30px !important;
+        line-height: 30px !important;
+        margin: 3px 0.5% 0px 0.5% !important;
+        border-radius: 5px 5px 0 0;
+
+        transition: background-color 300ms, height 300ms, margin 300ms;
+        -webkit-transition: background-color 300ms, height 300ms, margin 300ms;
       }
     }
+  }
+
+  div.body
+  {
+    //display: flex;
+    //display: -webkit-flex;
+    //flex-flow: column;
+    //-webkit-flex-flow: column;
+    //justify-content: space-between;
+    //-webkit-justify-content: space-between;
+    //align-items: center;
+    //-webkit-align-items: center;
+    background-color: #f9fff9;
+
+    > .tab-content
+    {
+      display: flex;
+      display: -webkit-flex;
+
+      flex-direction: column;
+      justify-content: space-around;
+      align-items: center;
+
+
+      width: 100%;
+      height: calc(100% - 33px);
+      overflow: hidden;
+
+      >.parameter
+      {
+        display: block;
+        width: 100%;
+        //height: 0;
+        height: 29px;
+        //margin: 3px 0 3px  0;
+        //border-bottom: solid 1px $exploration-stage !important;
+
+        > label
+        {
+          line-height: 29px;
+          text-align: right;
+          width: 40%;
+          margin: 0 5% 0 5%;
+        }
+
+        > input, select
+        {
+          text-align: center;
+          border: 1px solid $exploration-stage;
+          border-radius: 4px;
+          background-color: $header-menu-bg-color;
+          //min-width: 100px;
+          width: 28%;
+          margin: 0 17% 0 5%;
+          text-indent: 15px;
+
+          height: 100%;
+        }
+      }
+
+      >.control
+      {
+        display: block;
+        width: 100%;
+        height: auto;
+        overflow: hidden;
+
+        > button
+        {
+          border: 1px solid $exploration-stage;
+          border-radius: 4px;
+          box-shadow: none !important;
+          background-color: $header-menu-bg-color;
+          //min-width: 100px;
+          height: 29px;
+          width: 30%;
+          margin: 0 35% 0 35% !important;
+        }
+
+        > button:hover
+        {
+          background-color: $select-color-bright;
+          //border-color: $select-color-bright !important;
+          font-weight: bold;
+        }
+      }
+
+      div.separator
+      {
+        width: 100%;
+        height: 0;
+        border-bottom: solid 1px rgba(96,170,133,0.2);
+        outline: 0;
+      }
+    }
+
+
+    //> .method
+    //{
+    //  width: 100%;
+    //  display: flex;
+    //  display: -webkit-flex;
+    //  flex: 1 1 20px;
+    //  -webkit-flex: 1 1 20px;
+    //  flex-flow: row;
+    //  -webkit-flex-flow: row;
+    //  justify-content: space-between;
+    //  -webkit-justify-content: space-between;
+    //  align-items: center;
+    //  -webkit-align-items: center;
+    //  min-height: 35px;
+    //  padding-left: 10px;
+    //  padding-right: 10px;
+    //
+    //  > button
+    //  {
+    //    border: 1px solid $exploration-stage;
+    //    border-radius: 4px;
+    //    box-shadow: none !important;
+    //    background-color: $header-menu-bg-color;
+    //    min-width: 100px;
+    //  }
+    //
+    //  > button:hover
+    //  {
+    //    background-color: $select-color-bright;
+    //    //border-color: $select-color-bright !important;
+    //    font-weight: bold;
+    //  }
+    //
+    //  > input, select
+    //  {
+    //    text-align: center;
+    //    border: 1px solid $exploration-stage;
+    //    border-radius: 4px;
+    //    background-color: $header-menu-bg-color;
+    //    min-width: 100px;
+    //    min-height: 24px;
+    //  }
+    //
+    //  > input[type=number]
+    //  {
+    //    //margin-left: 15px;
+    //    //margin-right: 15px;
+    //    min-width: 100px;
+    //  }
+    //}
   }
 }
 
