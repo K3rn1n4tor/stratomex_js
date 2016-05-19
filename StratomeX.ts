@@ -157,11 +157,12 @@ class StratomeX extends views.AView {
     if (method === 'k-means') {
       const k = String(args[0]);
       const initMethod = args[1];
+      const distance = args[2];
 
-      var argUrl = [k, initMethod, dataID].join('/');
+      var argUrl = [k, initMethod, distance, dataID].join('/');
       clusterResponse = ajax.getAPIJSON('/clustering/kmeans/' + argUrl, {});
       methodName = 'K-Means';
-      distMetric = 'sqeuclidean';
+      distMetric = distance;
     }
 
     if (method === 'affinity') {
@@ -187,11 +188,12 @@ class StratomeX extends views.AView {
       const c = String(args[0]);
       const m = String(args[1]);
       const t = String(args[2]);
+      const distance = args[3];
 
-      var argUrl = [c, m, t, dataID].join('/');
+      var argUrl = [c, m, t, distance, dataID].join('/');
       clusterResponse = ajax.getAPIJSON('/clustering/fuzzy/' + argUrl, {});
       methodName = 'Fuzzy';
-      distMetric = 'euclidean';
+      distMetric = distance;
     }
 
     clusterResponse.then((result:any) => {

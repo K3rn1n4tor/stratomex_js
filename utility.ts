@@ -22,7 +22,6 @@ import {animationTime} from "./Column";
 export class ClusterPopup {
   private $node:d3.Selection<any> = null;
   private destroyed:boolean = false;
-  public height:number = 0;
   private $tabs: d3.Selection<any>[] = [];
   private $pages: d3.Selection<any>[] = [];
 
@@ -42,12 +41,14 @@ export class ClusterPopup {
               private options:any) {
     this.options = C.mixin(
       {
-        width: 450,
-        rowHeight: 35,
+        width: 440,
+        height: 190,
         animationTime: 200,
         'kmeans': {
           inits: ['forgy', 'uniform', 'random', 'kmeans++'], // initialization method for k-means
-          initSelect: 3
+          initSelect: 3,
+          distances: ['euclidean', 'sqeuclidean', 'cityblock', 'mahalanobis'],
+          distSelect: 1
         },
         'hierarchical': {
           methods: ['single', 'complete', 'weighted', 'median', 'average', 'centroid'], // linkage method for k-means
@@ -63,7 +64,9 @@ export class ClusterPopup {
         },
         'fuzzy': {
           threshold: [0.01, 1.0],
-          fuzzifier: [1.001, 100, 1.2]
+          fuzzifier: [1.001, 100, 1.2],
+          distances: ['euclidean', 'sqeuclidean', 'cityblock', 'mahalanobis'],
+          distSelect: 0
         },
         'general': {
           distances: ['euclidean', 'sqeuclidean', 'cityblock', 'chebyshev', 'canberra', 'correlation', 'hamming',
@@ -117,11 +120,9 @@ export class ClusterPopup {
       });
 
     // create body
-    this.height = 210;
-
     var $body = $root.append('div').classed('body', true);
     $body.transition().duration(this.options.animationTime).style('width', String(this.options.width) + 'px')
-      .style('height', String(this.height) + 'px');
+      .style('height', String(this.options.height) + 'px');
 
     var $header = $body.append('div').attr('class', 'header');
 
@@ -162,7 +163,7 @@ export class ClusterPopup {
     // move window to cluster button
     $root.style({
       'opacity': 0, left: String(mousePos[0] - offsetX) + 'px',
-      top: String(mousePos[1] - this.height - offsetY) + 'px'
+      top: String(mousePos[1] - this.options.height - offsetY) + 'px'
     });
 
     return $root;
@@ -210,10 +211,12 @@ export class ClusterPopup {
 
     var inputDistance = $paramMetric.append('select')
       .attr({title: 'Distance metric to measure similarity between two records'}).classed('dist', true);
-    inputDistance.selectAll('option').data(this.options.general.distances)
+    inputDistance.selectAll('option').data(this.options.kmeans.distances)
       .enter().append('option').attr('value', (d:any) => {
       return d;
     }).text((d:string) => d);
+
+    inputDistance.property('value', this.options.kmeans.distances[this.options.kmeans.distSelect]);
 
     // ----------------------------------
 
@@ -444,12 +447,12 @@ export class ClusterPopup {
 
     var inputDistance = $paramMetric.append('select')
       .attr({title: 'Distance metric to measure similarity between two records'}).classed('dist', true);
-    inputDistance.selectAll('option').data(this.options.general.distances)
+    inputDistance.selectAll('option').data(this.options.fuzzy.distances)
       .enter().append('option').attr('value', (d:any) => {
       return d;
     }).text((d:string) => d);
 
-    inputDistance.property('value', this.options.general.distances[this.options.affinity.distSelect]);
+    inputDistance.property('value', this.options.fuzzy.distances[this.options.fuzzy.distSelect]);
 
     // ----------------------------------
 
