@@ -4,6 +4,7 @@ StratomeX - Clustering [Fork]
 This is a fork of the original StratomeX repository to integrate dynamic, server-side clustering on
 genomic data and analyze the confidence or ambiguity of cluster assignments.
 It is implemented as Caleydo web plugin: https://github.com/Caleydo/caleydo_web
+Demo-Version of the tool: http://ec2-52-58-105-31.eu-central-1.compute.amazonaws.com/
 
 Features:
 --------
