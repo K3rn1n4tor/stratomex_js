@@ -19,7 +19,7 @@ of each patient to all other cluster.
 Installation:
 ------------
 - Checkout caleydo_web_container: https://github.com/Caleydo/caleydo_web_container
-- Checkout calyedo_clustering: https://github.com/K3rn1n4tor/stratomex_js
+- Checkout calyedo_clustering: https://github.com/K3rn1n4tor/calyedo_clustering
 - Update all other repos to the latest version (at least from March 21st).
 - Make sure you have the caleydo_data_hdf (required for TCGA data) and caleydo_vis_lineup plugin.
 
